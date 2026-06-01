@@ -1,0 +1,1001 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+<title>Tilal Grand Mall — Interactive Map</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&display=swap');
+
+:root{
+  --bg:#ffffff;
+  --canvas:#f8faff;
+  --blue:#1d4ed8;
+  --blue-2:#3b82f6;
+  --accent:#60a5fa;
+  --glow:rgba(59,130,246,.25);
+  --text:#0f172a;
+  --muted:#64748b;
+  --card:#ffffff;
+  --card-border:rgba(29,78,216,.12);
+  --card-shadow:0 8px 32px rgba(29,78,216,.12);
+  --line:rgba(15,23,42,.08);
+  --sidebar-w:280px;
+}
+
+*{box-sizing:border-box;}
+html,body{height:100%;margin:0;}
+body{
+  font-family:'Raleway',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  color:var(--text);
+  background:var(--bg);
+  overflow:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+button{font-family:inherit;}
+
+/* ---------- App shell ---------- */
+.app{display:flex;flex-direction:column;height:100vh;height:100dvh;}
+
+/* ---------- Header ---------- */
+.header{
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+  height:64px;padding:0 22px;
+  background:var(--bg);
+  border-bottom:1px solid var(--line);
+  z-index:30;
+}
+.brand{display:flex;align-items:center;gap:12px;min-width:0;}
+.logo{
+  width:40px;height:40px;border-radius:11px;flex:none;
+  background:linear-gradient(135deg,#1d4ed8 0%,#3b82f6 100%);
+  display:grid;place-items:center;color:#fff;font-weight:700;font-size:15px;letter-spacing:.04em;
+  box-shadow:0 6px 18px rgba(29,78,216,.32);
+}
+.brand .name{font-weight:700;font-size:16px;letter-spacing:.02em;line-height:1;}
+.brand .sub{font-size:11px;color:var(--muted);font-weight:500;margin-top:3px;}
+.header .title{
+  position:absolute;left:50%;transform:translateX(-50%);
+  font-weight:600;font-size:13px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);
+}
+.floors{display:flex;gap:4px;padding:4px;background:#eef3ff;border-radius:12px;}
+.floor-tab{
+  border:0;background:transparent;color:var(--muted);
+  font-weight:600;font-size:13px;padding:8px 16px;border-radius:9px;cursor:pointer;
+  transition:all .15s ease;
+}
+.floor-tab.active{background:#fff;color:var(--blue);box-shadow:0 2px 8px rgba(29,78,216,.14);}
+.floor-tab:not(.active):hover{color:var(--text);}
+
+/* ---------- Body ---------- */
+.body{flex:1;display:flex;min-height:0;position:relative;}
+
+/* ---------- Sidebar ---------- */
+.sidebar{
+  width:var(--sidebar-w);flex:none;
+  border-right:1px solid var(--line);
+  background:var(--bg);
+  display:flex;flex-direction:column;
+  padding:18px;gap:18px;overflow-y:auto;z-index:20;
+}
+.search{
+  display:flex;align-items:center;gap:10px;
+  padding:11px 14px;border-radius:13px;
+  background:var(--canvas);border:1px solid var(--card-border);
+  transition:border-color .15s ease, box-shadow .15s ease;
+}
+.search:focus-within{border-color:var(--blue);box-shadow:0 0 0 3px var(--glow);}
+.search svg{width:16px;height:16px;color:var(--muted);flex:none;}
+.search input{border:0;background:transparent;outline:0;width:100%;font-size:14px;color:var(--text);font-family:inherit;}
+.search input::placeholder{color:#94a3b8;}
+.search .clear{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:16px;line-height:1;padding:2px;display:none;}
+.search .clear.show{display:block;}
+
+.sec-title{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#94a3b8;margin-bottom:-6px;}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px;}
+.chip{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:8px 13px;border-radius:999px;cursor:pointer;
+  border:1px solid var(--card-border);background:#fff;color:var(--text);
+  font-size:12.5px;font-weight:600;transition:all .15s ease;
+}
+.chip .dot{width:9px;height:9px;border-radius:50%;background:var(--c,#1d4ed8);flex:none;}
+.chip .cnt{color:var(--muted);font-weight:500;font-size:11px;}
+.chip:hover{border-color:var(--accent);}
+.chip.off{opacity:.45;background:#f8fafc;}
+.chip.all-chip.active{background:var(--blue);color:#fff;border-color:var(--blue);}
+.chip.all-chip.active .cnt{color:rgba(255,255,255,.8);}
+
+.legend{display:flex;flex-direction:column;gap:9px;}
+.legend-item{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--text);}
+.legend-swatch{width:16px;height:16px;border-radius:5px;flex:none;}
+.legend-item .lg-sub{margin-left:auto;font-size:11px;color:var(--muted);}
+
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.stat{padding:13px;border-radius:13px;background:var(--canvas);border:1px solid var(--card-border);}
+.stat b{display:block;font-size:20px;font-weight:700;color:var(--blue);line-height:1;}
+.stat span{font-size:11px;color:var(--muted);font-weight:500;display:block;margin-top:5px;}
+
+.side-note{
+  margin-top:auto;font-size:11.5px;line-height:1.6;color:var(--muted);
+  padding:13px;border-radius:13px;background:var(--canvas);border:1px solid var(--card-border);
+}
+
+/* ---------- Map canvas ---------- */
+.canvas-wrap{flex:1;position:relative;min-width:0;background:var(--canvas);overflow:hidden;}
+.canvas-wrap::before{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background-image:
+    linear-gradient(rgba(29,78,216,.05) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(29,78,216,.05) 1px,transparent 1px);
+  background-size:40px 40px;
+  mask-image:radial-gradient(circle at center,#000,transparent 92%);
+}
+.map-wrapper{position:absolute;inset:0;overflow:hidden;}
+.floor-svg{width:100%;height:100%;display:block;touch-action:none;cursor:grab;visibility:hidden;}
+.floor-svg.ready{visibility:visible;}
+.floor-svg.panning{cursor:grabbing;}
+
+/* unit states (category gradient fill is applied inline so it always wins) */
+.floor-svg .unit{
+  stroke:transparent;stroke-width:0;vector-effect:non-scaling-stroke;
+  opacity:.72;cursor:pointer;
+  transition:opacity .15s ease, filter .15s ease;
+}
+.floor-svg .unit:hover{opacity:1;filter:drop-shadow(0 0 7px var(--glow));}
+.floor-svg .unit.selected{
+  opacity:1;stroke:var(--blue);stroke-width:2.5px;
+  filter:drop-shadow(0 0 9px var(--glow));
+}
+.floor-svg .unit.dim{opacity:.12;pointer-events:none;}
+.floor-svg .unit.hidden-cat{opacity:.05;pointer-events:none;}
+.floor-svg .unit.match{opacity:1;filter:drop-shadow(0 0 8px var(--glow));}
+
+/* structural linework */
+.floor-svg .wing{fill:none;stroke:rgba(29,78,216,.16);stroke-width:2px;vector-effect:non-scaling-stroke;pointer-events:none;}
+.floor-svg .gridline{stroke:rgba(29,78,216,.10);stroke-width:1.2px;vector-effect:non-scaling-stroke;fill:none;pointer-events:none;}
+
+/* labels */
+.floor-svg .ulabel{
+  font-family:'Raleway',sans-serif;font-weight:600;
+  fill:var(--text);text-anchor:middle;dominant-baseline:middle;
+  pointer-events:none;paint-order:stroke;
+  stroke:rgba(255,255,255,.85);stroke-width:3px;
+}
+.floor-svg .ulabel.hide{display:none;}
+
+/* zoom controls */
+.zoom-ctl{position:absolute;top:16px;right:16px;display:flex;flex-direction:column;gap:8px;z-index:8;}
+.zoom-ctl button{
+  width:42px;height:42px;border-radius:12px;border:1px solid var(--card-border);
+  background:#fff;color:var(--blue);font-size:19px;font-weight:600;cursor:pointer;
+  display:grid;place-items:center;box-shadow:var(--card-shadow);transition:all .15s ease;
+}
+.zoom-ctl button:hover{background:var(--blue);color:#fff;border-color:var(--blue);}
+.zoom-ctl button svg{width:18px;height:18px;}
+
+.floor-tag{
+  position:absolute;left:16px;bottom:16px;z-index:8;
+  padding:9px 14px;border-radius:11px;background:#fff;border:1px solid var(--card-border);
+  font-size:12px;font-weight:600;color:var(--text);box-shadow:var(--card-shadow);
+}
+.floor-tag b{color:var(--blue);}
+
+/* empty state for upper floors */
+.empty-floor{
+  position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;
+  gap:14px;text-align:center;color:var(--muted);z-index:9;background:var(--canvas);
+}
+.empty-floor.show{display:flex;}
+.empty-floor .ef-icon{width:64px;height:64px;border-radius:18px;background:#eef3ff;display:grid;place-items:center;color:var(--blue);}
+.empty-floor h3{margin:0;color:var(--text);font-size:18px;font-weight:700;}
+.empty-floor p{margin:0;font-size:13px;max-width:280px;line-height:1.6;}
+
+/* tooltip */
+.tooltip{
+  position:fixed;z-index:60;pointer-events:none;
+  padding:8px 12px;border-radius:10px;background:#fff;color:var(--text);
+  border:1px solid var(--card-border);box-shadow:0 8px 24px rgba(29,78,216,.22);
+  font-size:12px;font-weight:600;opacity:0;transform:translateY(4px);
+  transition:opacity .12s ease, transform .12s ease;white-space:nowrap;
+}
+.tooltip.show{opacity:1;transform:translateY(0);}
+.tooltip .tt-cat{display:block;font-weight:500;font-size:11px;color:var(--muted);margin-top:2px;}
+
+/* ---------- Detail drawer ---------- */
+.detail{
+  position:absolute;top:0;right:0;height:100%;width:340px;
+  background:#fff;border-left:1px solid var(--line);
+  box-shadow:-12px 0 40px rgba(29,78,216,.10);
+  transform:translateX(100%);transition:transform .25s cubic-bezier(.4,0,.2,1);
+  z-index:40;display:flex;flex-direction:column;padding:22px;gap:18px;
+}
+.detail.open{transform:translateX(0);}
+.detail .close{
+  position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:9px;
+  border:1px solid var(--card-border);background:#fff;color:var(--muted);cursor:pointer;
+  display:grid;place-items:center;font-size:16px;
+}
+.detail .close:hover{color:var(--text);border-color:var(--accent);}
+.badge{
+  display:inline-flex;align-items:center;gap:7px;align-self:flex-start;
+  padding:6px 12px;border-radius:999px;color:#fff;font-size:11px;font-weight:700;
+  letter-spacing:.04em;text-transform:uppercase;
+}
+.detail .code{font-size:13px;font-weight:600;letter-spacing:.14em;color:var(--muted);text-transform:uppercase;}
+.detail h2{margin:0;font-size:22px;font-weight:700;line-height:1.2;}
+.detail .meta{display:flex;flex-direction:column;gap:12px;margin-top:4px;}
+.detail .meta-row{display:flex;justify-content:space-between;font-size:13.5px;padding-bottom:12px;border-bottom:1px solid var(--line);}
+.detail .meta-row span:first-child{color:var(--muted);}
+.detail .meta-row span:last-child{font-weight:600;}
+.detail .actions{display:flex;gap:10px;margin-top:auto;}
+.detail .btn{
+  flex:1;display:flex;align-items:center;justify-content:center;gap:7px;
+  padding:12px;border-radius:12px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid transparent;
+  transition:all .15s ease;
+}
+.detail .btn svg{width:15px;height:15px;}
+.detail .btn.primary{background:linear-gradient(135deg,#1d4ed8,#3b82f6);color:#fff;box-shadow:0 6px 18px rgba(29,78,216,.3);}
+.detail .btn.primary:hover{filter:brightness(1.06);}
+.detail .btn.ghost{background:#fff;border-color:var(--card-border);color:var(--text);}
+.detail .btn.ghost:hover{border-color:var(--accent);}
+.toast{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:var(--text);color:#fff;padding:11px 20px;border-radius:12px;font-size:13px;font-weight:600;
+  opacity:0;transition:all .25s ease;z-index:80;pointer-events:none;box-shadow:0 10px 30px rgba(0,0,0,.25);
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* mobile sidebar toggle */
+.menu-btn{display:none;width:40px;height:40px;border-radius:11px;border:1px solid var(--card-border);background:#fff;color:var(--blue);cursor:pointer;place-items:center;}
+.menu-btn svg{width:20px;height:20px;}
+.scrim{position:absolute;inset:0;background:rgba(15,23,42,.4);opacity:0;pointer-events:none;transition:opacity .25s ease;z-index:15;}
+.scrim.show{opacity:1;pointer-events:auto;}
+
+/* ---------- Responsive ---------- */
+@media (max-width:1024px){
+  .detail{width:320px;}
+}
+@media (max-width:768px){
+  .header .title{display:none;}
+  .menu-btn{display:grid;}
+  .sidebar{
+    position:absolute;top:0;left:0;height:100%;width:84%;max-width:320px;
+    transform:translateX(-100%);transition:transform .25s ease;box-shadow:8px 0 30px rgba(29,78,216,.12);
+  }
+  .sidebar.open{transform:translateX(0);}
+  .detail{
+    width:100%;height:auto;max-height:72%;top:auto;bottom:0;left:0;right:0;
+    border-left:0;border-top:1px solid var(--line);border-radius:22px 22px 0 0;
+    transform:translateY(100%);box-shadow:0 -12px 40px rgba(29,78,216,.16);
+  }
+  .detail.open{transform:translateY(0);}
+  .floors .floor-tab{padding:8px 11px;}
+}
+@media (max-width:768px){
+  .detail .actions{margin-top:8px;}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="header">
+    <div class="brand">
+      <button class="menu-btn" id="menuBtn" aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+      <div class="logo">TG</div>
+      <div>
+        <div class="name">TILAL GRAND MALL</div>
+        <div class="sub">Sharjah, UAE</div>
+      </div>
+    </div>
+    <div class="title">Interactive Map</div>
+    <div class="floors" id="floors">
+      <button class="floor-tab active" data-floor="G">Ground</button>
+      <button class="floor-tab" data-floor="F1">Level 1</button>
+      <button class="floor-tab" data-floor="F2">Level 2</button>
+    </div>
+  </header>
+
+  <div class="body">
+    <aside class="sidebar" id="sidebar">
+      <div class="search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input id="searchInput" type="text" placeholder="Search shop, code or category" autocomplete="off"/>
+        <button class="clear" id="searchClear" aria-label="Clear">&times;</button>
+      </div>
+
+      <div>
+        <div class="sec-title">Categories</div>
+        <div class="chips" id="chips"></div>
+      </div>
+
+      <div>
+        <div class="sec-title">Legend</div>
+        <div class="legend" id="legend"></div>
+      </div>
+
+      <div>
+        <div class="sec-title">Overview</div>
+        <div class="stats">
+          <div class="stat"><b id="statUnits">0</b><span>Mapped units</span></div>
+          <div class="stat"><b>GF</b><span>Ground floor</span></div>
+        </div>
+      </div>
+
+      <div class="side-note">Tap any unit to view its details. Drag to pan, scroll or pinch to zoom, double-click to reset the view.</div>
+    </aside>
+
+    <main class="canvas-wrap" id="canvasWrap">
+      <div class="map-wrapper" id="mapWrapper">
+<svg id="floorSvg" class="floor-svg" data-name="Layer 2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3370 2384">
+  <polygon class="c" points="2015.36 629.99 2015.36 931.79 1796.8 931.79 1796.8 1023.71 1563.82 1023.71 1563.82 931.79 1342.33 931.79 1342.33 629.99 2015.36 629.99"/>
+  <rect class="d" x="1969.92" y="944.82" width="54.11" height="81.17"/>
+  <rect class="d" x="1503.34" y="944.82" width="54.11" height="81.17"/>
+  <rect class="d" x="1445.3" y="944.82" width="54.11" height="81.17"/>
+  <rect class="d" x="1389.42" y="944.82" width="54.11" height="81.17"/>
+  <rect class="d" x="1334.32" y="944.05" width="54.11" height="81.17"/>
+  <rect class="d" x="1057.67" y="928.16" width="44.33" height="66.01" transform="translate(-365.69 979.97) rotate(-42.42)"/>
+  <rect class="d" x="1096.71" y="891.39" width="44.33" height="66.01" transform="translate(-330.67 996.68) rotate(-42.42)"/>
+  <rect class="d" x="1138.12" y="853.58" width="44.33" height="66.01" transform="translate(-294.32 1014.71) rotate(-42.42)"/>
+  <rect class="d" x="1175.36" y="822.39" width="44.33" height="66.01" transform="translate(-263.54 1031.67) rotate(-42.42)"/>
+  <rect class="d" x="868.58" y="858.09" width="80.52" height="66.01" transform="translate(-363.18 846.29) rotate(-42.42)"/>
+  <rect class="d" x="942.19" y="812.56" width="33.69" height="66.01" transform="translate(-319.33 868.23) rotate(-42.42)"/>
+  <rect class="d" x="977.97" y="755.56" width="42.01" height="81.4" transform="translate(-275.62 882.26) rotate(-42.42)"/>
+  <rect class="d" x="1227.78" y="944.82" width="54.11" height="81.17"/>
+  <rect class="d" x="2066.2" y="945.2" width="54.11" height="81.17"/>
+  <rect class="e" x="2130.97" y="946.04" width="45.65" height="81.17"/>
+  <rect class="d" x="1914.74" y="942.63" width="49.81" height="81.17"/>
+  <rect class="d" x="1861.98" y="943.4" width="48.13" height="81.17"/>
+  <rect class="d" x="1808.39" y="944.35" width="43.22" height="81.17"/>
+  <path class="e" d="M2187.54,946.14c-.25,26.02-.51,52.03-.76,78.05,24.25.92,48.49,1.84,72.74,2.76"/>
+  <polyline class="d" points="1215.43 947.63 1164.87 948.77 1097.75 1015.17 1101.82 1028.85 1216.81 1027.34"/>
+  <polyline class="e" points="1121.36 733.71 1044.72 805.77 986.45 741.44 919.49 802.03 883.89 762.61 892.27 768.5 843.81 809.76 835.89 803.21 818.81 812.94 810.42 804.08 835.81 788.67 824.14 755.15 824.5 650.78 1074.44 647.59 1074.92 687.97"/>
+  <polygon class="d" points="1076.48 651.58 1078.33 682.15 1122.86 730.5 1215.44 651.63 1076.48 651.58"/>
+  <polygon class="d" points="1266.09 737.54 1196.76 805.92 1237.95 856.51 1288.04 820.19 1289.37 763.95 1266.09 737.54"/>
+  <polyline class="d" points="1332.38 679.01 1271.88 737.54 1295.83 760.84 1332.6 760.87"/>
+  <path class="e" d="M738.29,697.23l-75.92,33.94-4.05,1.75c-13-30.67-23.24-59.34-31.37-85.15l90.04,1.35c6.48,15.47,13.56,31.54,21.3,48.11Z"/>
+  <path class="e" d="M716.99,649.12l-90.04-1.35c-.06-.19-.12-.38-.18-.57,29.94.32,59.88.65,89.82.97.13.32.26.63.4.95Z"/>
+  <path class="e" d="M893.91,949.92c-8.26,9.96-16.52,19.92-24.78,29.87l-58.03.1c-17.37-20.32-36.01-43.85-54.88-70.69l19.26-13.22.08-.05,53.21-36.53c22.05,33.6,44.07,63.75,65.14,90.52Z"/>
+  <path class="e" d="M828.77,859.4l-53.21,36.53-.08.05-19.26,13.22c-9.19-13.04-18.43-26.87-27.6-41.49l74.91-48.36c8.38,13.86,16.81,27.2,25.24,40.05Z"/>
+  <path class="e" d="M803,818.47l-75.09,48.11c-8.48-13.52-16.89-27.72-25.16-42.6l8.8-4.97.11-.06,69.02-38.9c4.35,7.79,8.84,15.65,13.48,23.57,2.94,5.01,5.88,9.96,8.84,14.85Z"/>
+  <path class="e" d="M759.86,740.99l-79.92,39.05c-.14-.28-.28-.55-.41-.83-.06-.11-.11-.22-.16-.32-7.5-15.41-14.3-30.47-20.48-45.06-.01-.02-.02-.04-.02-.05l4.05-1.75,75.92-33.94c.17.35.33.71.5,1.07,6.22,13.28,12.86,26.87,19.96,40.74h0c.05.1.1.18.14.27.14.27.28.55.42.82Z"/>
+  <path class="e" d="M779.79,779.46l-69.02,38.9-.11.06-8.8,4.97c-.03-.05-.06-.11-.09-.16-.14-.26-.29-.51-.42-.77-8.26-14.88-15.86-29.54-22.85-43.87l79.92-39.05c6.61,12.89,13.62,26,21.04,39.32.11.2.22.4.33.6Z"/>
+  <line class="e" x1="658.32" y1="732.92" x2="657.75" y2="733.16"/>
+  <line class="e" x1="758.91" y1="739.3" x2="758.42" y2="739.54"/>
+  <line class="e" x1="678.5" y1="778.59" x2="676.51" y2="779.56"/>
+  <line class="e" x1="711.55" y1="819.01" x2="702.66" y2="823.82"/>
+  <line class="e" x1="775.48" y1="895.98" x2="758.91" y2="907.84"/>
+  <line class="e" x1="702.75" y1="823.98" x2="700.86" y2="825.04"/>
+  <line class="e" x1="781.44" y1="779.62" x2="780.68" y2="780.05"/>
+  <line class="e" x1="727.91" y1="866.58" x2="725.43" y2="868.17"/>
+  <line class="e" x1="806.44" y1="816.27" x2="803" y2="818.47"/>
+  <line class="e" x1="756.22" y1="909.2" x2="753.97" y2="910.75"/>
+  <line class="e" x1="728.62" y1="867.71" x2="722.69" y2="871.54"/>
+  <line class="e" x1="723.47" y1="649.22" x2="716.99" y2="649.12"/>
+  <line class="e" x1="626.95" y1="647.77" x2="617.82" y2="647.63"/>
+  <path class="e" d="M1292.97,1232.2l-33.93,82.47c-14.7-6.21-29.73-13.02-45.04-20.47l4.36-9.12.06-.11,34.24-71.45c8.03,3.89,16.22,7.75,24.56,11.58,5.28,2.42,10.53,4.79,15.76,7.1Z"/>
+  <path class="e" d="M1249.2,1214.85l-37.39,80.96c-14.42-6.83-29.15-14.27-44.13-22.36l4.74-8.93.06-.11,37.23-69.93c7.86,4.22,15.87,8.43,24.05,12.61,5.17,2.64,10.32,5.23,15.44,7.76Z"/>
+  <path class="e" d="M1208.42,1189.91l-40.75,79.33c-14.13-7.43-28.53-15.48-43.16-24.19l5.11-8.72.06-.11,40.13-68.31c7.68,4.55,15.51,9.09,23.5,13.6,5.06,2.85,10.09,5.66,15.11,8.4Z"/>
+  <path class="e" d="M1167.35,1167.29l-44.62,77.22c-13.74-8.12-27.73-16.87-41.91-26.29l5.54-8.46.07-.1,43.45-66.25c7.44,4.92,15.04,9.84,22.8,14.75,4.91,3.1,9.8,6.15,14.67,9.13Z"/>
+  <line class="e" x1="1139.3" y1="1255" x2="1138.98" y2="1255.52"/>
+  <line class="e" x1="1274.63" y1="1111.44" x2="1274.39" y2="1111.92"/>
+  <line class="e" x1="1234.49" y1="1191.43" x2="1233.5" y2="1193.4"/>
+  <line class="e" x1="1316.99" y1="1129.85" x2="1316.65" y2="1130.65"/>
+  <line class="e" x1="1064.23" y1="1210.52" x2="1057.17" y2="1216.31"/>
+  <line class="e" x1="895.61" y1="948.89" x2="864.14" y2="983.01"/>
+  <polygon class="d" points="2312.63 951.94 2281.75 922.04 2239.72 970.77 2270.61 1000.67 2312.63 951.94"/>
+  <polygon class="d" points="2275.35 917.29 2244.47 887.39 2202.45 936.12 2233.33 966.02 2275.35 917.29"/>
+  <polygon class="d" points="2231.41 873.72 2200.52 843.82 2158.5 892.55 2189.39 922.45 2231.41 873.72"/>
+  <polygon class="d" points="2197.06 842.66 2166.17 812.76 2124.15 861.49 2155.03 891.39 2197.06 842.66"/>
+  <polygon class="d" points="2496.93 891.53 2440.83 837.22 2398.81 885.95 2454.9 940.26 2496.93 891.53"/>
+  <polygon class="d" points="2433.24 830.21 2409.77 807.48 2367.75 856.22 2391.22 878.94 2433.24 830.21"/>
+  <polygon class="d" points="2399.69 782.53 2370.42 754.19 2318.6 814.29 2347.87 842.63 2399.69 782.53"/>
+  <polyline class="e" points="2247.3 731.35 2319.63 803.41 2374.62 739.08 2437.81 799.67 2471.41 760.25 2463.5 766.14 2509.24 807.4 2516.71 800.85 2532.83 810.58 2540.75 801.72 2516.79 786.31 2527.8 752.79 2527.46 648.42 2291.58 645.23 2291.13 685.61"/>
+  <polygon class="d" points="2289.66 649.23 2287.92 679.79 2245.88 728.14 2158.51 649.28 2289.66 649.23"/>
+  <polygon class="d" points="2091.21 739.76 2156.64 808.14 2117.77 858.73 2070.49 822.41 2069.24 766.17 2091.21 739.76"/>
+  <polyline class="d" points="2048.15 676.65 2105.25 735.18 2082.65 758.49 2047.95 758.51"/>
+  <path class="d" d="M2608.82,694.87l71.65,33.94,3.82,1.75c12.27-30.67,21.93-59.34,29.61-85.15l-84.97,1.35c-6.12,15.47-12.8,31.54-20.1,48.11Z"/>
+  <path class="e" d="M2628.92,646.76l84.97-1.35c.06-.19.11-.38.17-.57-28.26.32-56.51.65-84.77.97-.12.32-.25.63-.38.95Z"/>
+  <path class="d" d="M2461.96,947.56c7.8,9.96,15.59,19.92,23.39,29.87l54.77.1c16.39-20.32,33.98-43.85,51.79-70.69l-18.18-13.22-.08-.05-50.22-36.53c-20.81,33.6-41.59,63.75-61.48,90.52Z"/>
+  <path class="d" d="M2523.43,857.04l50.22,36.53.08.05,18.18,13.22c8.67-13.04,17.39-26.87,26.05-41.49l-70.7-48.36c-7.91,13.86-15.86,27.2-23.82,40.05Z"/>
+  <path class="d" d="M2547.75,816.11l70.87,48.11c8-13.52,15.94-27.72,23.74-42.6l-8.3-4.97-.1-.06-65.14-38.9c-4.11,7.79-8.34,15.65-12.72,23.57-2.77,5.01-5.55,9.96-8.34,14.85Z"/>
+  <path class="d" d="M2588.47,738.63l75.42,39.05c.13-.28.26-.55.39-.83.06-.11.1-.22.15-.32,7.08-15.41,13.5-30.47,19.33-45.06,0-.02.02-.04.02-.05l-3.82-1.75-71.65-33.94c-.16.35-.31.71-.47,1.07-5.87,13.28-12.14,26.87-18.84,40.74h0c-.05.1-.09.18-.13.27-.13.27-.26.55-.4.82Z"/>
+  <path class="d" d="M2569.66,777.1l65.14,38.9.1.06,8.3,4.97c.03-.05.06-.11.08-.16.13-.26.27-.51.4-.77,7.8-14.88,14.97-29.54,21.56-43.87l-75.42-39.05c-6.24,12.89-12.85,26-19.86,39.32-.1.2-.21.4-.31.6Z"/>
+  <line class="e" x1="2684.29" y1="730.56" x2="2684.83" y2="730.8"/>
+  <line class="e" x1="2589.36" y1="736.94" x2="2589.82" y2="737.18"/>
+  <line class="e" x1="2665.25" y1="776.23" x2="2667.12" y2="777.2"/>
+  <line class="e" x1="2634.06" y1="816.65" x2="2642.45" y2="821.46"/>
+  <line class="e" x1="2573.72" y1="893.62" x2="2589.36" y2="905.48"/>
+  <line class="e" x1="2642.36" y1="821.62" x2="2644.14" y2="822.68"/>
+  <line class="e" x1="2568.1" y1="777.26" x2="2568.82" y2="777.69"/>
+  <line class="e" x1="2618.62" y1="864.22" x2="2620.96" y2="865.81"/>
+  <line class="e" x1="2544.5" y1="813.91" x2="2547.75" y2="816.11"/>
+  <line class="e" x1="2591.9" y1="906.84" x2="2594.02" y2="908.39"/>
+  <line class="e" x1="2617.95" y1="865.35" x2="2623.54" y2="869.18"/>
+  <line class="e" x1="2622.81" y1="646.86" x2="2628.92" y2="646.76"/>
+  <line class="e" x1="2713.9" y1="645.41" x2="2722.51" y2="645.27"/>
+  <line class="e" x1="2460.36" y1="946.54" x2="2490.05" y2="980.65"/>
+  <polyline class="e" points="1263.25 1312.32 1295.34 1238.25 1334.62 1250.42 1309.07 1330.05"/>
+  <polyline class="e" points="1338.41 1253.71 1311.62 1330.22 1338.83 1339.85 1364.66 1261.75"/>
+  <polyline class="e" points="1382.08 1268.14 1422.58 1276.98 1403.03 1355.4 1355.45 1343.84"/>
+  <polyline class="e" points="1425.19 1280.04 1468.89 1289.13 1453.76 1371.12 1406.25 1359.21"/>
+  <polyline class="e" points="1476.08 1291.56 1516.96 1297.9 1500.01 1377.73 1457.11 1370.09"/>
+  <polyline class="e" points="1520.29 1299.22 1560.44 1306.09 1549.6 1382.96 1504.85 1377.1"/>
+  <path class="e" d="M1565.15,1306.87s-9.15,78.67-7.37,77.5,35.67,2.04,35.67,2.04l16.96-23.47,19.61-11.07,1.64-44.91"/>
+  <path class="e" d="M1629.54,1190.36l.27,41.43s-89.22,1.61-88.73-.55-1.36-12.81-1.36-12.81l7.96.18-1.02-33.91"/>
+  <polyline class="e" points="1541.16 1182.02 1542.44 1215.47 1510.27 1214.81 1511.82 1204.85 1494.89 1204.82 1496.33 1173.68"/>
+  <polyline class="e" points="1493.49 1171.19 1437.56 1156.89 1437.56 1206.96 1494.39 1207.33"/>
+  <polyline class="e" points="1391.11 1206.97 1389.78 1143.96 1436.39 1158.74 1435.71 1209.21"/>
+  <polyline class="e" points="1384.31 1145.7 1385.77 1204.17 1373.63 1206.5 1373.49 1238.09 1335.9 1230.24 1336.51 1128.4"/>
+  <path class="e" d="M1332.42,1130.42c-.73.48,1.02,94.69,1.02,94.69l-49.63-12.53,1.79-81.84"/>
+  <polyline class="e" points="1278.14 1129.14 1277.68 1209.28 1228.59 1187.68 1229.38 1127.88"/>
+  <polyline class="e" points="1224.69 1126.63 1226.7 1179.58 1213.53 1179.58 1142 1142.32 1139.81 1129.65"/>
+  <polyline class="e" points="1127.51 1129.14 1080.28 1214.57 963.78 1134.72 968.86 1124.24"/>
+  <path class="e" d="M2056.11,1232.43l33.81,82.47c14.65-6.21,29.63-13.02,44.89-20.47l-4.34-9.12-.06-.11-34.12-71.45c-8,3.89-16.16,7.75-24.48,11.58-5.26,2.42-10.49,4.79-15.7,7.1Z"/>
+  <path class="e" d="M2099.74,1215.07l37.26,80.96c14.37-6.83,29.05-14.27,43.98-22.36l-4.73-8.93-.06-.11-37.11-69.93c-7.83,4.22-15.82,8.43-23.96,12.61-5.16,2.64-10.28,5.23-15.39,7.76Z"/>
+  <path class="e" d="M2140.37,1190.13l40.61,79.33c14.08-7.43,28.43-15.48,43.01-24.19l-5.09-8.72-.06-.11-39.99-68.31c-7.65,4.55-15.45,9.09-23.42,13.6-5.04,2.85-10.05,5.66-15.05,8.4Z"/>
+  <path class="e" d="M2181.31,1167.52l44.46,77.22c13.69-8.12,27.64-16.87,41.77-26.29l-5.52-8.46-.07-.1-43.3-66.25c-7.42,4.92-14.99,9.84-22.72,14.75-4.9,3.1-9.76,6.15-14.62,9.13Z"/>
+  <line class="e" x1="2209.25" y1="1255.22" x2="2209.58" y2="1255.75"/>
+  <line class="e" x1="2074.39" y1="1111.66" x2="2074.64" y2="1112.15"/>
+  <line class="e" x1="2114.39" y1="1191.65" x2="2115.39" y2="1193.63"/>
+  <line class="e" x1="2032.18" y1="1130.07" x2="2032.52" y2="1130.88"/>
+  <line class="e" x1="2284.07" y1="1210.74" x2="2291.1" y2="1216.54"/>
+  <polyline class="e" points="2085.74 1312.55 2053.76 1238.47 2014.61 1250.64 2040.07 1330.27"/>
+  <polyline class="e" points="2010.83 1253.93 2037.53 1330.44 2010.42 1340.08 1984.67 1261.97"/>
+  <polyline class="e" points="1967.31 1268.36 1926.95 1277.2 1946.44 1355.62 1993.85 1344.06"/>
+  <polyline class="e" points="1924.35 1280.26 1880.81 1289.35 1895.88 1371.35 1943.23 1359.44"/>
+  <polyline class="e" points="1873.64 1291.79 1832.9 1298.13 1849.79 1377.95 1892.54 1370.32"/>
+  <polyline class="e" points="1829.58 1299.44 1789.57 1306.32 1800.37 1383.19 1844.96 1377.33"/>
+  <path class="e" d="M1784.88,1307.1s9.11,78.67,7.34,77.5-35.54,2.04-35.54,2.04l-16.91-23.47-19.54-11.07-1.64-44.91"/>
+  <path class="e" d="M1720.71,1190.59l-.27,41.43s88.91,1.61,88.42-.55,1.35-12.81,1.35-12.81l-7.93.18,1.01-33.91"/>
+  <polyline class="e" points="1808.78 1182.25 1807.51 1215.69 1839.57 1215.03 1838.02 1205.08 1854.89 1205.04 1853.45 1173.91"/>
+  <polyline class="e" points="1856.28 1171.42 1912.02 1157.11 1912.02 1207.19 1855.39 1207.55"/>
+  <polyline class="e" points="1958.32 1207.2 1959.64 1144.18 1913.19 1158.97 1913.87 1209.44"/>
+  <polyline class="e" points="1965.09 1145.92 1963.63 1204.4 1975.73 1206.72 1975.87 1238.32 2013.34 1230.47 2012.73 1128.62"/>
+  <path class="e" d="M2016.8,1130.65c.72.48-1.01,94.69-1.01,94.69l49.46-12.53-1.78-81.84"/>
+  <polyline class="e" points="2070.9 1129.37 2071.36 1209.5 2120.27 1187.91 2119.49 1128.1"/>
+  <polyline class="e" points="2124.16 1126.85 2122.16 1179.81 2135.29 1179.81 2206.57 1142.55 2208.75 1129.88"/>
+  <polyline class="e" points="2221.01 1129.37 2268.07 1214.79 2384.17 1134.95 2379.11 1124.47"/>
+  <polyline class="e" points="515.23 628.04 589.44 807.4 433.82 863.84 412.88 847.28 329.79 868.56 257.11 673.88 339.32 649.49 339.32 628.04"/>
+  <polyline class="e" points="595.16 816.98 569.56 831.86 594.16 881.18 619.09 869.34 620.44 868.7"/>
+  <path class="e" d="M620.04,873.96c9.54,13.9,19.07,27.8,28.61,41.7-8.55,4.51-17.09,9.03-25.64,13.54-7.92-15.04-15.83-30.09-23.75-45.13"/>
+  <path class="e" d="M335.04,623.84l-119,8.11,4.82,22.54-20.18,12.83,155.78,374.87,39.36-67.96,23.85,9.7,33.76-48.86c-13.52-29.26-27.04-58.52-40.55-87.78-27.69,7.09-55.39,14.19-83.08,21.28-24.23-64.9-48.45-129.79-72.68-194.69l82.21-24.39-4.27-25.65Z"/>
+  <path class="e" d="M649.85,919.25c28.29,41.17,56.58,82.35,84.86,123.52,0,0-43.31,147.77,129.69,133.52l74.82,64.71-9.45,14.59-60.42-42.37-32.64,7.06-20.63-9.51-7.29,14.5-28.24-19.48-17.38,21.37-14.93,13.58,30.24,24.72-8.46,15.93,70.34,59.52-6.39,12.51,43.89,35.39,9.13-15.25,52.46,36.11,17.57,14.94-72.93,118.9-16.04-7.43-32.31-52.29-17.54,20.49s-263.05-177.01-414.05-434.73l-47.69-27.36,39.36-67.96,27.3,10.97,30.31-50.13-31.12-67.95,153.25-54.3,6.63,10.83c-7.33,3.77-14.65,7.54-21.98,11.31,17.69,33.28,35.37,66.56,53.06,99.84,12.19-5.18,24.38-10.36,36.57-15.54Z"/>
+  <polyline class="e" points="648.68 924.29 619.19 938.06 634.27 954.94 662.4 939.18"/>
+  <polyline class="e" points="603.82 947.41 616.61 963.8 587.58 984.02 576.84 963.8"/>
+  <polyline class="e" points="470.42 880.08 458.44 856.43 502.96 839.53 513.79 862.9"/>
+  <polyline class="e" points="455.78 858.47 427.71 870.5 439.64 895.21 467.21 881.94"/>
+  <polyline class="e" points="619.84 1131.03 605.9 1143.54 619.59 1155.82 632.36 1142.51 620.47 1131.03"/>
+  <polyline class="e" points="623.01 1128.55 633.49 1139.49 646.7 1126.9 635.61 1116.59"/>
+  <polyline class="e" points="648.52 1104.4 637.34 1114.91 648.52 1124.75 658.97 1114.58"/>
+  <polyline class="e" points="644.21 1168.18 626.53 1150.96 613.26 1164.2 615.85 1167.24 607.06 1176.19 622.22 1189.15"/>
+  <polyline class="e" points="458.73 931.51 437.14 969.9 453.09 982.03 467.21 961.07 460.3 952.32 467.21 942.38 459.58 928.15"/>
+  <polyline class="e" points="434.72 974.62 448.42 984.07 435.33 1004.8 418.05 997.62"/>
+  <polyline class="e" points="383.93 999.57 405.63 1013.12 379.42 1052.69 358.81 1042.18"/>
+  <polyline class="e" points="452.33 1085.56 471.43 1104.4 457.95 1119.87 436.16 1100.67"/>
+  <polyline class="e" points="453.79 1081.6 474.33 1099.97 486.46 1084 463.38 1067.98"/>
+  <path class="e" d="M788.97,985.43s-33.61,11.61-38.92,35l-24.71-27.8,42.66-34.39"/>
+  <polyline class="e" points="654.04 1208.66 690.81 1245.15 611.5 1319.22 574.89 1281"/>
+  <polyline class="e" points="734.43 1340.98 748.23 1326.2 763.51 1339.46 749.85 1352.3"/>
+  <polyline class="e" points="752.04 1355.83 765.42 1342.54 779.07 1354.16 763.51 1370.35"/>
+  <polyline class="e" points="732.15 1343.41 744.6 1356.81 728.64 1373.9 714.12 1359.1"/>
+  <polyline class="e" points="747.64 1360.56 731.7 1375.63 742.8 1388.89 761.01 1373.31"/>
+  <polyline class="e" points="718.59 1323.51 733.79 1337.91 745.93 1324.13 732.15 1310.4"/>
+  <polyline class="e" points="712.03 1329.85 727.38 1344.59 713.08 1359.46 696.95 1339.9"/>
+  <polyline class="e" points="727.38 1308.82 694.42 1337.11 681.24 1320.18 715.58 1291.67"/>
+  <polyline class="e" points="781.99 1360.42 767.42 1372.17 788.69 1389.29 802.91 1371.91"/>
+  <polyline class="e" points="762.78 1379.56 781.14 1392.99 759.78 1409.19 744.52 1394.37"/>
+  <path class="e" d="M679.7,1317.58l-16.93-24.37s21.71-21.41,41.84-11.49l9.52,10.09-34.42,25.77Z"/>
+  <path class="e" d="M1224.99,1402.36l152.51,52.72-67.72,302.83s-235.38-41.86-447.5-189.93l100.8-146.34,92.04,53.35,31.18-40.13,119.9,41.17"/>
+  <polyline class="e" points="1175.52 1381.99 1144.04 1453.67 1192.96 1470.99 1219.14 1410.12"/>
+  <polyline class="e" points="1169.56 1382.68 1146.09 1436.16 1099.84 1415.99 1123.34 1367.13"/>
+  <polyline class="e" points="1120.48 1355.55 1094.12 1410.06 1055.58 1390.82 1089.81 1344.33"/>
+  <polyline class="e" points="1066 1343.57 1035.64 1405.79 990.29 1371.17 1029.59 1310.44 1078.37 1329.73"/>
+  <polyline class="e" points="1019.64 1300.67 984.95 1352.97 943.36 1334.31 980.54 1280.8"/>
+  <polyline class="e" points="955.04 1259.56 984.18 1277.13 903.78 1378.56 872.11 1358.2"/>
+  <polyline class="e" points="951.26 1152.06 916.06 1193.29 1082.04 1308.16 1111.45 1265.5"/>
+  <polyline class="e" points="929.25 1126.28 883.79 1165.78 913.93 1189.84 945.18 1150.96"/>
+  <polyline class="e" points="930.82 1055.05 931.64 1102.84 969.19 1105.58 968.88 1058.18"/>
+  <polyline class="e" points="920.05 966.95 891.25 992.74 917.9 1026.88 950.45 1004.15"/>
+  <ellipse class="e" cx="831.97" cy="1077.57" rx="40.66" ry="39.96"/>
+  <path class="e" d="M870.99,1011.11s48.33,95.98-48.83,117.32c0,0,28.85,49.94,76.9-3.68,0,0,40.9-77.11-25.99-114.39"/>
+  <path class="e" d="M792.42,1145.83s-48.33-95.98,48.83-117.32c0,0-28.85-49.94-76.9,3.68,0,0-40.9,77.11,25.99,114.39"/>
+  <ellipse class="e" cx="2523.57" cy="1077.92" rx="40.66" ry="39.96"/>
+  <path class="e" d="M2562.59,1011.45s48.33,95.98-48.83,117.32c0,0,28.85,49.94,76.9-3.68,0,0,40.9-77.11-25.99-114.39"/>
+  <path class="e" d="M2484.02,1146.18s-48.33-95.98,48.83-117.32c0,0-28.85-49.94-76.9,3.68,0,0-40.9,77.11,25.99,114.39"/>
+  <ellipse class="e" cx="1533.44" cy="1103.36" rx="127.04" ry="39.04"/>
+  <ellipse class="b" cx="1675.61" cy="1443.58" rx="88.24" ry="83.51"/>
+  <ellipse class="e" cx="1835.4" cy="1106.18" rx="127.04" ry="39.04"/>
+  <ellipse class="e" cx="1674.52" cy="1107.33" rx="127.04" ry="39.04"/>
+  <polyline class="e" points="1631.58 1240.76 1598.63 1240.76 1601.41 1291.81 1630.67 1291.84"/>
+  <polyline class="e" points="1595.25 1233.15 1595.77 1291 1508.53 1283.03 1507.76 1231.99 1537.8 1232.2 1538.84 1237.19 1593.75 1235.91"/>
+  <polyline class="e" points="1385.05 1458.5 1437.57 1468.13 1393.19 1605.42 1470.47 1623.3 1442.67 1733.29 1309.92 1760.16"/>
+  <polyline class="e" points="1538.18 1482.88 1591.22 1490.02 1626.08 1532.26 1625.85 1609.56 1596.65 1609.36 1597.72 1569.19 1537.04 1566.13"/>
+  <polyline class="e" points="1488.96 1480.52 1537.19 1485.95 1528.69 1550.35 1484.09 1547.77"/>
+  <path class="e" d="M1482.3,1477.18s-.97,68.56-3.26,67.83-43.31-5.86-43.31-5.86l11.48-65.87"/>
+  <path class="e" d="M1598.17,1622.72c2.31,1.6,25.86,1.58,25.86,1.58l1.84,85.14-173.49,19.11,19-97.65,16.76,3.68-1.96,6.58,74.51,3.2,7.13-6.18,32.62.45"/>
+  <polyline class="e" points="1891.8 1620.48 1873.73 1624.3 1885.91 1667.21 1770.46 1676.04 1768.52 1640.63 1733.31 1645.86 1739.17 1708.25 1908.7 1720.52 1895.97 1620.6"/>
+  <polyline class="e" points="1926.45 1470.33 1953.89 1600.64 1901.09 1620.15 1920.67 1727.58 2057.67 1754.23 1978.76 1453.78"/>
+  <polyline class="e" points="1907.28 1474.73 1927.09 1548.76 1893.97 1556.89 1895.89 1539.61 1881.93 1539.93 1869.64 1481.21"/>
+  <path class="e" d="M1866.47,1479.14l12.44,64.15s-61.21,8.39-59.27,5.92-5.05-65.34-5.05-65.34"/>
+  <polyline class="e" points="1809.63 1488.33 1813.54 1543.07 1734.1 1556.82 1734.32 1528.17 1777.08 1488.78"/>
+  <polyline class="e" points="1821.39 1564.61 1830.94 1615.58 1870.32 1613.51 1875.05 1662.41 1776.41 1670.17 1770.71 1621.06 1793.41 1624.7 1778.59 1571.58"/>
+  <path class="e" d="M2327.51,1300.33l-84.39,50.01,39.15,70.44-37.87,24.97,28.96,50.33-123.04,48.87-19.91-54.77-77.16,29.39-24.59-80.12-45.67,16.02,78.75,298.49s316.66-92.81,436.24-185.31l-170.46-268.32Z"/>
+  <polyline class="e" points="2233.9 1357.17 2183.5 1381.63 2208.69 1435.4 2263.04 1415.93"/>
+  <polyline class="e" points="2177.12 1385.72 2132.28 1402.35 2158.14 1465.65 2211.52 1443.16"/>
+  <polyline class="e" points="2126.82 1404.46 2079.8 1421.94 2103.47 1483.13 2156.05 1463.8"/>
+  <polyline class="e" points="2076.28 1425.69 2032.57 1437.39 2054.33 1499.44 2098.14 1484.78"/>
+  <polyline class="e" points="2370.66 1275.83 2329.72 1298.87 2406.78 1414.09 2451.74 1386.04"/>
+  <polyline class="e" points="2376.65 1273.59 2423.27 1335.85 2454.77 1316.02 2403.14 1249.73"/>
+  <polyline class="e" points="2421.45 1238.75 2436.97 1256.5 2479.81 1227.15 2458.76 1204.99"/>
+  <polyline class="e" points="2480.34 1232.24 2438.35 1264.72 2469.35 1302.64 2508.48 1267.11"/>
+  <path class="e" d="M2514.61,1262.6c1.36-.32,43.66-33.83,43.66-33.83l37.37,34.6-44.76,44.98"/>
+  <path class="e" d="M2512.96,1248.72c.97-.74,44.36-25.53,44.36-25.53l43.42,38.77,25.93-23.1-74.38-64.61-62.58,3.34-20.67,17.28"/>
+  <path class="e" d="M2990.62,1013.3s-152.23,299.52-499.05,528.47l-69.89-121.73,210.98-159.16,27.63,17.16,2.18,1.36,79.83-80.36s-41.21-25.87-36.2-25.49,157.99-218.51,157.99-218.51"/>
+  <path class="e" d="M2709.06,1057.12c-.84.99-52.81,69.5-52.81,69.5l-39.2-24.31,4.53-58.42,27.33-38.12"/>
+  <polyline class="e" points="2630.83 989.75 2604.84 1025.1 2558.86 984.68 2587.57 948.56"/>
+  <polyline class="e" points="2471.49 996.97 2431.37 1036.94 2408.04 1003.49 2440.9 965.76"/>
+  <polyline class="e" points="2411.7 1151.61 2448.67 1197.25 2473.97 1168.2 2434.86 1124.2"/>
+  <polyline class="e" points="3169.32 631.08 3036.93 982.21 2987.1 957.81 2962.08 992.39 2894.55 957.92 2913.64 931.73 2842.39 891.89 2832.35 917.36 2738.25 872.54 2840.13 629.95"/>
+  <polyline class="e" points="2853.15 938.91 2818.65 989.94 2709.1 915.52 2728.23 878.97"/>
+  <polyline class="e" points="2712.96 921.44 2738.63 941.67 2724.58 972.29 2687.78 947.63"/>
+  <polyline class="e" points="2696.37 976.26 2664.28 1010.36 2709.56 1042.63 2748.12 1009.57"/>
+  <polyline class="e" points="2732.23 978.18 2761.39 996.1 2804.81 1025 2819.27 1001.42 2742.39 946.64"/>
+  <polyline class="e" points="2320.3 960.41 2275.03 1008.32 2276.18 1023.37 2394.17 1029.21"/>
+  <polyline class="e" points="1034.65 960.08 1081.23 1007.67 1082.97 1025.71 969.92 1026.57"/>
+</svg>      </div>
+
+      <div class="empty-floor" id="emptyFloor">
+        <div class="ef-icon"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/></svg></div>
+        <h3>Floor map coming soon</h3>
+        <p>The Ground Floor is fully mapped. Upper-level tracings will appear here once available.</p>
+      </div>
+
+      <div class="zoom-ctl">
+        <button id="zoomIn" aria-label="Zoom in">+</button>
+        <button id="zoomOut" aria-label="Zoom out">&minus;</button>
+        <button id="zoomReset" aria-label="Reset view"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/><circle cx="12" cy="12" r="4"/></svg></button>
+      </div>
+
+      <div class="floor-tag">Floor &middot; <b id="floorTagName">Ground</b></div>
+    </main>
+
+    <aside class="detail" id="detail">
+      <button class="close" id="detailClose" aria-label="Close">&times;</button>
+      <span class="badge" id="detailBadge">Retail</span>
+      <div>
+        <div class="code" id="detailCode">G0001</div>
+        <h2 id="detailName">Retail Unit</h2>
+      </div>
+      <div class="meta">
+        <div class="meta-row"><span>Category</span><span id="detailCat">Retail &amp; Fashion</span></div>
+        <div class="meta-row"><span>Floor</span><span id="detailFloor">Ground Floor</span></div>
+        <div class="meta-row"><span>Unit code</span><span id="detailCode2">G0001</span></div>
+      </div>
+      <div class="actions">
+        <button class="btn primary" id="btnLocate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="6"/></svg>Locate</button>
+        <button class="btn ghost" id="btnShare"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5 8.6 10.5"/></svg>Share</button>
+      </div>
+    </aside>
+
+    <div class="scrim" id="scrim"></div>
+  </div>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------- Category definitions (spec palette) ---------- */
+  const CATS = {
+    anchor : { label:"Anchor Store",      grad:["#0EA5E9","#0284C7"], solid:"#0ea5e9" },
+    retail : { label:"Retail & Fashion",  grad:["#1D4ED8","#3B82F6"], solid:"#2563eb" },
+    fnb    : { label:"Food & Beverage",   grad:["#F59E0B","#D97706"], solid:"#f59e0b" },
+    service: { label:"Services",          grad:["#94A3B8","#64748B"], solid:"#94a3b8" },
+  };
+  const CAT_ORDER = ["anchor","retail","fnb","service"];
+
+  /* curated names for a few hero units (most stay generic) */
+  const NAME_OVERRIDES = {}; // populated after we know the biggest fnb / atrium
+
+  /* thresholds (in SVG user units) */
+  const LARGE_PATH_AREA = 150000; // wing silhouettes -> non-interactive structure
+  const ANCHOR_AREA     = 52000;  // big retail block -> anchor
+  const LABEL_MIN_AREA  = 5200;   // show code label only if unit big enough
+
+  const svg = document.getElementById('floorSvg');
+  const SVGNS = "http://www.w3.org/2000/svg";
+
+  /* ---------- inject gradient defs ---------- */
+  const defs = document.createElementNS(SVGNS,'defs');
+  Object.keys(CATS).forEach(function(key){
+    const g = document.createElementNS(SVGNS,'linearGradient');
+    g.setAttribute('id','g-'+key);
+    g.setAttribute('x1','0');g.setAttribute('y1','0');
+    g.setAttribute('x2','1');g.setAttribute('y2','1');
+    [[0,CATS[key].grad[0]],[1,CATS[key].grad[1]]].forEach(function(s){
+      const st = document.createElementNS(SVGNS,'stop');
+      st.setAttribute('offset',s[0]);st.setAttribute('stop-color',s[1]);
+      g.appendChild(st);
+    });
+    defs.appendChild(g);
+  });
+  svg.insertBefore(defs, svg.firstChild);
+
+  /* ---------- classify every shape into the SHOPS model ---------- */
+  const SHOPS = [];
+  const labelsGroup = document.createElementNS(SVGNS,'g');
+  labelsGroup.setAttribute('id','labels');
+
+  let seq = 0;
+  const shapes = Array.prototype.slice.call(svg.querySelectorAll('polygon,rect,ellipse,path,polyline,line'));
+
+  shapes.forEach(function(el){
+    const tag = el.tagName.toLowerCase();
+    const src = (el.getAttribute('class')||'').trim(); // original b/c/d/e
+    el.removeAttribute('class');
+
+    if(tag === 'line'){ el.setAttribute('class','gridline'); return; }
+
+    let bb;
+    try { bb = el.getBBox(); } catch(e){ return; }
+    const area = bb.width * bb.height;
+
+    // very large path silhouettes = wing structure, not a clickable unit
+    if(tag === 'path' && area > LARGE_PATH_AREA){
+      el.setAttribute('class','wing');
+      return;
+    }
+    // tiny slivers stay as faint structure
+    if(area < 260){ el.setAttribute('class','gridline'); return; }
+
+    // category from source class + size
+    let cat;
+    if(src === 'c')      cat = 'fnb';
+    else if(src === 'd') cat = 'service';
+    else if(src === 'b') cat = 'service';
+    else                 cat = 'retail';
+    if(cat === 'retail' && area > ANCHOR_AREA) cat = 'anchor';
+
+    seq++;
+    const code = 'G' + String(seq).padStart(4,'0');
+    const cx = +(bb.x + bb.width/2).toFixed(1);
+    const cy = +(bb.y + bb.height/2).toFixed(1);
+
+    el.setAttribute('class','unit');
+    el.style.fill = 'url(#g-'+cat+')';   /* inline style wins over any author CSS */
+    el.dataset.id = code;
+    el.dataset.cat = cat;
+
+    const shop = { id:code, name:"", category:cat, floor:"G", el:el, cx:cx, cy:cy, w:bb.width, h:bb.height, area:area };
+    SHOPS.push(shop);
+
+    // label
+    if(area > LABEL_MIN_AREA){
+      const t = document.createElementNS(SVGNS,'text');
+      t.setAttribute('class','ulabel');
+      t.setAttribute('x',cx);t.setAttribute('y',cy);
+      t.textContent = code;
+      shop.label = t;
+      labelsGroup.appendChild(t);
+    }
+  });
+  svg.appendChild(labelsGroup);
+
+  /* hero names: biggest fnb -> Food Court, biggest service ellipse -> Central Atrium */
+  (function(){
+    let bigFnb=null, bigAtrium=null;
+    SHOPS.forEach(function(s){
+      if(s.category==='fnb' && (!bigFnb || s.area>bigFnb.area)) bigFnb=s;
+      if(s.category==='service' && s.el.tagName.toLowerCase()==='ellipse' && (!bigAtrium||s.area>bigAtrium.area)) bigAtrium=s;
+    });
+    if(bigFnb){ bigFnb.name="Food Court"; }
+    if(bigAtrium){ bigAtrium.name="Central Atrium"; }
+  })();
+
+  function shopName(s){ return s.name || (CATS[s.category].label.split(' ')[0] + " Unit"); }
+
+  /* ---------- build category chips + legend ---------- */
+  const present = {};
+  SHOPS.forEach(function(s){ present[s.category]=(present[s.category]||0)+1; });
+  const activeCats = new Set(Object.keys(present));
+
+  const chipsEl = document.getElementById('chips');
+  const allChip = document.createElement('button');
+  allChip.className='chip all-chip active';
+  allChip.innerHTML='All <span class="cnt">'+SHOPS.length+'</span>';
+  allChip.addEventListener('click',function(){
+    CAT_ORDER.forEach(function(c){ if(present[c]) activeCats.add(c); });
+    syncChips(); applyFilters();
+  });
+  chipsEl.appendChild(allChip);
+
+  const catChips = {};
+  CAT_ORDER.forEach(function(cat){
+    if(!present[cat]) return;
+    const b=document.createElement('button');
+    b.className='chip';
+    b.style.setProperty('--c',CATS[cat].solid);
+    b.innerHTML='<span class="dot"></span>'+CATS[cat].label+' <span class="cnt">'+present[cat]+'</span>';
+    b.addEventListener('click',function(){
+      if(activeCats.has(cat)) activeCats.delete(cat); else activeCats.add(cat);
+      syncChips(); applyFilters();
+    });
+    chipsEl.appendChild(b);
+    catChips[cat]=b;
+  });
+
+  function syncChips(){
+    CAT_ORDER.forEach(function(cat){
+      if(!catChips[cat])return;
+      catChips[cat].classList.toggle('off', !activeCats.has(cat));
+    });
+    const all = CAT_ORDER.every(function(c){ return !present[c] || activeCats.has(c); });
+    allChip.classList.toggle('active', all);
+  }
+
+  const legendEl=document.getElementById('legend');
+  CAT_ORDER.forEach(function(cat){
+    if(!present[cat])return;
+    const row=document.createElement('div');
+    row.className='legend-item';
+    row.innerHTML='<span class="legend-swatch" style="background:linear-gradient(135deg,'+CATS[cat].grad[0]+','+CATS[cat].grad[1]+')"></span>'+CATS[cat].label+'<span class="lg-sub">'+present[cat]+'</span>';
+    legendEl.appendChild(row);
+  });
+  document.getElementById('statUnits').textContent=SHOPS.length;
+
+  /* ---------- viewBox pan / zoom ---------- */
+  let baseVB, vb;
+  function computeBase(){
+    const bb = svg.getBBox();
+    const pad = Math.max(bb.width,bb.height)*0.04;
+    baseVB = { x:bb.x-pad, y:bb.y-pad, w:bb.width+pad*2, h:bb.height+pad*2 };
+    vb = Object.assign({},baseVB);
+    applyVB();
+  }
+  function applyVB(){
+    svg.setAttribute('viewBox', vb.x+' '+vb.y+' '+vb.w+' '+vb.h);
+    updateLabelScale();
+  }
+  function updateLabelScale(){
+    // user units per screen pixel — keeps label text a constant on-screen size
+    const cw = svg.clientWidth || vb.w;
+    const upp = vb.w / cw;
+    const fs = Math.max(0.0001, upp * 11); // ~11px on screen
+    SHOPS.forEach(function(s){
+      if(!s.label) return;
+      s.label.setAttribute('font-size', fs);
+      const screenW = s.w / upp; // unit width in screen px
+      const hidden = s.el.classList.contains('dim') ||
+                     s.el.classList.contains('hidden-cat') ||
+                     screenW < 48;
+      s.label.classList.toggle('hide', hidden);
+    });
+  }
+  const MINW=()=>baseVB.w/4, MAXW=()=>baseVB.w/0.5;
+  function clientToVB(clientX,clientY){
+    const r=svg.getBoundingClientRect();
+    return { x: vb.x + (clientX-r.left)/r.width*vb.w,
+             y: vb.y + (clientY-r.top )/r.height*vb.h };
+  }
+  function zoomAt(clientX,clientY,factor){
+    const p=clientToVB(clientX,clientY);
+    let nw=vb.w*factor, nh=vb.h*factor;
+    const minw=MINW(),maxw=MAXW();
+    if(nw<minw){factor=minw/vb.w;nw=minw;nh=vb.h*factor;}
+    if(nw>maxw){factor=maxw/vb.w;nw=maxw;nh=vb.h*factor;}
+    vb.x = p.x-(p.x-vb.x)*factor;
+    vb.y = p.y-(p.y-vb.y)*factor;
+    vb.w = nw; vb.h = nh;
+    applyVB();
+  }
+  function zoomCenter(factor){
+    const r=svg.getBoundingClientRect();
+    zoomAt(r.left+r.width/2, r.top+r.height/2, factor);
+  }
+  function resetView(){ vb=Object.assign({},baseVB); applyVB(); }
+  function focusOn(s,scale){
+    const bb=s.el.getBBox();
+    const m=Math.max(bb.width,bb.height)*(scale||1.6)+200;
+    vb={ x:bb.x+bb.width/2-m, y:bb.y+bb.height/2-m, w:m*2, h:m*2 };
+    // clamp to zoom range
+    if(vb.w<MINW()){const f=MINW()/vb.w; vb.w=MINW();vb.h*=f;}
+    applyVB();
+  }
+
+  /* wheel zoom */
+  svg.addEventListener('wheel',function(e){
+    e.preventDefault();
+    zoomAt(e.clientX, e.clientY, e.deltaY<0 ? 0.88 : 1.14);
+  },{passive:false});
+
+  /* pointer pan + click discrimination */
+  let pdown=null, didPan=false;
+  svg.addEventListener('pointerdown',function(e){
+    pdown={x:e.clientX,y:e.clientY,vbx:vb.x,vby:vb.y};
+    didPan=false;
+    svg.setPointerCapture(e.pointerId);
+  });
+  svg.addEventListener('pointermove',function(e){
+    if(!pdown)return;
+    const dx=e.clientX-pdown.x, dy=e.clientY-pdown.y;
+    if(!didPan && Math.hypot(dx,dy)>5){ didPan=true; svg.classList.add('panning'); }
+    if(didPan){
+      const r=svg.getBoundingClientRect();
+      vb.x = pdown.vbx - dx*(vb.w/r.width);
+      vb.y = pdown.vby - dy*(vb.h/r.height);
+      applyVB();
+    }
+  });
+  function endPan(e){ if(pdown){ try{svg.releasePointerCapture(e.pointerId);}catch(_){ } } pdown=null; svg.classList.remove('panning'); }
+  svg.addEventListener('pointerup',endPan);
+  svg.addEventListener('pointercancel',endPan);
+
+  /* pinch zoom (two pointers) */
+  const ptrs=new Map(); let pinchDist=0;
+  svg.addEventListener('pointerdown',function(e){ ptrs.set(e.pointerId,e); });
+  svg.addEventListener('pointermove',function(e){
+    if(!ptrs.has(e.pointerId))return;
+    ptrs.set(e.pointerId,e);
+    if(ptrs.size===2){
+      const p=[...ptrs.values()];
+      const d=Math.hypot(p[0].clientX-p[1].clientX, p[0].clientY-p[1].clientY);
+      if(pinchDist){
+        const mx=(p[0].clientX+p[1].clientX)/2, my=(p[0].clientY+p[1].clientY)/2;
+        zoomAt(mx,my, pinchDist/d);
+      }
+      pinchDist=d; didPan=true;
+    }
+  });
+  function clearPtr(e){ ptrs.delete(e.pointerId); if(ptrs.size<2)pinchDist=0; }
+  svg.addEventListener('pointerup',clearPtr);
+  svg.addEventListener('pointercancel',clearPtr);
+
+  svg.addEventListener('dblclick',function(e){ e.preventDefault(); resetView(); });
+
+  document.getElementById('zoomIn').addEventListener('click',function(){zoomCenter(0.8);});
+  document.getElementById('zoomOut').addEventListener('click',function(){zoomCenter(1.25);});
+  document.getElementById('zoomReset').addEventListener('click',resetView);
+
+  /* ---------- selection + detail drawer ---------- */
+  const detail=document.getElementById('detail');
+  let selected=null;
+  function selectShop(s){
+    if(selected===s){ deselect(); return; }
+    if(selected) selected.el.classList.remove('selected');
+    selected=s; s.el.classList.add('selected');
+    document.getElementById('detailBadge').textContent=CATS[s.category].label;
+    document.getElementById('detailBadge').style.background='linear-gradient(135deg,'+CATS[s.category].grad[0]+','+CATS[s.category].grad[1]+')';
+    document.getElementById('detailCode').textContent=s.id;
+    document.getElementById('detailCode2').textContent=s.id;
+    document.getElementById('detailName').textContent=shopName(s);
+    document.getElementById('detailCat').textContent=CATS[s.category].label;
+    detail.classList.add('open');
+  }
+  function deselect(){
+    if(selected) selected.el.classList.remove('selected');
+    selected=null; detail.classList.remove('open');
+  }
+  document.getElementById('detailClose').addEventListener('click',deselect);
+  document.getElementById('btnLocate').addEventListener('click',function(){ if(selected) focusOn(selected); });
+  document.getElementById('btnShare').addEventListener('click',function(){
+    if(!selected)return;
+    const url=location.origin+location.pathname+'?shop='+selected.id;
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(url).then(function(){toast('Link copied to clipboard');},function(){toast(url);});
+    } else { toast(url); }
+  });
+
+  /* wire unit interactions */
+  SHOPS.forEach(function(s){
+    s.el.addEventListener('click',function(e){
+      if(didPan){ didPan=false; return; }
+      e.stopPropagation();
+      selectShop(s);
+    });
+  });
+
+  /* ---------- tooltip ---------- */
+  const tip=document.getElementById('tooltip');
+  let tipShop=null;
+  svg.addEventListener('pointermove',function(e){
+    if(didPan){ tip.classList.remove('show'); return; }
+    const t=e.target;
+    if(t.classList&&t.classList.contains('unit')){
+      const id=t.dataset.id;
+      if(tipShop!==id){
+        tipShop=id;
+        const s=SHOPS.find(function(x){return x.id===id;});
+        tip.innerHTML=s.id+'<span class="tt-cat">'+(s.name?s.name+' · ':'')+CATS[s.category].label+'</span>';
+      }
+      tip.style.left=(e.clientX+14)+'px';
+      tip.style.top=(e.clientY+14)+'px';
+      tip.classList.add('show');
+    } else { tipShop=null; tip.classList.remove('show'); }
+  });
+  svg.addEventListener('pointerleave',function(){ tip.classList.remove('show'); tipShop=null; });
+
+  /* ---------- search + category filters ---------- */
+  const searchInput=document.getElementById('searchInput');
+  const searchClear=document.getElementById('searchClear');
+  function applyFilters(){
+    const q=searchInput.value.trim().toLowerCase();
+    SHOPS.forEach(function(s){
+      const catOn=activeCats.has(s.category);
+      let matches=true;
+      if(q){
+        const hay=(s.id+' '+shopName(s)+' '+CATS[s.category].label+' '+s.category).toLowerCase();
+        matches=hay.indexOf(q)!==-1;
+      }
+      s.el.classList.toggle('hidden-cat', !catOn);
+      s.el.classList.toggle('dim', catOn && q!=='' && !matches);
+      s.el.classList.toggle('match', catOn && q!=='' && matches);
+    });
+    updateLabelScale();
+  }
+  searchInput.addEventListener('input',function(){
+    searchClear.classList.toggle('show', searchInput.value!=='');
+    applyFilters();
+  });
+  searchClear.addEventListener('click',function(){
+    searchInput.value=''; searchClear.classList.remove('show'); applyFilters(); searchInput.focus();
+  });
+
+  /* ---------- floor tabs ---------- */
+  const floorNames={G:'Ground',F1:'Level 1',F2:'Level 2'};
+  const emptyFloor=document.getElementById('emptyFloor');
+  document.querySelectorAll('.floor-tab').forEach(function(tab){
+    tab.addEventListener('click',function(){
+      document.querySelectorAll('.floor-tab').forEach(function(t){t.classList.remove('active');});
+      tab.classList.add('active');
+      const f=tab.dataset.floor;
+      document.getElementById('floorTagName').textContent=floorNames[f];
+      const isG=(f==='G');
+      svg.style.display=isG?'block':'none';
+      emptyFloor.classList.toggle('show',!isG);
+      document.querySelector('.zoom-ctl').style.display=isG?'flex':'none';
+      if(isG) deselect();
+    });
+  });
+
+  /* ---------- mobile sidebar ---------- */
+  const sidebar=document.getElementById('sidebar');
+  const scrim=document.getElementById('scrim');
+  document.getElementById('menuBtn').addEventListener('click',function(){
+    sidebar.classList.add('open'); scrim.classList.add('show');
+  });
+  scrim.addEventListener('click',function(){ sidebar.classList.remove('open'); scrim.classList.remove('show'); });
+
+  /* ---------- toast ---------- */
+  let toastTimer;
+  function toast(msg){
+    const el=document.getElementById('toast');
+    el.textContent=msg; el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer=setTimeout(function(){el.classList.remove('show');},2200);
+  }
+
+  /* ---------- init ---------- */
+  computeBase();
+  svg.classList.add('ready');
+  window.addEventListener('resize',function(){ updateLabelScale(); });
+  syncChips();
+
+  /* deep link ?shop=CODE */
+  const params=new URLSearchParams(location.search);
+  const sp=params.get('shop');
+  if(sp){
+    const s=SHOPS.find(function(x){return x.id===sp.toUpperCase();});
+    if(s){ selectShop(s); setTimeout(function(){focusOn(s);},250); }
+  }
+
+  /* expose for debugging */
+  window.SHOPS=SHOPS;
+})();
+</script>
+</body>
+</html>
