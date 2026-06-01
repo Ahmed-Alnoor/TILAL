@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Tilal Grand Mall — Futuristic Interactive Map</title>
+<style>
+:root {
+  --bg-1:#040916;
+  --bg-2:#07152c;
+  --panel: rgba(11, 23, 46, 0.62);
+  --panel-2: rgba(7, 18, 37, 0.82);
+  --line: rgba(122, 160, 255, 0.18);
+  --text:#eff6ff;
+  --muted:#9bb0d0;
+  --blue:#3b82ff;
+  --cyan:#47d7ff;
+  --orange:#ff9f43;
+  --amber:#ffca6b;
+  --green:#3be1c7;
+  --danger:#ff6b8a;
+  --shadow: 0 24px 60px rgba(0,0,0,.38);
+}
+* { box-sizing:border-box; }
+html,body { height:100%; }
+body {
+  margin:0;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  color:var(--text);
+  background:
+    radial-gradient(circle at 18% 12%, rgba(59,130,255,.18), transparent 24%),
+    radial-gradient(circle at 82% 18%, rgba(71,215,255,.10), transparent 22%),
+    radial-gradient(circle at 65% 80%, rgba(255,159,67,.08), transparent 16%),
+    linear-gradient(135deg, var(--bg-1) 0%, var(--bg-2) 52%, #030813 100%);
+  overflow:hidden;
+}
+body::before {
+  content:"";
+  position:fixed; inset:0;
+  background-image:
+    linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: radial-gradient(circle at center, black, transparent 85%);
+  pointer-events:none;
+  opacity:.28;
+}
+.shell { display:grid; grid-template-columns:320px 1fr 300px; gap:18px; height:100vh; padding:18px; }
+.glass {
+  background: linear-gradient(180deg, rgba(15,28,55,.78), rgba(7,14,27,.72));
+  border:1px solid var(--line);
+  backdrop-filter: blur(18px);
+  box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,.05);
+}
+.sidebar, .details, .stage { border-radius:24px; overflow:hidden; position:relative; }
+.sidebar { padding:22px; display:flex; flex-direction:column; gap:16px; }
+.brand { display:flex; align-items:center; gap:12px; margin-bottom:4px; }
+.badge-logo {
+  width:42px; height:42px; border-radius:14px;
+  background: linear-gradient(135deg, rgba(71,215,255,.22), rgba(59,130,255,.35));
+  border:1px solid rgba(92,169,255,.32);
+  box-shadow: inset 0 0 24px rgba(71,215,255,.18);
+  display:grid; place-items:center; font-weight:800; color:white;
+}
+.brand h1 { font-size:20px; line-height:1.15; margin:0; letter-spacing:.04em; }
+.brand p { font-size:12px; color:var(--muted); margin:3px 0 0; }
+.kicker { font-size:11px; letter-spacing:.22em; text-transform:uppercase; color:#8eb4ff; opacity:.85; }
+.hero { padding:16px; border-radius:18px; background: linear-gradient(135deg, rgba(13,35,73,.82), rgba(10,20,38,.35)); border:1px solid rgba(90,140,255,.15); }
+.hero h2 { margin:0 0 8px; font-size:24px; line-height:1.15; }
+.hero p { margin:0; color:var(--muted); font-size:13px; line-height:1.55; }
+.search {
+  display:flex; align-items:center; gap:12px; padding:14px 16px; border-radius:16px;
+  background: rgba(3,9,19,.55); border:1px solid rgba(114,150,255,.12);
+}
+.search input { background:transparent; border:0; outline:0; color:var(--text); width:100%; font-size:14px; }
+.search input::placeholder { color:#7890b5; }
+.section-title { display:flex; align-items:center; justify-content:space-between; margin-top:4px; }
+.section-title span:first-child { font-size:12px; color:#8ca3c8; text-transform:uppercase; letter-spacing:.14em; }
+.section-title span:last-child { font-size:11px; color:#7cd8ff; }
+.filters { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.chip {
+  padding:12px 12px; border-radius:16px; border:1px solid rgba(128,165,255,.14); cursor:pointer;
+  background: rgba(5,10,20,.55); color:#dce8ff; transition:.25s ease; font-size:13px; font-weight:600;
+  text-align:left;
+}
+.chip small { display:block; color:#8ca3c8; margin-top:4px; font-weight:500; font-size:11px; }
+.chip:hover, .chip.active { transform:translateY(-1px); border-color:rgba(109,191,255,.38); box-shadow: inset 0 0 0 1px rgba(103,186,255,.24), 0 0 0 1px rgba(103,186,255,.06), 0 14px 28px rgba(24,104,255,.12); }
+.chip.active { background: linear-gradient(135deg, rgba(31,78,164,.35), rgba(5,10,20,.65)); }
+.stats { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.stat { padding:14px; border-radius:16px; border:1px solid rgba(128,165,255,.14); background: rgba(5,10,20,.45); }
+.stat b { display:block; font-size:22px; margin-bottom:4px; }
+.stat span { font-size:12px; color:var(--muted); }
+.legend { display:flex; flex-direction:column; gap:10px; }
+.legend-item { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 12px; border-radius:14px; background: rgba(4,10,20,.45); border:1px solid rgba(128,165,255,.10); }
+.legend-dot { width:14px; height:14px; border-radius:999px; }
+.stage { padding:14px; display:flex; flex-direction:column; gap:14px; }
+.topbar { display:flex; justify-content:space-between; align-items:center; padding:8px 10px 0; }
+.topbar h3 { margin:0; font-size:18px; letter-spacing:.02em; }
+.topbar p { margin:4px 0 0; color:var(--muted); font-size:12px; }
+.actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.action { background: rgba(5,10,20,.6); border:1px solid rgba(128,165,255,.15); color:#d8e6ff; padding:10px 12px; border-radius:14px; font-size:12px; font-weight:600; cursor:pointer; }
+.viewport {
+  position:relative; flex:1; min-height:0; border-radius:22px; overflow:hidden; border:1px solid rgba(128,165,255,.16);
+  background:
+    radial-gradient(circle at 50% 20%, rgba(59,130,255,.12), transparent 30%),
+    linear-gradient(180deg, rgba(5,11,21,.7), rgba(4,10,19,.95));
+}
+.viewport::before {
+  content:""; position:absolute; inset:0;
+  background-image:
+    linear-gradient(rgba(69,108,193,.11) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(69,108,193,.11) 1px, transparent 1px);
+  background-size: 34px 34px; opacity:.3; pointer-events:none;
+}
+.map-canvas { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; padding:38px; }
+.map-inner { width:100%; height:100%; display:flex; align-items:center; justify-content:center; transform-origin:center center; transition: transform .25s ease; }
+.map-shell { position:relative; width:100%; max-width:1040px; }
+.map-shell svg { width:100%; height:auto; display:block; filter: drop-shadow(0 16px 38px rgba(0,0,0,.34)); }
+.map-shell svg * { transition: opacity .25s ease, fill .25s ease, filter .25s ease, stroke .25s ease; }
+.map-shell .c { fill:#ff8f2a !important; opacity:.7 !important; filter: drop-shadow(0 0 16px rgba(255,159,67,.2)); }
+.map-shell .d { fill:#b5772a !important; opacity:.65 !important; }
+.map-shell .e, .map-shell .b { fill:#2c7dff !important; opacity:.58 !important; }
+.map-shell svg .b, .map-shell svg .c, .map-shell svg .d, .map-shell svg .e { stroke: rgba(235,244,255,.86); stroke-width:5px; }
+.viewport.food .map-shell .d, .viewport.food .map-shell .e, .viewport.food .map-shell .b { opacity:.12 !important; }
+.viewport.food .map-shell .c { opacity:.96 !important; filter: drop-shadow(0 0 26px rgba(255,166,72,.62)); }
+.viewport.restaurants .map-shell .c, .viewport.restaurants .map-shell .e, .viewport.restaurants .map-shell .b { opacity:.10 !important; }
+.viewport.restaurants .map-shell .d { opacity:.95 !important; fill:#ffc35f !important; filter: drop-shadow(0 0 20px rgba(255,201,95,.62)); }
+.viewport.retail .map-shell .c, .viewport.retail .map-shell .d { opacity:.12 !important; }
+.viewport.retail .map-shell .e, .viewport.retail .map-shell .b { opacity:.95 !important; fill:#58caff !important; filter: drop-shadow(0 0 22px rgba(88,202,255,.58)); }
+.viewport.all .map-shell .c, .viewport.all .map-shell .d, .viewport.all .map-shell .e, .viewport.all .map-shell .b { opacity:.78 !important; }
+.callout {
+  position:absolute; z-index:2; padding:11px 13px; border-radius:14px; font-size:12px; line-height:1.35;
+  background: rgba(3, 12, 24, .84); border:1px solid rgba(110,169,255,.22); box-shadow: 0 18px 36px rgba(0,0,0,.28);
+  backdrop-filter: blur(8px);
+}
+.callout b { display:block; font-size:13px; margin-bottom:3px; }
+.callout::after { content:""; position:absolute; width:10px; height:10px; background:inherit; border-right:1px solid rgba(110,169,255,.22); border-bottom:1px solid rgba(110,169,255,.22); transform:rotate(45deg); }
+.callout.food { top:18%; left:43%; color:#ffd9b0; }
+.callout.food::after { left:24px; bottom:-6px; }
+.callout.route-left { left:28%; top:29%; color:#ffe8c4; }
+.callout.route-left::after { left:22px; bottom:-6px; }
+.callout.route-right { right:28%; top:29%; color:#cdefff; }
+.callout.route-right::after { right:22px; bottom:-6px; }
+.mini-toolbar { position:absolute; left:18px; bottom:18px; display:flex; gap:10px; z-index:3; }
+.zoom { width:44px; height:44px; border-radius:14px; display:grid; place-items:center; cursor:pointer; background:rgba(3,10,21,.8); border:1px solid rgba(118,168,255,.18); color:white; font-size:18px; font-weight:700; }
+.floor-tag { position:absolute; right:18px; bottom:18px; padding:10px 12px; border-radius:14px; background:rgba(3,10,21,.82); border:1px solid rgba(118,168,255,.18); z-index:3; font-size:12px; color:#b8cff7; }
+.details { padding:22px; display:flex; flex-direction:column; gap:14px; }
+.detail-card { padding:16px; border-radius:18px; border:1px solid rgba(128,165,255,.12); background: rgba(4,10,20,.48); }
+.detail-card h4 { margin:0 0 8px; font-size:16px; }
+.detail-card p { margin:0; color:var(--muted); font-size:13px; line-height:1.55; }
+.pill-row { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+.pill { padding:8px 10px; border-radius:999px; border:1px solid rgba(128,165,255,.16); background: rgba(5,10,20,.55); color:#dce7ff; font-size:11px; }
+.route-list { display:flex; flex-direction:column; gap:10px; }
+.route { padding:12px 14px; border-radius:14px; display:flex; justify-content:space-between; align-items:center; background: rgba(5,10,20,.55); border:1px solid rgba(128,165,255,.10); }
+.route small { display:block; color:var(--muted); margin-top:4px; }
+.helper { font-size:12px; color:#87c7ff; }
+.note { margin-top:auto; padding:14px 16px; border-radius:16px; background: linear-gradient(135deg, rgba(30,66,140,.20), rgba(7,17,34,.18)); border:1px solid rgba(97,155,255,.16); color:#c5d4f0; font-size:12px; line-height:1.6; }
+@media (max-width: 1280px) {
+  .shell { grid-template-columns:300px 1fr; }
+  .details { display:none; }
+}
+@media (max-width: 980px) {
+  body { overflow:auto; }
+  .shell { grid-template-columns:1fr; height:auto; min-height:100vh; }
+  .stage { min-height:70vh; }
+}
+</style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar glass">
+      <div class="brand">
+        <div class="badge-logo">TG</div>
+        <div>
+          <div class="kicker">Interactive Wayfinding</div>
+          <h1>TILAL GRAND MALL</h1>
+          <p>Futuristic website map concept — Ground Floor</p>
+        </div>
+      </div>
+      <div class="hero">
+        <h2>Smart map interface with a futuristic retail feel.</h2>
+        <p>New design direction based on your correction: the large over-labelled zone is treated as <strong>Food Court / Food Village</strong>, and the surrounding paths are treated as the <strong>Restaurant Walk</strong>.</p>
+      </div>
+      <div class="search">
+        <span>⌕</span>
+        <input id="search" placeholder="Search zone, dining, retail, services" />
+      </div>
+      <div class="section-title"><span>Map filters</span><span>Interactive</span></div>
+      <div class="filters">
+        <button class="chip active" data-mode="all">All zones<small>Full map overview</small></button>
+        <button class="chip" data-mode="food">Food Court<small>Food Village core</small></button>
+        <button class="chip" data-mode="restaurants">Restaurants<small>Dining paths around the core</small></button>
+        <button class="chip" data-mode="retail">Retail<small>Main shopping structures</small></button>
+      </div>
+      <div class="section-title"><span>Highlights</span><span>Live concept</span></div>
+      <div class="stats">
+        <div class="stat"><b>01</b><span>Ground floor experience</span></div>
+        <div class="stat"><b>360°</b><span>Interactive browsing feel</span></div>
+      </div>
+      <div class="section-title"><span>Legend</span><span>Zone color</span></div>
+      <div class="legend">
+        <div class="legend-item"><div style="display:flex;align-items:center;gap:10px"><span class="legend-dot" style="background:var(--orange);box-shadow:0 0 16px rgba(255,159,67,.45)"></span><span>Food Court / Food Village</span></div><span class="helper">Core zone</span></div>
+        <div class="legend-item"><div style="display:flex;align-items:center;gap:10px"><span class="legend-dot" style="background:var(--amber);box-shadow:0 0 16px rgba(255,202,107,.45)"></span><span>Restaurant Walk</span></div><span class="helper">Dining path</span></div>
+        <div class="legend-item"><div style="display:flex;align-items:center;gap:10px"><span class="legend-dot" style="background:var(--cyan);box-shadow:0 0 16px rgba(71,215,255,.45)"></span><span>Retail Structures</span></div><span class="helper">Shopping</span></div>
+      </div>
+      <div class="note">This is a clean new direction — futuristic, interactive, and ready to use as the visual direction for your Figma rebuild. I kept it zone-based instead of forcing wrong tenant naming.</div>
+    </aside>
+
+    <main class="stage glass">
+      <div class="topbar">
+        <div>
+          <h3>Futuristic map experience</h3>
+          <p>Dark glass interface, glowing zoning, zoom controls, and highlighted dining areas.</p>
+        </div>
+        <div class="actions">
+          <button class="action" data-mode="all">Overview</button>
+          <button class="action" data-mode="food">Food Court</button>
+          <button class="action" data-mode="restaurants">Restaurants</button>
+          <button class="action" data-mode="retail">Retail</button>
+        </div>
+      </div>
+      <div id="viewport" class="viewport all">
+        <div class="callout food"><b>Food Court / Food Village</b>Main central destination zone</div>
+        <div class="callout route-left"><b>Restaurant Walk</b>Dining frontage and terraces</div>
+        <div class="callout route-right"><b>Retail Spine</b>Main mall shopping circulation</div>
+        <div class="map-canvas">
+          <div id="zoomTarget" class="map-inner">
+            <div class="map-shell"><?xml version="1.0" encoding="UTF-8"?>
+<svg id="a" data-name="Layer 2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3370 2384">
+  <defs>
+    <style>
+      .b {
+        opacity: .13;
+      }
+
+      .b, .c, .d, .e {
+        stroke: #fff;
+        stroke-miterlimit: 10;
+        stroke-width: 5px;
+      }
+
+      .b, .e {
+        fill: #0d37a4;
+      }
+
+      .c {
+        fill: #d45300;
+      }
+
+      .c, .d, .e {
+        opacity: .42;
+      }
+
+      .d {
+        fill: #6a4100;
+      }
+    </style>
+  </defs>
+  <polygon class="c" points="2015.36 629.99 2015.36 931.79 1796.8 931.79 1796.8 1023.71 1563.82 1023.71 1563.82 931.79 1342.33 931.79 1342.33 629.99 2015.36 629.99"/>
+  <rect class="d" x="1969.92" y="944.82" width="54.11" height="81.17"/>
+  <rect class="d" x="1503.34" y="944.82" width="54.11" height="81.17"/>
+  <rect class="d" x="1445.3" y="944.82" width="54.11" height="81.17"/>
+  <rect class="d" x="1389.42" y="944.82" width="54.11" height="81.17"/>
+  <rect class="d" x="1334.32" y="944.05" width="54.11" height="81.17"/>
+  <rect class="d" x="1057.67" y="928.16" width="44.33" height="66.01" transform="translate(-365.69 979.97) rotate(-42.42)"/>
+  <rect class="d" x="1096.71" y="891.39" width="44.33" height="66.01" transform="translate(-330.67 996.68) rotate(-42.42)"/>
+  <rect class="d" x="1138.12" y="853.58" width="44.33" height="66.01" transform="translate(-294.32 1014.71) rotate(-42.42)"/>
+  <rect class="d" x="1175.36" y="822.39" width="44.33" height="66.01" transform="translate(-263.54 1031.67) rotate(-42.42)"/>
+  <rect class="d" x="868.58" y="858.09" width="80.52" height="66.01" transform="translate(-363.18 846.29) rotate(-42.42)"/>
+  <rect class="d" x="942.19" y="812.56" width="33.69" height="66.01" transform="translate(-319.33 868.23) rotate(-42.42)"/>
+  <rect class="d" x="977.97" y="755.56" width="42.01" height="81.4" transform="translate(-275.62 882.26) rotate(-42.42)"/>
+  <rect class="d" x="1227.78" y="944.82" width="54.11" height="81.17"/>
+  <rect class="d" x="2066.2" y="945.2" width="54.11" height="81.17"/>
+  <rect class="e" x="2130.97" y="946.04" width="45.65" height="81.17"/>
+  <rect class="d" x="1914.74" y="942.63" width="49.81" height="81.17"/>
+  <rect class="d" x="1861.98" y="943.4" width="48.13" height="81.17"/>
+  <rect class="d" x="1808.39" y="944.35" width="43.22" height="81.17"/>
+  <path class="e" d="M2187.54,946.14c-.25,26.02-.51,52.03-.76,78.05,24.25.92,48.49,1.84,72.74,2.76"/>
+  <polyline class="d" points="1215.43 947.63 1164.87 948.77 1097.75 1015.17 1101.82 1028.85 1216.81 1027.34"/>
+  <polyline class="e" points="1121.36 733.71 1044.72 805.77 986.45 741.44 919.49 802.03 883.89 762.61 892.27 768.5 843.81 809.76 835.89 803.21 818.81 812.94 810.42 804.08 835.81 788.67 824.14 755.15 824.5 650.78 1074.44 647.59 1074.92 687.97"/>
+  <polygon class="d" points="1076.48 651.58 1078.33 682.15 1122.86 730.5 1215.44 651.63 1076.48 651.58"/>
+  <polygon class="d" points="1266.09 737.54 1196.76 805.92 1237.95 856.51 1288.04 820.19 1289.37 763.95 1266.09 737.54"/>
+  <polyline class="d" points="1332.38 679.01 1271.88 737.54 1295.83 760.84 1332.6 760.87"/>
+  <path class="e" d="M738.29,697.23l-75.92,33.94-4.05,1.75c-13-30.67-23.24-59.34-31.37-85.15l90.04,1.35c6.48,15.47,13.56,31.54,21.3,48.11Z"/>
+  <path class="e" d="M716.99,649.12l-90.04-1.35c-.06-.19-.12-.38-.18-.57,29.94.32,59.88.65,89.82.97.13.32.26.63.4.95Z"/>
+  <path class="e" d="M893.91,949.92c-8.26,9.96-16.52,19.92-24.78,29.87l-58.03.1c-17.37-20.32-36.01-43.85-54.88-70.69l19.26-13.22.08-.05,53.21-36.53c22.05,33.6,44.07,63.75,65.14,90.52Z"/>
+  <path class="e" d="M828.77,859.4l-53.21,36.53-.08.05-19.26,13.22c-9.19-13.04-18.43-26.87-27.6-41.49l74.91-48.36c8.38,13.86,16.81,27.2,25.24,40.05Z"/>
+  <path class="e" d="M803,818.47l-75.09,48.11c-8.48-13.52-16.89-27.72-25.16-42.6l8.8-4.97.11-.06,69.02-38.9c4.35,7.79,8.84,15.65,13.48,23.57,2.94,5.01,5.88,9.96,8.84,14.85Z"/>
+  <path class="e" d="M759.86,740.99l-79.92,39.05c-.14-.28-.28-.55-.41-.83-.06-.11-.11-.22-.16-.32-7.5-15.41-14.3-30.47-20.48-45.06-.01-.02-.02-.04-.02-.05l4.05-1.75,75.92-33.94c.17.35.33.71.5,1.07,6.22,13.28,12.86,26.87,19.96,40.74h0c.05.1.1.18.14.27.14.27.28.55.42.82Z"/>
+  <path class="e" d="M779.79,779.46l-69.02,38.9-.11.06-8.8,4.97c-.03-.05-.06-.11-.09-.16-.14-.26-.29-.51-.42-.77-8.26-14.88-15.86-29.54-22.85-43.87l79.92-39.05c6.61,12.89,13.62,26,21.04,39.32.11.2.22.4.33.6Z"/>
+  <line class="e" x1="658.32" y1="732.92" x2="657.75" y2="733.16"/>
+  <line class="e" x1="758.91" y1="739.3" x2="758.42" y2="739.54"/>
+  <line class="e" x1="678.5" y1="778.59" x2="676.51" y2="779.56"/>
+  <line class="e" x1="711.55" y1="819.01" x2="702.66" y2="823.82"/>
+  <line class="e" x1="775.48" y1="895.98" x2="758.91" y2="907.84"/>
+  <line class="e" x1="702.75" y1="823.98" x2="700.86" y2="825.04"/>
+  <line class="e" x1="781.44" y1="779.62" x2="780.68" y2="780.05"/>
+  <line class="e" x1="727.91" y1="866.58" x2="725.43" y2="868.17"/>
+  <line class="e" x1="806.44" y1="816.27" x2="803" y2="818.47"/>
+  <line class="e" x1="756.22" y1="909.2" x2="753.97" y2="910.75"/>
+  <line class="e" x1="728.62" y1="867.71" x2="722.69" y2="871.54"/>
+  <line class="e" x1="723.47" y1="649.22" x2="716.99" y2="649.12"/>
+  <line class="e" x1="626.95" y1="647.77" x2="617.82" y2="647.63"/>
+  <path class="e" d="M1292.97,1232.2l-33.93,82.47c-14.7-6.21-29.73-13.02-45.04-20.47l4.36-9.12.06-.11,34.24-71.45c8.03,3.89,16.22,7.75,24.56,11.58,5.28,2.42,10.53,4.79,15.76,7.1Z"/>
+  <path class="e" d="M1249.2,1214.85l-37.39,80.96c-14.42-6.83-29.15-14.27-44.13-22.36l4.74-8.93.06-.11,37.23-69.93c7.86,4.22,15.87,8.43,24.05,12.61,5.17,2.64,10.32,5.23,15.44,7.76Z"/>
+  <path class="e" d="M1208.42,1189.91l-40.75,79.33c-14.13-7.43-28.53-15.48-43.16-24.19l5.11-8.72.06-.11,40.13-68.31c7.68,4.55,15.51,9.09,23.5,13.6,5.06,2.85,10.09,5.66,15.11,8.4Z"/>
+  <path class="e" d="M1167.35,1167.29l-44.62,77.22c-13.74-8.12-27.73-16.87-41.91-26.29l5.54-8.46.07-.1,43.45-66.25c7.44,4.92,15.04,9.84,22.8,14.75,4.91,3.1,9.8,6.15,14.67,9.13Z"/>
+  <line class="e" x1="1139.3" y1="1255" x2="1138.98" y2="1255.52"/>
+  <line class="e" x1="1274.63" y1="1111.44" x2="1274.39" y2="1111.92"/>
+  <line class="e" x1="1234.49" y1="1191.43" x2="1233.5" y2="1193.4"/>
+  <line class="e" x1="1316.99" y1="1129.85" x2="1316.65" y2="1130.65"/>
+  <line class="e" x1="1064.23" y1="1210.52" x2="1057.17" y2="1216.31"/>
+  <line class="e" x1="895.61" y1="948.89" x2="864.14" y2="983.01"/>
+  <polygon class="d" points="2312.63 951.94 2281.75 922.04 2239.72 970.77 2270.61 1000.67 2312.63 951.94"/>
+  <polygon class="d" points="2275.35 917.29 2244.47 887.39 2202.45 936.12 2233.33 966.02 2275.35 917.29"/>
+  <polygon class="d" points="2231.41 873.72 2200.52 843.82 2158.5 892.55 2189.39 922.45 2231.41 873.72"/>
+  <polygon class="d" points="2197.06 842.66 2166.17 812.76 2124.15 861.49 2155.03 891.39 2197.06 842.66"/>
+  <polygon class="d" points="2496.93 891.53 2440.83 837.22 2398.81 885.95 2454.9 940.26 2496.93 891.53"/>
+  <polygon class="d" points="2433.24 830.21 2409.77 807.48 2367.75 856.22 2391.22 878.94 2433.24 830.21"/>
+  <polygon class="d" points="2399.69 782.53 2370.42 754.19 2318.6 814.29 2347.87 842.63 2399.69 782.53"/>
+  <polyline class="e" points="2247.3 731.35 2319.63 803.41 2374.62 739.08 2437.81 799.67 2471.41 760.25 2463.5 766.14 2509.24 807.4 2516.71 800.85 2532.83 810.58 2540.75 801.72 2516.79 786.31 2527.8 752.79 2527.46 648.42 2291.58 645.23 2291.13 685.61"/>
+  <polygon class="d" points="2289.66 649.23 2287.92 679.79 2245.88 728.14 2158.51 649.28 2289.66 649.23"/>
+  <polygon class="d" points="2091.21 739.76 2156.64 808.14 2117.77 858.73 2070.49 822.41 2069.24 766.17 2091.21 739.76"/>
+  <polyline class="d" points="2048.15 676.65 2105.25 735.18 2082.65 758.49 2047.95 758.51"/>
+  <path class="d" d="M2608.82,694.87l71.65,33.94,3.82,1.75c12.27-30.67,21.93-59.34,29.61-85.15l-84.97,1.35c-6.12,15.47-12.8,31.54-20.1,48.11Z"/>
+  <path class="e" d="M2628.92,646.76l84.97-1.35c.06-.19.11-.38.17-.57-28.26.32-56.51.65-84.77.97-.12.32-.25.63-.38.95Z"/>
+  <path class="d" d="M2461.96,947.56c7.8,9.96,15.59,19.92,23.39,29.87l54.77.1c16.39-20.32,33.98-43.85,51.79-70.69l-18.18-13.22-.08-.05-50.22-36.53c-20.81,33.6-41.59,63.75-61.48,90.52Z"/>
+  <path class="d" d="M2523.43,857.04l50.22,36.53.08.05,18.18,13.22c8.67-13.04,17.39-26.87,26.05-41.49l-70.7-48.36c-7.91,13.86-15.86,27.2-23.82,40.05Z"/>
+  <path class="d" d="M2547.75,816.11l70.87,48.11c8-13.52,15.94-27.72,23.74-42.6l-8.3-4.97-.1-.06-65.14-38.9c-4.11,7.79-8.34,15.65-12.72,23.57-2.77,5.01-5.55,9.96-8.34,14.85Z"/>
+  <path class="d" d="M2588.47,738.63l75.42,39.05c.13-.28.26-.55.39-.83.06-.11.1-.22.15-.32,7.08-15.41,13.5-30.47,19.33-45.06,0-.02.02-.04.02-.05l-3.82-1.75-71.65-33.94c-.16.35-.31.71-.47,1.07-5.87,13.28-12.14,26.87-18.84,40.74h0c-.05.1-.09.18-.13.27-.13.27-.26.55-.4.82Z"/>
+  <path class="d" d="M2569.66,777.1l65.14,38.9.1.06,8.3,4.97c.03-.05.06-.11.08-.16.13-.26.27-.51.4-.77,7.8-14.88,14.97-29.54,21.56-43.87l-75.42-39.05c-6.24,12.89-12.85,26-19.86,39.32-.1.2-.21.4-.31.6Z"/>
+  <line class="e" x1="2684.29" y1="730.56" x2="2684.83" y2="730.8"/>
+  <line class="e" x1="2589.36" y1="736.94" x2="2589.82" y2="737.18"/>
+  <line class="e" x1="2665.25" y1="776.23" x2="2667.12" y2="777.2"/>
+  <line class="e" x1="2634.06" y1="816.65" x2="2642.45" y2="821.46"/>
+  <line class="e" x1="2573.72" y1="893.62" x2="2589.36" y2="905.48"/>
+  <line class="e" x1="2642.36" y1="821.62" x2="2644.14" y2="822.68"/>
+  <line class="e" x1="2568.1" y1="777.26" x2="2568.82" y2="777.69"/>
+  <line class="e" x1="2618.62" y1="864.22" x2="2620.96" y2="865.81"/>
+  <line class="e" x1="2544.5" y1="813.91" x2="2547.75" y2="816.11"/>
+  <line class="e" x1="2591.9" y1="906.84" x2="2594.02" y2="908.39"/>
+  <line class="e" x1="2617.95" y1="865.35" x2="2623.54" y2="869.18"/>
+  <line class="e" x1="2622.81" y1="646.86" x2="2628.92" y2="646.76"/>
+  <line class="e" x1="2713.9" y1="645.41" x2="2722.51" y2="645.27"/>
+  <line class="e" x1="2460.36" y1="946.54" x2="2490.05" y2="980.65"/>
+  <polyline class="e" points="1263.25 1312.32 1295.34 1238.25 1334.62 1250.42 1309.07 1330.05"/>
+  <polyline class="e" points="1338.41 1253.71 1311.62 1330.22 1338.83 1339.85 1364.66 1261.75"/>
+  <polyline class="e" points="1382.08 1268.14 1422.58 1276.98 1403.03 1355.4 1355.45 1343.84"/>
+  <polyline class="e" points="1425.19 1280.04 1468.89 1289.13 1453.76 1371.12 1406.25 1359.21"/>
+  <polyline class="e" points="1476.08 1291.56 1516.96 1297.9 1500.01 1377.73 1457.11 1370.09"/>
+  <polyline class="e" points="1520.29 1299.22 1560.44 1306.09 1549.6 1382.96 1504.85 1377.1"/>
+  <path class="e" d="M1565.15,1306.87s-9.15,78.67-7.37,77.5,35.67,2.04,35.67,2.04l16.96-23.47,19.61-11.07,1.64-44.91"/>
+  <path class="e" d="M1629.54,1190.36l.27,41.43s-89.22,1.61-88.73-.55-1.36-12.81-1.36-12.81l7.96.18-1.02-33.91"/>
+  <polyline class="e" points="1541.16 1182.02 1542.44 1215.47 1510.27 1214.81 1511.82 1204.85 1494.89 1204.82 1496.33 1173.68"/>
+  <polyline class="e" points="1493.49 1171.19 1437.56 1156.89 1437.56 1206.96 1494.39 1207.33"/>
+  <polyline class="e" points="1391.11 1206.97 1389.78 1143.96 1436.39 1158.74 1435.71 1209.21"/>
+  <polyline class="e" points="1384.31 1145.7 1385.77 1204.17 1373.63 1206.5 1373.49 1238.09 1335.9 1230.24 1336.51 1128.4"/>
+  <path class="e" d="M1332.42,1130.42c-.73.48,1.02,94.69,1.02,94.69l-49.63-12.53,1.79-81.84"/>
+  <polyline class="e" points="1278.14 1129.14 1277.68 1209.28 1228.59 1187.68 1229.38 1127.88"/>
+  <polyline class="e" points="1224.69 1126.63 1226.7 1179.58 1213.53 1179.58 1142 1142.32 1139.81 1129.65"/>
+  <polyline class="e" points="1127.51 1129.14 1080.28 1214.57 963.78 1134.72 968.86 1124.24"/>
+  <path class="e" d="M2056.11,1232.43l33.81,82.47c14.65-6.21,29.63-13.02,44.89-20.47l-4.34-9.12-.06-.11-34.12-71.45c-8,3.89-16.16,7.75-24.48,11.58-5.26,2.42-10.49,4.79-15.7,7.1Z"/>
+  <path class="e" d="M2099.74,1215.07l37.26,80.96c14.37-6.83,29.05-14.27,43.98-22.36l-4.73-8.93-.06-.11-37.11-69.93c-7.83,4.22-15.82,8.43-23.96,12.61-5.16,2.64-10.28,5.23-15.39,7.76Z"/>
+  <path class="e" d="M2140.37,1190.13l40.61,79.33c14.08-7.43,28.43-15.48,43.01-24.19l-5.09-8.72-.06-.11-39.99-68.31c-7.65,4.55-15.45,9.09-23.42,13.6-5.04,2.85-10.05,5.66-15.05,8.4Z"/>
+  <path class="e" d="M2181.31,1167.52l44.46,77.22c13.69-8.12,27.64-16.87,41.77-26.29l-5.52-8.46-.07-.1-43.3-66.25c-7.42,4.92-14.99,9.84-22.72,14.75-4.9,3.1-9.76,6.15-14.62,9.13Z"/>
+  <line class="e" x1="2209.25" y1="1255.22" x2="2209.58" y2="1255.75"/>
+  <line class="e" x1="2074.39" y1="1111.66" x2="2074.64" y2="1112.15"/>
+  <line class="e" x1="2114.39" y1="1191.65" x2="2115.39" y2="1193.63"/>
+  <line class="e" x1="2032.18" y1="1130.07" x2="2032.52" y2="1130.88"/>
+  <line class="e" x1="2284.07" y1="1210.74" x2="2291.1" y2="1216.54"/>
+  <polyline class="e" points="2085.74 1312.55 2053.76 1238.47 2014.61 1250.64 2040.07 1330.27"/>
+  <polyline class="e" points="2010.83 1253.93 2037.53 1330.44 2010.42 1340.08 1984.67 1261.97"/>
+  <polyline class="e" points="1967.31 1268.36 1926.95 1277.2 1946.44 1355.62 1993.85 1344.06"/>
+  <polyline class="e" points="1924.35 1280.26 1880.81 1289.35 1895.88 1371.35 1943.23 1359.44"/>
+  <polyline class="e" points="1873.64 1291.79 1832.9 1298.13 1849.79 1377.95 1892.54 1370.32"/>
+  <polyline class="e" points="1829.58 1299.44 1789.57 1306.32 1800.37 1383.19 1844.96 1377.33"/>
+  <path class="e" d="M1784.88,1307.1s9.11,78.67,7.34,77.5-35.54,2.04-35.54,2.04l-16.91-23.47-19.54-11.07-1.64-44.91"/>
+  <path class="e" d="M1720.71,1190.59l-.27,41.43s88.91,1.61,88.42-.55,1.35-12.81,1.35-12.81l-7.93.18,1.01-33.91"/>
+  <polyline class="e" points="1808.78 1182.25 1807.51 1215.69 1839.57 1215.03 1838.02 1205.08 1854.89 1205.04 1853.45 1173.91"/>
+  <polyline class="e" points="1856.28 1171.42 1912.02 1157.11 1912.02 1207.19 1855.39 1207.55"/>
+  <polyline class="e" points="1958.32 1207.2 1959.64 1144.18 1913.19 1158.97 1913.87 1209.44"/>
+  <polyline class="e" points="1965.09 1145.92 1963.63 1204.4 1975.73 1206.72 1975.87 1238.32 2013.34 1230.47 2012.73 1128.62"/>
+  <path class="e" d="M2016.8,1130.65c.72.48-1.01,94.69-1.01,94.69l49.46-12.53-1.78-81.84"/>
+  <polyline class="e" points="2070.9 1129.37 2071.36 1209.5 2120.27 1187.91 2119.49 1128.1"/>
+  <polyline class="e" points="2124.16 1126.85 2122.16 1179.81 2135.29 1179.81 2206.57 1142.55 2208.75 1129.88"/>
+  <polyline class="e" points="2221.01 1129.37 2268.07 1214.79 2384.17 1134.95 2379.11 1124.47"/>
+  <polyline class="e" points="515.23 628.04 589.44 807.4 433.82 863.84 412.88 847.28 329.79 868.56 257.11 673.88 339.32 649.49 339.32 628.04"/>
+  <polyline class="e" points="595.16 816.98 569.56 831.86 594.16 881.18 619.09 869.34 620.44 868.7"/>
+  <path class="e" d="M620.04,873.96c9.54,13.9,19.07,27.8,28.61,41.7-8.55,4.51-17.09,9.03-25.64,13.54-7.92-15.04-15.83-30.09-23.75-45.13"/>
+  <path class="e" d="M335.04,623.84l-119,8.11,4.82,22.54-20.18,12.83,155.78,374.87,39.36-67.96,23.85,9.7,33.76-48.86c-13.52-29.26-27.04-58.52-40.55-87.78-27.69,7.09-55.39,14.19-83.08,21.28-24.23-64.9-48.45-129.79-72.68-194.69l82.21-24.39-4.27-25.65Z"/>
+  <path class="e" d="M649.85,919.25c28.29,41.17,56.58,82.35,84.86,123.52,0,0-43.31,147.77,129.69,133.52l74.82,64.71-9.45,14.59-60.42-42.37-32.64,7.06-20.63-9.51-7.29,14.5-28.24-19.48-17.38,21.37-14.93,13.58,30.24,24.72-8.46,15.93,70.34,59.52-6.39,12.51,43.89,35.39,9.13-15.25,52.46,36.11,17.57,14.94-72.93,118.9-16.04-7.43-32.31-52.29-17.54,20.49s-263.05-177.01-414.05-434.73l-47.69-27.36,39.36-67.96,27.3,10.97,30.31-50.13-31.12-67.95,153.25-54.3,6.63,10.83c-7.33,3.77-14.65,7.54-21.98,11.31,17.69,33.28,35.37,66.56,53.06,99.84,12.19-5.18,24.38-10.36,36.57-15.54Z"/>
+  <polyline class="e" points="648.68 924.29 619.19 938.06 634.27 954.94 662.4 939.18"/>
+  <polyline class="e" points="603.82 947.41 616.61 963.8 587.58 984.02 576.84 963.8"/>
+  <polyline class="e" points="470.42 880.08 458.44 856.43 502.96 839.53 513.79 862.9"/>
+  <polyline class="e" points="455.78 858.47 427.71 870.5 439.64 895.21 467.21 881.94"/>
+  <polyline class="e" points="619.84 1131.03 605.9 1143.54 619.59 1155.82 632.36 1142.51 620.47 1131.03"/>
+  <polyline class="e" points="623.01 1128.55 633.49 1139.49 646.7 1126.9 635.61 1116.59"/>
+  <polyline class="e" points="648.52 1104.4 637.34 1114.91 648.52 1124.75 658.97 1114.58"/>
+  <polyline class="e" points="644.21 1168.18 626.53 1150.96 613.26 1164.2 615.85 1167.24 607.06 1176.19 622.22 1189.15"/>
+  <polyline class="e" points="458.73 931.51 437.14 969.9 453.09 982.03 467.21 961.07 460.3 952.32 467.21 942.38 459.58 928.15"/>
+  <polyline class="e" points="434.72 974.62 448.42 984.07 435.33 1004.8 418.05 997.62"/>
+  <polyline class="e" points="383.93 999.57 405.63 1013.12 379.42 1052.69 358.81 1042.18"/>
+  <polyline class="e" points="452.33 1085.56 471.43 1104.4 457.95 1119.87 436.16 1100.67"/>
+  <polyline class="e" points="453.79 1081.6 474.33 1099.97 486.46 1084 463.38 1067.98"/>
+  <path class="e" d="M788.97,985.43s-33.61,11.61-38.92,35l-24.71-27.8,42.66-34.39"/>
+  <polyline class="e" points="654.04 1208.66 690.81 1245.15 611.5 1319.22 574.89 1281"/>
+  <polyline class="e" points="734.43 1340.98 748.23 1326.2 763.51 1339.46 749.85 1352.3"/>
+  <polyline class="e" points="752.04 1355.83 765.42 1342.54 779.07 1354.16 763.51 1370.35"/>
+  <polyline class="e" points="732.15 1343.41 744.6 1356.81 728.64 1373.9 714.12 1359.1"/>
+  <polyline class="e" points="747.64 1360.56 731.7 1375.63 742.8 1388.89 761.01 1373.31"/>
+  <polyline class="e" points="718.59 1323.51 733.79 1337.91 745.93 1324.13 732.15 1310.4"/>
+  <polyline class="e" points="712.03 1329.85 727.38 1344.59 713.08 1359.46 696.95 1339.9"/>
+  <polyline class="e" points="727.38 1308.82 694.42 1337.11 681.24 1320.18 715.58 1291.67"/>
+  <polyline class="e" points="781.99 1360.42 767.42 1372.17 788.69 1389.29 802.91 1371.91"/>
+  <polyline class="e" points="762.78 1379.56 781.14 1392.99 759.78 1409.19 744.52 1394.37"/>
+  <path class="e" d="M679.7,1317.58l-16.93-24.37s21.71-21.41,41.84-11.49l9.52,10.09-34.42,25.77Z"/>
+  <path class="e" d="M1224.99,1402.36l152.51,52.72-67.72,302.83s-235.38-41.86-447.5-189.93l100.8-146.34,92.04,53.35,31.18-40.13,119.9,41.17"/>
+  <polyline class="e" points="1175.52 1381.99 1144.04 1453.67 1192.96 1470.99 1219.14 1410.12"/>
+  <polyline class="e" points="1169.56 1382.68 1146.09 1436.16 1099.84 1415.99 1123.34 1367.13"/>
+  <polyline class="e" points="1120.48 1355.55 1094.12 1410.06 1055.58 1390.82 1089.81 1344.33"/>
+  <polyline class="e" points="1066 1343.57 1035.64 1405.79 990.29 1371.17 1029.59 1310.44 1078.37 1329.73"/>
+  <polyline class="e" points="1019.64 1300.67 984.95 1352.97 943.36 1334.31 980.54 1280.8"/>
+  <polyline class="e" points="955.04 1259.56 984.18 1277.13 903.78 1378.56 872.11 1358.2"/>
+  <polyline class="e" points="951.26 1152.06 916.06 1193.29 1082.04 1308.16 1111.45 1265.5"/>
+  <polyline class="e" points="929.25 1126.28 883.79 1165.78 913.93 1189.84 945.18 1150.96"/>
+  <polyline class="e" points="930.82 1055.05 931.64 1102.84 969.19 1105.58 968.88 1058.18"/>
+  <polyline class="e" points="920.05 966.95 891.25 992.74 917.9 1026.88 950.45 1004.15"/>
+  <ellipse class="e" cx="831.97" cy="1077.57" rx="40.66" ry="39.96"/>
+  <path class="e" d="M870.99,1011.11s48.33,95.98-48.83,117.32c0,0,28.85,49.94,76.9-3.68,0,0,40.9-77.11-25.99-114.39"/>
+  <path class="e" d="M792.42,1145.83s-48.33-95.98,48.83-117.32c0,0-28.85-49.94-76.9,3.68,0,0-40.9,77.11,25.99,114.39"/>
+  <ellipse class="e" cx="2523.57" cy="1077.92" rx="40.66" ry="39.96"/>
+  <path class="e" d="M2562.59,1011.45s48.33,95.98-48.83,117.32c0,0,28.85,49.94,76.9-3.68,0,0,40.9-77.11-25.99-114.39"/>
+  <path class="e" d="M2484.02,1146.18s-48.33-95.98,48.83-117.32c0,0-28.85-49.94-76.9,3.68,0,0-40.9,77.11,25.99,114.39"/>
+  <ellipse class="e" cx="1533.44" cy="1103.36" rx="127.04" ry="39.04"/>
+  <ellipse class="b" cx="1675.61" cy="1443.58" rx="88.24" ry="83.51"/>
+  <ellipse class="e" cx="1835.4" cy="1106.18" rx="127.04" ry="39.04"/>
+  <ellipse class="e" cx="1674.52" cy="1107.33" rx="127.04" ry="39.04"/>
+  <polyline class="e" points="1631.58 1240.76 1598.63 1240.76 1601.41 1291.81 1630.67 1291.84"/>
+  <polyline class="e" points="1595.25 1233.15 1595.77 1291 1508.53 1283.03 1507.76 1231.99 1537.8 1232.2 1538.84 1237.19 1593.75 1235.91"/>
+  <polyline class="e" points="1385.05 1458.5 1437.57 1468.13 1393.19 1605.42 1470.47 1623.3 1442.67 1733.29 1309.92 1760.16"/>
+  <polyline class="e" points="1538.18 1482.88 1591.22 1490.02 1626.08 1532.26 1625.85 1609.56 1596.65 1609.36 1597.72 1569.19 1537.04 1566.13"/>
+  <polyline class="e" points="1488.96 1480.52 1537.19 1485.95 1528.69 1550.35 1484.09 1547.77"/>
+  <path class="e" d="M1482.3,1477.18s-.97,68.56-3.26,67.83-43.31-5.86-43.31-5.86l11.48-65.87"/>
+  <path class="e" d="M1598.17,1622.72c2.31,1.6,25.86,1.58,25.86,1.58l1.84,85.14-173.49,19.11,19-97.65,16.76,3.68-1.96,6.58,74.51,3.2,7.13-6.18,32.62.45"/>
+  <polyline class="e" points="1891.8 1620.48 1873.73 1624.3 1885.91 1667.21 1770.46 1676.04 1768.52 1640.63 1733.31 1645.86 1739.17 1708.25 1908.7 1720.52 1895.97 1620.6"/>
+  <polyline class="e" points="1926.45 1470.33 1953.89 1600.64 1901.09 1620.15 1920.67 1727.58 2057.67 1754.23 1978.76 1453.78"/>
+  <polyline class="e" points="1907.28 1474.73 1927.09 1548.76 1893.97 1556.89 1895.89 1539.61 1881.93 1539.93 1869.64 1481.21"/>
+  <path class="e" d="M1866.47,1479.14l12.44,64.15s-61.21,8.39-59.27,5.92-5.05-65.34-5.05-65.34"/>
+  <polyline class="e" points="1809.63 1488.33 1813.54 1543.07 1734.1 1556.82 1734.32 1528.17 1777.08 1488.78"/>
+  <polyline class="e" points="1821.39 1564.61 1830.94 1615.58 1870.32 1613.51 1875.05 1662.41 1776.41 1670.17 1770.71 1621.06 1793.41 1624.7 1778.59 1571.58"/>
+  <path class="e" d="M2327.51,1300.33l-84.39,50.01,39.15,70.44-37.87,24.97,28.96,50.33-123.04,48.87-19.91-54.77-77.16,29.39-24.59-80.12-45.67,16.02,78.75,298.49s316.66-92.81,436.24-185.31l-170.46-268.32Z"/>
+  <polyline class="e" points="2233.9 1357.17 2183.5 1381.63 2208.69 1435.4 2263.04 1415.93"/>
+  <polyline class="e" points="2177.12 1385.72 2132.28 1402.35 2158.14 1465.65 2211.52 1443.16"/>
+  <polyline class="e" points="2126.82 1404.46 2079.8 1421.94 2103.47 1483.13 2156.05 1463.8"/>
+  <polyline class="e" points="2076.28 1425.69 2032.57 1437.39 2054.33 1499.44 2098.14 1484.78"/>
+  <polyline class="e" points="2370.66 1275.83 2329.72 1298.87 2406.78 1414.09 2451.74 1386.04"/>
+  <polyline class="e" points="2376.65 1273.59 2423.27 1335.85 2454.77 1316.02 2403.14 1249.73"/>
+  <polyline class="e" points="2421.45 1238.75 2436.97 1256.5 2479.81 1227.15 2458.76 1204.99"/>
+  <polyline class="e" points="2480.34 1232.24 2438.35 1264.72 2469.35 1302.64 2508.48 1267.11"/>
+  <path class="e" d="M2514.61,1262.6c1.36-.32,43.66-33.83,43.66-33.83l37.37,34.6-44.76,44.98"/>
+  <path class="e" d="M2512.96,1248.72c.97-.74,44.36-25.53,44.36-25.53l43.42,38.77,25.93-23.1-74.38-64.61-62.58,3.34-20.67,17.28"/>
+  <path class="e" d="M2990.62,1013.3s-152.23,299.52-499.05,528.47l-69.89-121.73,210.98-159.16,27.63,17.16,2.18,1.36,79.83-80.36s-41.21-25.87-36.2-25.49,157.99-218.51,157.99-218.51"/>
+  <path class="e" d="M2709.06,1057.12c-.84.99-52.81,69.5-52.81,69.5l-39.2-24.31,4.53-58.42,27.33-38.12"/>
+  <polyline class="e" points="2630.83 989.75 2604.84 1025.1 2558.86 984.68 2587.57 948.56"/>
+  <polyline class="e" points="2471.49 996.97 2431.37 1036.94 2408.04 1003.49 2440.9 965.76"/>
+  <polyline class="e" points="2411.7 1151.61 2448.67 1197.25 2473.97 1168.2 2434.86 1124.2"/>
+  <polyline class="e" points="3169.32 631.08 3036.93 982.21 2987.1 957.81 2962.08 992.39 2894.55 957.92 2913.64 931.73 2842.39 891.89 2832.35 917.36 2738.25 872.54 2840.13 629.95"/>
+  <polyline class="e" points="2853.15 938.91 2818.65 989.94 2709.1 915.52 2728.23 878.97"/>
+  <polyline class="e" points="2712.96 921.44 2738.63 941.67 2724.58 972.29 2687.78 947.63"/>
+  <polyline class="e" points="2696.37 976.26 2664.28 1010.36 2709.56 1042.63 2748.12 1009.57"/>
+  <polyline class="e" points="2732.23 978.18 2761.39 996.1 2804.81 1025 2819.27 1001.42 2742.39 946.64"/>
+  <polyline class="e" points="2320.3 960.41 2275.03 1008.32 2276.18 1023.37 2394.17 1029.21"/>
+  <polyline class="e" points="1034.65 960.08 1081.23 1007.67 1082.97 1025.71 969.92 1026.57"/>
+</svg></div>
+          </div>
+        </div>
+        <div class="mini-toolbar">
+          <button id="zoomIn" class="zoom">+</button>
+          <button id="zoomOut" class="zoom">−</button>
+          <button id="zoomReset" class="zoom" style="font-size:12px">↺</button>
+        </div>
+        <div class="floor-tag">Floor · Ground</div>
+      </div>
+    </main>
+
+    <aside class="details glass">
+      <div class="detail-card">
+        <h4>Selected experience</h4>
+        <p id="detailText">Showing the full zoning overview. Use the filters to focus on the food village, restaurant walk, or the retail structures.</p>
+        <div class="pill-row">
+          <span class="pill">Interactive UI</span>
+          <span class="pill">Futuristic</span>
+          <span class="pill">Website map</span>
+          <span class="pill">Glassmorphism</span>
+        </div>
+      </div>
+      <div class="detail-card">
+        <h4>Zone breakdown</h4>
+        <div class="route-list">
+          <div class="route"><div><strong>Food Court / Food Village</strong><small>Main social destination</small></div><span>Core</span></div>
+          <div class="route"><div><strong>Restaurant Walk</strong><small>Dining-facing paths and units</small></div><span>Dining</span></div>
+          <div class="route"><div><strong>Retail Structures</strong><small>General mall shops and anchors</small></div><span>Retail</span></div>
+        </div>
+      </div>
+      <div class="detail-card">
+        <h4>Suggested Figma sections</h4>
+        <p>1) Header / navigation, 2) Filter sidebar, 3) Interactive map stage, 4) Location detail drawer, 5) Legend and zoom controls.</p>
+      </div>
+      <div class="note">If you want, the next step is I can convert this into a tighter naming system for zones and prepare exact text/content blocks to paste into Figma sections.</div>
+    </aside>
+  </div>
+
+<script>
+const viewport = document.getElementById('viewport');
+const detailText = document.getElementById('detailText');
+const chips = [...document.querySelectorAll('[data-mode]')];
+const copy = {
+  all: 'Showing the full zoning overview. Use the filters to focus on the food village, restaurant walk, or the retail structures.',
+  food: 'Food Court / Food Village is now the hero zone. The large central area is highlighted as the main social dining destination.',
+  restaurants: 'Restaurant Walk is highlighted around the main core, representing the surrounding restaurant paths and dining-facing units.',
+  retail: 'Retail mode emphasizes the main shopping structures and overall mall retail circulation.'
+};
+function setMode(mode) {
+  viewport.className = 'viewport ' + mode;
+  detailText.textContent = copy[mode] || copy.all;
+  chips.forEach(el => el.classList.toggle('active', el.dataset.mode === mode));
+}
+chips.forEach(btn => btn.addEventListener('click', () => setMode(btn.dataset.mode)));
+let zoom = 1;
+const target = document.getElementById('zoomTarget');
+function renderZoom() { target.style.transform = `scale(${zoom})`; }
+document.getElementById('zoomIn').addEventListener('click', () => { zoom = Math.min(2.2, zoom + 0.12); renderZoom(); });
+document.getElementById('zoomOut').addEventListener('click', () => { zoom = Math.max(0.72, zoom - 0.12); renderZoom(); });
+document.getElementById('zoomReset').addEventListener('click', () => { zoom = 1; renderZoom(); });
+document.getElementById('search').addEventListener('input', (e) => {
+  const q = e.target.value.toLowerCase();
+  if (!q) return setMode('all');
+  if (q.includes('food') || q.includes('village') || q.includes('court')) return setMode('food');
+  if (q.includes('rest') || q.includes('dining')) return setMode('restaurants');
+  if (q.includes('retail') || q.includes('shop')) return setMode('retail');
+});
+</script>
+</body>
+</html>
