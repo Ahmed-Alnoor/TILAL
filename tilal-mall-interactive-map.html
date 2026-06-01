@@ -38,14 +38,6 @@ button{font-family:inherit;}
 
 .header{position:relative;display:flex;align-items:center;justify-content:space-between;gap:16px;height:74px;padding:0 24px;background:rgba(255,255,255,.9);border-bottom:1px solid var(--line);z-index:30;backdrop-filter:blur(12px);}
 .header::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--brand);}
-.brand{display:flex;align-items:center;gap:16px;min-width:0;}
-.menu-btn{display:grid;width:44px;height:44px;border:1px solid var(--line);background:#fff;color:var(--b-mid);cursor:pointer;place-items:center;transition:all .18s;}
-.menu-btn:hover{background:var(--brand);color:#fff;border-color:transparent;}
-.menu-btn svg{width:20px;height:20px;}
-.logo{display:flex;align-items:center;gap:15px;}
-.logo .tilal{font-family:var(--head);font-weight:700;font-size:28px;letter-spacing:.04em;line-height:.9;background:linear-gradient(96deg,#2e8fcf,#2178BB 52%,#234983);-webkit-background-clip:text;background-clip:text;color:transparent;}
-.logo .div{width:1.5px;height:36px;background:linear-gradient(180deg,transparent,rgba(33,120,187,.55),transparent);}
-.logo .gm{font-family:var(--head);font-weight:400;font-size:11.5px;letter-spacing:.34em;color:var(--b-deep);line-height:1.5;}
 .kicker{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;}
 .kicker .t{font-family:var(--head);font-size:12px;letter-spacing:.46em;text-transform:uppercase;color:var(--b-mid);font-weight:500;}
 .kicker .d{font-size:9.5px;letter-spacing:.36em;text-transform:uppercase;color:var(--muted);margin-top:6px;}
@@ -56,9 +48,21 @@ button{font-family:inherit;}
 
 .body{flex:1;display:flex;min-height:0;position:relative;}
 
-/* sidebar is an overlay drawer, hidden until toggled */
-.sidebar{position:absolute;top:0;left:0;height:100%;width:var(--sidebar-w);max-width:88%;flex:none;border-right:1px solid var(--line);background:rgba(255,255,255,.96);backdrop-filter:blur(14px);display:flex;flex-direction:column;padding:22px;gap:22px;overflow-y:auto;z-index:25;transform:translateX(-100%);transition:transform .3s cubic-bezier(.4,0,.2,1);box-shadow:18px 0 50px -20px rgba(35,73,131,.4);}
-.sidebar.open{transform:translateX(0);}
+/* sidebar is a permanent in-flow panel */
+.sidebar{position:relative;top:0;left:0;height:100%;width:var(--sidebar-w);max-width:88%;flex:none;border-right:1px solid var(--line);background:#ffffff;display:flex;flex-direction:column;padding:20px;gap:18px;overflow-y:auto;z-index:25;}
+.view-toggle{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:5px;background:var(--soft);border:1px solid var(--hair);}
+.vt-btn{display:flex;flex-direction:column;align-items:center;gap:5px;padding:11px 8px;border:0;background:transparent;color:var(--ink-soft);font-family:var(--head);font-weight:500;font-size:12.5px;letter-spacing:.04em;cursor:pointer;transition:all .2s;}
+.vt-btn svg{width:18px;height:18px;}
+.vt-btn.active{background:#fff;color:var(--b-deep);box-shadow:var(--shadow-sm);}
+.view-panel{display:none;flex-direction:column;gap:18px;}
+.view-panel.show{display:flex;}
+.cat-nav{display:flex;flex-direction:column;gap:7px;}
+.cat-nav button{display:flex;align-items:center;gap:11px;padding:12px 14px;border:1px solid var(--line);background:#fff;color:var(--text);font-size:13.5px;font-weight:600;cursor:pointer;text-align:left;transition:all .18s;}
+.cat-nav button .nsw{width:13px;height:13px;flex:none;}
+.cat-nav button .ncnt{margin-left:auto;font-size:11.5px;color:var(--muted);font-weight:500;}
+.cat-nav button:hover{border-color:var(--b-mid);}
+.cat-nav button.active{background:var(--brand);color:#fff;border-color:transparent;}
+.cat-nav button.active .ncnt{color:rgba(255,255,255,.85);}
 .sidebar::-webkit-scrollbar{width:8px;}.sidebar::-webkit-scrollbar-thumb{background:rgba(35,73,131,.18);}
 .search{display:flex;align-items:center;gap:11px;padding:13px 16px;background:var(--soft);border:1px solid var(--line);transition:border-color .2s,box-shadow .2s;}
 .search:focus-within{border-color:var(--b-mid);box-shadow:0 0 0 3px rgba(33,120,187,.16);}
@@ -93,12 +97,12 @@ button{font-family:inherit;}
 .floor-svg{width:100%;height:100%;display:block;touch-action:none;cursor:grab;visibility:hidden;}
 .floor-svg.ready{visibility:visible;}
 .floor-svg.panning{cursor:grabbing;}
-.floor-svg .unit{fill-opacity:.42;stroke:none;vector-effect:non-scaling-stroke;cursor:pointer;transition:fill-opacity .15s,filter .15s,opacity .15s;}
-.floor-svg .unit:hover{fill-opacity:.72;filter:drop-shadow(0 2px 7px var(--glow));}
-.floor-svg .unit.selected{fill-opacity:.92;filter:drop-shadow(0 3px 10px var(--glow));}
-.floor-svg .unit.dim{opacity:.18;}
-.floor-svg .unit.hidden-cat{opacity:.06;pointer-events:none;}
-.floor-svg .unit.match{fill-opacity:.85;filter:drop-shadow(0 2px 8px var(--glow));}
+.floor-svg .unit{fill-opacity:1;stroke:#ffffff;stroke-width:.6;vector-effect:non-scaling-stroke;cursor:pointer;transition:filter .15s,opacity .15s;}
+.floor-svg .unit:hover{filter:brightness(.9);}
+.floor-svg .unit.selected{filter:brightness(.82) drop-shadow(0 3px 10px var(--glow));stroke:var(--b-deep);stroke-width:1.4;}
+.floor-svg .unit.dim{opacity:.25;}
+.floor-svg .unit.hidden-cat{opacity:.12;pointer-events:none;}
+.floor-svg .unit.match{filter:brightness(.86) drop-shadow(0 2px 8px var(--glow));}
 #locMarker{pointer-events:none;}
 #locMarker .ring{fill:none;stroke:var(--b-mid);stroke-width:2.5;vector-effect:non-scaling-stroke;transform-box:fill-box;transform-origin:center;animation:pulse 1.8s ease-out infinite;}
 #locMarker .core{fill:var(--b-mid);stroke:#fff;stroke-width:1.5;vector-effect:non-scaling-stroke;}
@@ -160,37 +164,85 @@ button{font-family:inherit;}
 .card .btn.ghost:hover{border-color:var(--b-mid);color:var(--b-mid);}
 .toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--b-deep);color:#fff;padding:12px 22px;font-size:13px;font-weight:600;opacity:0;transition:all .28s;z-index:80;pointer-events:none;box-shadow:var(--shadow);}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+/* ===== List view (main area) ===== */
+.list-view{position:absolute;inset:0;z-index:6;background:linear-gradient(160deg,#f7f9fb 0%,#eef2f6 100%);overflow-y:auto;padding:30px 38px 50px;display:none;}
+.list-view.show{display:block;}
+.list-view::-webkit-scrollbar{width:9px;}.list-view::-webkit-scrollbar-thumb{background:rgba(35,73,131,.2);}
+.lv-head{display:flex;align-items:center;gap:14px;margin-bottom:24px;}
+.lv-head .back{display:none;align-items:center;gap:7px;padding:9px 15px;border:1px solid var(--line);background:#fff;color:var(--b-deep);font-family:var(--head);font-size:12.5px;font-weight:500;cursor:pointer;transition:all .18s;}
+.lv-head .back svg{width:15px;height:15px;}
+.lv-head .back:hover{background:var(--brand);color:#fff;border-color:transparent;}
+.lv-head.drill .back{display:inline-flex;}
+.lv-title{display:flex;align-items:center;gap:12px;font-family:var(--head);font-size:22px;font-weight:600;color:var(--text);}
+.lv-title .ti{width:34px;height:34px;display:grid;place-items:center;color:#fff;}
+.lv-title .lvc{margin-left:8px;font-size:13px;font-weight:500;color:var(--muted);}
+.cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(244px,1fr));gap:18px;}
+.cat-card{position:relative;display:flex;flex-direction:column;min-height:182px;padding:22px;background:#fff;border:1px solid var(--line);cursor:pointer;overflow:hidden;transition:transform .2s,box-shadow .2s,border-color .2s;}
+.cat-card:hover{transform:translateY(-4px);box-shadow:var(--shadow);border-color:transparent;}
+.cat-card .cc-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+.cat-card .cc-ic{width:46px;height:46px;display:grid;place-items:center;color:#fff;flex:none;}
+.cat-card .cc-ic svg{width:24px;height:24px;}
+.cat-card .cc-n{margin-top:16px;font-family:var(--head);font-size:18px;font-weight:600;color:var(--text);line-height:1.2;}
+.cat-card .cc-d{margin-top:7px;font-size:12.5px;line-height:1.55;color:var(--muted);}
+.cat-card .cc-cnt{font-family:var(--head);font-size:13px;font-weight:600;color:#fff;padding:5px 11px;}
+.cat-card .cc-go{margin-top:auto;padding-top:14px;display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;letter-spacing:.04em;color:var(--b-mid);}
+.cat-card .cc-go svg{width:14px;height:14px;}
+.shop-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(232px,1fr));gap:14px;}
+.shop-card{display:flex;align-items:center;gap:14px;padding:14px;background:#fff;border:1px solid var(--line);cursor:pointer;transition:transform .16s,box-shadow .16s,border-color .16s;}
+.shop-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-sm);border-color:transparent;}
+.shop-logo{width:54px;height:54px;flex:none;display:grid;place-items:center;font-family:var(--head);font-weight:700;font-size:15px;color:#fff;letter-spacing:.02em;position:relative;overflow:hidden;}
+.shop-logo svg{width:26px;height:26px;}
+.shop-meta{display:flex;flex-direction:column;gap:3px;min-width:0;}
+.shop-meta .sm-code{font-family:var(--head);font-size:15px;font-weight:600;color:var(--text);letter-spacing:.03em;}
+.shop-meta .sm-cat{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:500;color:var(--muted);}
+.shop-meta .sm-cat .sd{width:8px;height:8px;flex:none;}
+.lv-empty{padding:40px;text-align:center;color:var(--muted);font-size:14px;}
+.logo-mark{display:flex;flex-direction:column;align-items:center;line-height:1;user-select:none;}
+.logo-mark .lm-word{font-family:var(--head);font-weight:700;font-size:30px;letter-spacing:.12em;color:var(--b-deep);}
+.logo-mark .lm-sub{display:flex;align-items:center;gap:8px;margin-top:5px;}
+.logo-mark .lm-sub .ln{width:22px;height:1.5px;background:var(--b-deep);opacity:.8;}
+.logo-mark .lm-sub .tx{font-family:var(--head);font-weight:400;font-size:10px;letter-spacing:.42em;color:var(--b-deep);}
 @media (max-width:1100px){.kicker{display:none;}}
-@media (max-width:860px){.header{height:64px;padding:0 14px;}.logo .tilal{font-size:23px;}.logo .gm{display:none;}.card{width:calc(100% - 28px);max-height:90vh;}.floors .floor-tab{padding:9px 12px;}}
+@media (max-width:860px){.header{height:64px;padding:0 14px;}.logo-mark .lm-word{font-size:23px;}.logo-mark .lm-sub .tx{font-size:9px;letter-spacing:.3em;}.card{width:calc(100% - 28px);max-height:90vh;}.floors .floor-tab{padding:9px 12px;}}
 </style>
 </head>
 <body>
 <div class="app">
   <header class="header">
-    <div class="brand">
-      <button class="menu-btn" id="menuBtn" aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
-      <div class="logo"><span class="tilal">TILAL</span><span class="div"></span><span class="gm">GRAND<br/>MALL</span></div>
-    </div>
-    <div class="kicker"><div class="t">Interactive Directory</div><div class="d">Ground Floor Leasing Plan</div></div>
     <div class="floors" id="floors">
       <button class="floor-tab active" data-floor="G">Ground</button>
       <button class="floor-tab" data-floor="F1">Level 1</button>
       <button class="floor-tab" data-floor="F2">Level 2</button>
     </div>
+    <div class="kicker"><div class="t">Interactive Directory</div><div class="d">Ground Floor Leasing Plan</div></div>
+    <div class="logo-mark">
+      <span class="lm-word">TILAL</span>
+      <span class="lm-sub"><span class="ln"></span><span class="tx">GRAND MALL</span><span class="ln"></span></span>
+    </div>
   </header>
   <div class="body">
     <aside class="sidebar" id="sidebar">
+      <div class="view-toggle">
+        <button class="vt-btn active" data-view="map"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 3 3 6v15l6-3 6 3 6-3V3l-6 3-6-3z"/><path d="M9 3v15M15 6v15"/></svg>Map</button>
+        <button class="vt-btn" data-view="list"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>List</button>
+      </div>
       <div class="search">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-        <input id="searchInput" type="text" placeholder="Search unit, code or category" autocomplete="off"/>
+        <input id="searchInput" type="text" placeholder="What do you want to find?" autocomplete="off"/>
         <button class="clear" id="searchClear" aria-label="Clear">&times;</button>
       </div>
-      <div><div class="sec"><span class="lbl">Categories</span><span class="rule"></span></div><div class="chips" id="chips" style="margin-top:14px"></div></div>
-      <div><div class="sec"><span class="lbl">Legend</span><span class="rule"></span></div><div class="legend" id="legend" style="margin-top:14px"></div></div>
-      <div><div class="sec"><span class="lbl">Overview</span><span class="rule"></span></div>
-        <div class="panel" style="margin-top:14px"><div class="stat-row"><span class="big head" id="statUnits">0</span><span class="lab">Leasing<br/>Units · GF</span></div></div>
+      <div class="view-panel show" id="mapPanel">
+        <div><div class="sec"><span class="lbl">Categories</span><span class="rule"></span></div><div class="chips" id="chips" style="margin-top:14px"></div></div>
+        <div><div class="sec"><span class="lbl">Legend</span><span class="rule"></span></div><div class="legend" id="legend" style="margin-top:14px"></div></div>
+        <div><div class="sec"><span class="lbl">Overview</span><span class="rule"></span></div>
+          <div class="panel" style="margin-top:14px"><div class="stat-row"><span class="big head" id="statUnits">0</span><span class="lab">Leasing<br/>Units · GF</span></div></div>
+        </div>
+        <div class="side-note">Mapped from the architectural leasing plan. Select any unit to reveal its photography, description, contact and precise location within the mall.</div>
       </div>
-      <div class="side-note">Mapped from the architectural leasing plan. Select any unit to reveal its photography, description, contact and precise location within the mall.</div>
+      <div class="view-panel" id="listPanel">
+        <div><div class="sec"><span class="lbl">Categories</span><span class="rule"></span></div><div class="cat-nav" id="catNav" style="margin-top:14px"></div></div>
+        <div><div class="sec"><span class="lbl">Facilities</span><span class="rule"></span></div><div class="legend" id="facLegend" style="margin-top:14px"></div></div>
+      </div>
     </aside>
     <main class="canvas-wrap" id="canvasWrap">
       <div class="map-wrapper" id="mapWrapper">
@@ -459,6 +511,13 @@ button{font-family:inherit;}
         <div class="ef-icon"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/></svg></div>
         <h3 class="head">Coming Soon</h3><p>The Ground Floor is fully mapped from the architectural drawing. Upper levels will be added here.</p>
       </div>
+      <div class="list-view" id="listView">
+        <div class="lv-head" id="lvHead">
+          <button class="back" id="lvBack"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>Back</button>
+          <div class="lv-title" id="lvTitle">Directory</div>
+        </div>
+        <div id="lvBody"></div>
+      </div>
       <div class="zoom-ctl">
         <button id="zoomIn" aria-label="Zoom in">+</button>
         <button id="zoomOut" aria-label="Zoom out">&minus;</button>
@@ -497,6 +556,18 @@ button{font-family:inherit;}
   "use strict";
   const CATS={hyper:{label:"Hypermarket",color:"#d7ffd7",tag:"Anchor Hypermarket",desc:"An expansive hypermarket anchor for everyday essentials, fresh produce and household needs.",img:"images/hyper%20market.webp"},retail:{label:"Retail",color:"#b0cae8",tag:"Fashion & Lifestyle",desc:"Premium fashion, lifestyle and flagship boutiques curated for the discerning shopper, set along the signature retail promenade.",img:"images/shopping.webp"},specialty:{label:"Specialty Retail",color:"#fee8e0",tag:"Specialty Boutiques",desc:"Distinctive specialty boutiques offering curated gifts, beauty and bespoke lifestyle concepts.",img:"images/family%20shooping.webp"},fnb:{label:"F&B",color:"#f8bfbf",tag:"Dining & Restaurants",desc:"Signature restaurants and cafes serving international and regional cuisine in a refined dining setting.",img:"images/f%26b.webp"},kiosk:{label:"F&B Kiosk",color:"#9fff9f",tag:"Food Village Kiosk",desc:"Artisanal food kiosks and grab-and-go counters lining the vibrant Food Village.",img:"images/food%20village.webp"},seating:{label:"F.C. Seating",color:"#dbeded",tag:"Food Court Seating",desc:"Comfortable, light-filled food court seating at the heart of the dining experience.",img:"images/food%20court.webp"},service:{label:"Customer Service",color:"#ffedd2",tag:"Guest Services",desc:"Guest services and amenities dedicated to a seamless, comfortable visit.",img:"images/medical.webp"},toilet:{label:"Toilet",color:"#ebc5eb",tag:"Restrooms",desc:"Premium guest restroom facilities, conveniently located across the floor.",img:""}};
   const CAT_ORDER=["hyper","retail","specialty","fnb","kiosk","seating","service","toilet"];
+  const LEASING=["hyper","retail","specialty","fnb","kiosk"];
+  const FACILITY=["seating","service","toilet"];
+  const CAT_ICON={
+    hyper:'<path d="M5 7h14l-1.2 11a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8L5 7z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/>',
+    retail:'<path d="M3 9 5 4h14l2 5"/><path d="M4 9v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9"/><path d="M9 9a3 3 0 0 0 6 0"/>',
+    specialty:'<path d="M20 12v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8"/><path d="M2 7h20v5H2z"/><path d="M12 21V7"/><path d="M12 7S10.5 3 8 4s.5 3 4 3"/><path d="M12 7s1.5-4 4-3-.5 3-4 3"/>',
+    fnb:'<path d="M6 3v8a3 3 0 0 0 6 0V3"/><path d="M9 3v18"/><path d="M16 3c-1.5 1-2 3-2 5s.5 4 2 5v8"/>',
+    kiosk:'<path d="M4 8h16l-1 4H5L4 8z"/><path d="M5 12v8h14v-8"/><path d="M4 8 5 4h14l1 4"/><path d="M9 20v-5h6v5"/>',
+    seating:'<path d="M5 11V7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v4"/><path d="M3 11h18v4H3z"/><path d="M5 15v4M19 15v4"/>',
+    service:'<circle cx="12" cy="8" r="3.2"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/>',
+    toilet:'<path d="M7 22v-6M17 22v-6"/><circle cx="7" cy="5" r="2"/><circle cx="17" cy="5" r="2"/><path d="M5 16h4l-2-7-2 7zM15 16h4l-2-7-2 7z"/>'
+  };
   const CONTACT={phone:"+971 123 456 789",email:"hello@tilalgrandmall.ae",hours:"10:00 — 22:00"};
   const svg=document.getElementById('floorSvg');
   const marker=document.getElementById('locMarker');
@@ -534,10 +605,13 @@ button{font-family:inherit;}
     chipsEl.appendChild(b); catChips[cat]=b;
   });
   function syncChips(){CAT_ORDER.forEach(function(cat){if(catChips[cat])catChips[cat].classList.toggle('off',!activeCats.has(cat));});allChip.classList.toggle('active',CAT_ORDER.every(function(c){return !present[c]||activeCats.has(c);}));}
-  const legendEl=document.getElementById('legend');
-  CAT_ORDER.forEach(function(cat){if(!present[cat])return;const row=document.createElement('div');row.className='legend-item';
-    row.innerHTML='<span class="legend-sw" style="background:'+CATS[cat].color+';opacity:.55"></span>'+CATS[cat].label+'<span class="sub">'+present[cat]+'</span>';legendEl.appendChild(row);});
-  document.getElementById('statUnits').textContent=SHOPS.length;
+  const legendEl=document.getElementById('legend'),facLegendEl=document.getElementById('facLegend');
+  function legendRow(cat){const row=document.createElement('div');row.className='legend-item';
+    row.innerHTML='<span class="legend-sw" style="background:'+CATS[cat].color+'"></span>'+CATS[cat].label+'<span class="sub">'+(present[cat]||0)+'</span>';return row;}
+  LEASING.forEach(function(cat){if(present[cat])legendEl.appendChild(legendRow(cat));});
+  FACILITY.forEach(function(cat){if(present[cat]){legendEl.appendChild(legendRow(cat));facLegendEl.appendChild(legendRow(cat));}});
+  const leasingTotal=LEASING.reduce(function(n,c){return n+(present[c]||0);},0);
+  document.getElementById('statUnits').textContent=leasingTotal;
   let baseVB,vb;
   function computeBase(){var pad=Math.max(planW,planH)*0.06;baseVB={x:cMinX-pad,y:cMinY-pad,w:planW+pad*2,h:planH+pad*2};vb=Object.assign({},baseVB);applyVB();}
   function applyVB(){svg.setAttribute('viewBox',vb.x+' '+vb.y+' '+vb.w+' '+vb.h);}
@@ -621,22 +695,86 @@ button{font-family:inherit;}
     }else{tipId=null;tip.classList.remove('show');}});
   svg.addEventListener('pointerleave',function(){tip.classList.remove('show');tipId=null;});
   const searchInput=document.getElementById('searchInput'),searchClear=document.getElementById('searchClear');
+  let currentView='map';
   function applyFilters(){const q=searchInput.value.trim().toLowerCase();
     SHOPS.forEach(function(s){const on=activeCats.has(s.category);let match=true;
       if(q){const hay=(s.id+' '+CATS[s.category].label+' '+CATS[s.category].tag+' '+s.category).toLowerCase();match=hay.indexOf(q)!==-1;}
       s.el.classList.toggle('hidden-cat',!on);s.el.classList.toggle('dim',on&&q!==''&&!match);s.el.classList.toggle('match',on&&q!==''&&match);});}
-  searchInput.addEventListener('input',function(){searchClear.classList.toggle('show',searchInput.value!=='');applyFilters();});
-  searchClear.addEventListener('click',function(){searchInput.value='';searchClear.classList.remove('show');applyFilters();searchInput.focus();});
-  const floorNames={G:'Ground',F1:'Level 1',F2:'Level 2'};const emptyFloor=document.getElementById('emptyFloor');
+  searchInput.addEventListener('input',function(){searchClear.classList.toggle('show',searchInput.value!=='');if(currentView==='list')renderList();else applyFilters();});
+  searchClear.addEventListener('click',function(){searchInput.value='';searchClear.classList.remove('show');if(currentView==='list')renderList();else applyFilters();searchInput.focus();});
+  const floorNames={G:'Ground',F1:'Level 1',F2:'Level 2'};const emptyFloor=document.getElementById('emptyFloor');let curFloor='G';
   document.querySelectorAll('.floor-tab').forEach(function(tab){tab.addEventListener('click',function(){
     document.querySelectorAll('.floor-tab').forEach(function(t){t.classList.remove('active');});tab.classList.add('active');
-    const fl=tab.dataset.floor;document.getElementById('floorTagName').textContent=floorNames[fl];const isG=(fl==='G');
-    svg.style.display=isG?'block':'none';emptyFloor.classList.toggle('show',!isG);document.querySelector('.zoom-ctl').style.display=isG?'flex':'none';if(!isG)deselect();});});
-  const sidebar=document.getElementById('sidebar');
-  document.getElementById('menuBtn').addEventListener('click',function(e){e.stopPropagation();sidebar.classList.toggle('open');});
-  document.addEventListener('click',function(e){if(sidebar.classList.contains('open')&&!sidebar.contains(e.target)&&e.target.id!=='menuBtn'&&!document.getElementById('menuBtn').contains(e.target))sidebar.classList.remove('open');});
+    curFloor=tab.dataset.floor;document.getElementById('floorTagName').textContent=floorNames[curFloor];
+    if(currentView==='list')setView('map');
+    applyFloor();});});
+  function applyFloor(){const isG=(curFloor==='G');svg.style.display=isG?'block':'none';
+    emptyFloor.classList.toggle('show',!isG&&currentView==='map');
+    document.querySelector('.zoom-ctl').style.display=(isG&&currentView==='map')?'flex':'none';if(!isG)deselect();}
+  /* ===== List / Map view system ===== */
+  const listView=document.getElementById('listView'),mapWrapper=document.getElementById('mapWrapper');
+  const lvBody=document.getElementById('lvBody'),lvHead=document.getElementById('lvHead'),lvTitle=document.getElementById('lvTitle'),lvBack=document.getElementById('lvBack');
+  const catNav=document.getElementById('catNav'),mapPanel=document.getElementById('mapPanel'),listPanel=document.getElementById('listPanel');
+  let drillCat=null;
+  function shopLogo(s){const c=CATS[s.category];const grad='linear-gradient(135deg,'+shade(c.color,-8)+','+shade(c.color,-26)+')';
+    return '<div class="shop-logo" style="background:'+grad+'"><svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.95)" stroke-width="1.7">'+CAT_ICON[s.category]+'</svg></div>';}
+  function shade(hex,amt){hex=hex.replace('#','');var r=parseInt(hex.substr(0,2),16),g=parseInt(hex.substr(2,2),16),b=parseInt(hex.substr(4,2),16);
+    r=Math.max(0,Math.min(255,r+amt*2.55|0));g=Math.max(0,Math.min(255,g+amt*2.55|0));b=Math.max(0,Math.min(255,b+amt*2.55|0));
+    return 'rgb('+r+','+g+','+b+')';}
+  function shopCardHTML(s){const c=CATS[s.category];
+    return '<div class="shop-card" data-id="'+s.id+'">'+shopLogo(s)+
+      '<div class="shop-meta"><span class="sm-code">'+s.id+'</span><span class="sm-cat"><span class="sd" style="background:'+c.color+'"></span>'+c.label+'</span></div></div>';}
+  function renderCategoryGrid(){
+    lvHead.classList.remove('drill');lvTitle.innerHTML='Directory <span class="lvc">'+leasingTotal+' leasing units</span>';
+    var html='<div class="cat-grid">';
+    LEASING.forEach(function(cat){if(!present[cat])return;var c=CATS[cat];
+      html+='<div class="cat-card" data-cat="'+cat+'">'+
+        '<div class="cc-top"><div class="cc-ic" style="background:'+shade(c.color,-22)+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">'+CAT_ICON[cat]+'</svg></div>'+
+        '<span class="cc-cnt" style="background:'+shade(c.color,-22)+'">'+present[cat]+'</span></div>'+
+        '<div class="cc-n">'+c.label+'</div><div class="cc-d">'+c.desc+'</div>'+
+        '<div class="cc-go">View units <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div></div>';});
+    html+='</div>';lvBody.innerHTML=html;
+    Array.prototype.forEach.call(lvBody.querySelectorAll('.cat-card'),function(card){card.addEventListener('click',function(){drillCat=card.dataset.cat;renderShopList();});});
+  }
+  function renderShopList(){
+    var c=CATS[drillCat];lvHead.classList.add('drill');
+    lvTitle.innerHTML='<span class="ti" style="background:'+shade(c.color,-22)+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">'+CAT_ICON[drillCat]+'</svg></span>'+c.label+'<span class="lvc">'+present[drillCat]+' units</span>';
+    var list=SHOPS.filter(function(s){return s.category===drillCat;}).sort(function(a,b){return a.id<b.id?-1:1;});
+    lvBody.innerHTML='<div class="shop-grid">'+list.map(shopCardHTML).join('')+'</div>';
+    bindShopCards();
+  }
+  function renderSearchResults(q){
+    lvHead.classList.remove('drill');
+    var list=SHOPS.filter(function(s){if(LEASING.indexOf(s.category)===-1)return false;var hay=(s.id+' '+CATS[s.category].label+' '+CATS[s.category].tag).toLowerCase();return hay.indexOf(q)!==-1;}).sort(function(a,b){return a.id<b.id?-1:1;});
+    lvTitle.innerHTML='Search <span class="lvc">'+list.length+' result'+(list.length===1?'':'s')+'</span>';
+    lvBody.innerHTML=list.length?'<div class="shop-grid">'+list.map(shopCardHTML).join('')+'</div>':'<div class="lv-empty">No leasing units match “'+q+'”.</div>';
+    bindShopCards();
+  }
+  function bindShopCards(){Array.prototype.forEach.call(lvBody.querySelectorAll('.shop-card'),function(card){card.addEventListener('click',function(){var s=SHOPS.find(function(x){return x.id===card.dataset.id;});if(s){setView('map');selectShop(s);setTimeout(function(){focusOn(s);},260);}});});}
+  function renderList(){var q=searchInput.value.trim().toLowerCase();if(q)renderSearchResults(q);else if(drillCat)renderShopList();else renderCategoryGrid();}
+  lvBack.addEventListener('click',function(){drillCat=null;searchInput.value='';searchClear.classList.remove('show');renderCategoryGrid();});
+  /* sidebar category nav (list mode) */
+  LEASING.forEach(function(cat){if(!present[cat])return;var b=document.createElement('button');b.dataset.cat=cat;
+    b.innerHTML='<span class="nsw" style="background:'+CATS[cat].color+'"></span>'+CATS[cat].label+'<span class="ncnt">'+present[cat]+'</span>';
+    b.addEventListener('click',function(){setView('list');drillCat=cat;searchInput.value='';searchClear.classList.remove('show');renderShopList();syncNav();});
+    catNav.appendChild(b);});
+  function syncNav(){Array.prototype.forEach.call(catNav.children,function(b){b.classList.toggle('active',currentView==='list'&&b.dataset.cat===drillCat);});}
+  /* view toggle */
+  function setView(v){currentView=v;
+    document.querySelectorAll('.vt-btn').forEach(function(b){b.classList.toggle('active',b.dataset.view===v);});
+    var isList=(v==='list');
+    listView.classList.toggle('show',isList);
+    mapPanel.classList.toggle('show',!isList);listPanel.classList.toggle('show',isList);
+    mapWrapper.style.display=isList?'none':'';
+    document.querySelector('.floor-tag').style.display=isList?'none':'';
+    document.querySelector('.compass').style.display=isList?'none':'';
+    emptyFloor.classList.toggle('show',!isList&&curFloor!=='G');
+    document.querySelector('.zoom-ctl').style.display=(!isList&&curFloor==='G')?'flex':'none';
+    searchInput.placeholder=isList?'What do you want to find?':'Search unit, code or category';
+    if(isList){deselect();renderList();}syncNav();}
+  document.querySelectorAll('.vt-btn').forEach(function(b){b.addEventListener('click',function(){setView(b.dataset.view);});});
   let toastTimer; function toast(m){const el=document.getElementById('toast');el.textContent=m;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(function(){el.classList.remove('show');},2200);}
-  window.addEventListener('keydown',function(e){if(e.key==='Escape'){deselect();sidebar.classList.remove('open');}});
+  window.addEventListener('keydown',function(e){if(e.key==='Escape'){deselect();}});
   computeBase(); svg.classList.add('ready'); syncChips();
   const sp=new URLSearchParams(location.search).get('shop');
   if(sp){const s=SHOPS.find(function(x){return x.id===sp.toUpperCase();});if(s){selectShop(s);setTimeout(function(){focusOn(s);},300);}}
