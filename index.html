@@ -109,8 +109,8 @@ button{font-family:inherit;}
 .floor-svg .unit.hidden-cat{opacity:.05;pointer-events:none;}
 .floor-svg .unit.match{filter:brightness(1.1) saturate(1.08) drop-shadow(0 0 9px rgba(46,143,207,.75));}
 .floor-svg .wall-layer{pointer-events:none;}
-.floor-svg .wall-side path{fill:none;stroke:#13294a;stroke-width:13;stroke-linejoin:round;stroke-linecap:round;}
-.floor-svg .wall-top path{fill:none;stroke:#cdd9e8;stroke-width:11;stroke-linejoin:round;stroke-linecap:round;}
+.floor-svg .wall-side path{fill:none;stroke-width:6;stroke-linejoin:round;stroke-linecap:round;}
+.floor-svg .wall-top path{fill:none;stroke-width:4.5;stroke-linejoin:round;stroke-linecap:round;}
 #locMarker{pointer-events:none;}
 #locMarker .ring{fill:none;stroke:var(--b-mid);stroke-width:2.5;vector-effect:non-scaling-stroke;transform-box:fill-box;transform-origin:center;animation:pulse 1.8s ease-out infinite;}
 #locMarker .core{fill:var(--b-mid);stroke:#fff;stroke-width:1.5;vector-effect:non-scaling-stroke;}
@@ -610,11 +610,12 @@ button{font-family:inherit;}
     var top=document.createElementNS(NS,'g'); top.setAttribute('class','wall-layer wall-top'); top.id='wallTop';
     SHOPS.forEach(function(s){
       var d=s.el.getAttribute('d'); if(!d) return;
-      var ps=document.createElementNS(NS,'path'); ps.setAttribute('d',d); ps.setAttribute('fill-rule','evenodd'); side.appendChild(ps);
-      var pt=document.createElementNS(NS,'path'); pt.setAttribute('d',d); pt.setAttribute('fill-rule','evenodd'); top.appendChild(pt);
+      var col=CATS[s.category].color;
+      var ps=document.createElementNS(NS,'path'); ps.setAttribute('d',d); ps.setAttribute('fill-rule','evenodd'); ps.setAttribute('stroke',shade(col,-32)); side.appendChild(ps);
+      var pt=document.createElementNS(NS,'path'); pt.setAttribute('d',d); pt.setAttribute('fill-rule','evenodd'); pt.setAttribute('stroke',shade(col,10)); top.appendChild(pt);
     });
     svg.insertBefore(side, marker); svg.insertBefore(top, marker);
-    var EXT=15, KX=20, KY=12, lx=0, ly=0, raf=0;
+    var EXT=8, KX=11, KY=7, lx=0, ly=0, raf=0;
     function apply(){ raf=0; var ox=(-lx*KX).toFixed(1), oy=Math.max(4,EXT-ly*KY).toFixed(1); side.setAttribute('transform','translate('+ox+','+oy+')'); }
     apply();
     var wrap=document.getElementById('canvasWrap');
