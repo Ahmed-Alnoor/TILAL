@@ -99,16 +99,16 @@ button{font-family:inherit;}
 .canvas-wrap::before{content:"";position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);background-size:46px 46px;mask-image:radial-gradient(circle at center,#000,transparent 88%);-webkit-mask-image:radial-gradient(circle at center,#000,transparent 88%);}
 .canvas-wrap::after{content:"";position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 200px -40px rgba(8,22,46,.55);}
 .map-wrapper{position:absolute;inset:0;overflow:hidden;z-index:1;}
-#stage{position:absolute;inset:0;perspective:1700px;perspective-origin:50% 40%;}
-#stage3d{position:absolute;inset:0;transform-style:preserve-3d;transform:rotateX(52deg) scale(1.04);transform-origin:50% 60%;}
+#stage{position:absolute;inset:0;perspective:1650px;perspective-origin:50% 44%;-webkit-mask-image:radial-gradient(140% 118% at 50% 44%,#000 60%,rgba(0,0,0,0) 100%);mask-image:radial-gradient(140% 118% at 50% 44%,#000 60%,rgba(0,0,0,0) 100%);}
+#stage3d{position:absolute;inset:0;transform-style:preserve-3d;transform:rotateX(51deg) scale(1.34) translateY(-5%);transform-origin:50% 50%;}
 #stage3d>svg{position:absolute;inset:0;width:100%;height:100%;}
 #stage3d>svg.ext{pointer-events:none;visibility:visible;}
 .floor-svg{width:100%;height:100%;display:block;touch-action:none;cursor:grab;visibility:hidden;}
 .floor-svg.ready{visibility:visible;}
 .floor-svg.panning{cursor:grabbing;}
 .floor-svg .unit{fill-opacity:1;stroke:none;cursor:pointer;transition:fill .15s ease,opacity .15s ease,filter .15s ease;}
-.floor-svg .unit:hover{filter:brightness(1.09) saturate(1.05) drop-shadow(0 0 7px rgba(46,143,207,.55));}
-.floor-svg .unit.selected{filter:brightness(1.13) saturate(1.1) drop-shadow(0 0 11px rgba(46,143,207,.9));}
+.floor-svg .unit:hover{fill:#ffffff;filter:drop-shadow(0 0 12px rgba(120,195,255,.95)) brightness(1.04);}
+.floor-svg .unit.selected{fill:#ffffff;filter:drop-shadow(0 0 14px rgba(74,163,224,.95));}
 .floor-svg .unit.dim{opacity:.16;}
 .floor-svg .unit.hidden-cat{opacity:.05;pointer-events:none;}
 .floor-svg .unit.match{filter:brightness(1.1) saturate(1.08) drop-shadow(0 0 9px rgba(46,143,207,.75));}
@@ -121,6 +121,10 @@ button{font-family:inherit;}
 .zoom-ctl button{width:44px;height:44px;border:1px solid var(--line);background:rgba(255,255,255,.92);backdrop-filter:blur(8px);color:var(--b-mid);font-size:20px;font-weight:500;cursor:pointer;display:grid;place-items:center;box-shadow:var(--shadow-sm);transition:all .18s;}
 .zoom-ctl button:hover{background:var(--brand);color:#fff;border-color:transparent;}
 .zoom-ctl button svg{width:18px;height:18px;}
+.nav-toggle{position:absolute;top:20px;left:20px;z-index:9;width:44px;height:44px;border:1px solid var(--line);background:rgba(255,255,255,.92);backdrop-filter:blur(8px);color:var(--b-mid);cursor:pointer;display:grid;place-items:center;box-shadow:var(--shadow-sm);transition:all .18s;}
+.nav-toggle:hover{background:var(--brand);color:#fff;border-color:transparent;}
+.nav-toggle svg{width:20px;height:20px;}
+.body.nav-hidden .sidebar{display:none;}
 .floor-tag{position:absolute;left:20px;bottom:20px;z-index:8;padding:10px 16px;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border:1px solid var(--line);font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft);box-shadow:var(--shadow-sm);}
 .floor-tag b{background:var(--brand);-webkit-background-clip:text;background-clip:text;color:transparent;font-family:var(--head);}
 .compass{position:absolute;right:20px;bottom:20px;z-index:8;width:48px;height:48px;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border:1px solid var(--line);box-shadow:var(--shadow-sm);display:grid;place-items:center;}
@@ -136,10 +140,9 @@ button{font-family:inherit;}
 .tooltip .tc{display:flex;align-items:center;gap:7px;font-weight:500;font-size:11px;color:rgba(243,239,227,.72);margin-top:3px;}
 .tooltip .td{width:9px;height:9px;}
 .tooltip .code{font-family:var(--head);letter-spacing:.05em;color:var(--brass-2);}
-.cardback{position:fixed;inset:0;z-index:50;background:rgba(20,30,24,.42);backdrop-filter:blur(3px);opacity:0;pointer-events:none;transition:opacity .3s;}
-.cardback.show{opacity:1;pointer-events:auto;}
-.card{position:fixed;top:50%;left:50%;transform:translate(-50%,-46%) scale(.96);width:404px;max-width:calc(100% - 40px);max-height:88vh;display:flex;flex-direction:column;background:#fff;box-shadow:var(--shadow);z-index:51;overflow:hidden;opacity:0;pointer-events:none;transition:opacity .32s cubic-bezier(.22,1,.36,1),transform .32s cubic-bezier(.22,1,.36,1);}
-.card.open{opacity:1;transform:translate(-50%,-50%) scale(1);pointer-events:auto;}
+.cardback{display:none;}
+.card{position:fixed;top:0;right:0;left:auto;height:100%;transform:translateX(108%);width:404px;max-width:calc(100% - 40px);display:flex;flex-direction:column;background:#fff;box-shadow:-18px 0 50px -24px rgba(8,22,46,.55);z-index:51;overflow:hidden;opacity:0;pointer-events:none;border-left:1px solid var(--line);transition:opacity .3s cubic-bezier(.22,1,.36,1),transform .42s cubic-bezier(.22,1,.36,1);}
+.card.open{opacity:1;transform:translateX(0);pointer-events:auto;}
 .card .hero{position:relative;height:188px;flex:none;background:var(--brand);overflow:hidden;}
 .card .hero img{width:100%;height:100%;object-fit:cover;display:block;transform:scale(1.03);transition:transform .7s ease;}
 .card.open .hero img{transform:scale(1.1);}
@@ -249,11 +252,6 @@ button{font-family:inherit;}
       </div>
       <div class="view-panel show" id="mapPanel">
         <div><div class="sec"><span class="lbl">Categories</span><span class="rule"></span></div><div class="chips" id="chips" style="margin-top:14px"></div></div>
-        <div><div class="sec"><span class="lbl">Legend</span><span class="rule"></span></div><div class="legend" id="legend" style="margin-top:14px"></div></div>
-        <div><div class="sec"><span class="lbl">Overview</span><span class="rule"></span></div>
-          <div class="panel" style="margin-top:14px"><div class="stat-row"><span class="big head" id="statUnits">0</span><span class="lab">Leasing<br/>Units · GF</span></div></div>
-        </div>
-        <div class="side-note">Mapped from the architectural leasing plan. Select any unit to reveal its photography, description, contact and precise location within the mall.</div>
       </div>
       <div class="view-panel" id="listPanel">
         <div><div class="sec"><span class="lbl">Categories</span><span class="rule"></span></div><div class="cat-nav" id="catNav" style="margin-top:14px"></div></div>
@@ -548,6 +546,7 @@ button{font-family:inherit;}
         </div>
         <div id="lvBody"></div>
       </div>
+      <button class="nav-toggle" id="navToggle" aria-label="Toggle menu" title="Hide / show menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
       <div class="zoom-ctl">
         <button id="zoomIn" aria-label="Zoom in">+</button>
         <button id="zoomOut" aria-label="Zoom out">&minus;</button>
@@ -613,7 +612,7 @@ button{font-family:inherit;}
     SHOPS.push({id:el.dataset.id,category:cat,el:el,cx:bb.x+bb.width/2,cy:bb.y+bb.height/2,w:bb.width,h:bb.height});
   });
   const NS3='http://www.w3.org/2000/svg';
-  const EXT_N=8, EXT_H0=14;   // wall layers, and base total height (px) at the fit view; scales with zoom
+  const EXT_N=16, EXT_H0=13;   // wall layers, and base total height (px) at the fit view; scales with zoom
   /* ---- extruded block height: stacked, darkened clones of the units behind the top face ---- */
   (function build3D(){
     var vbAttr=svg.getAttribute('viewBox'), stage=svg.parentNode;
@@ -672,14 +671,14 @@ button{font-family:inherit;}
   const legendEl=document.getElementById('legend'),facLegendEl=document.getElementById('facLegend');
   function legendRow(cat){const row=document.createElement('div');row.className='legend-item';
     row.innerHTML='<span class="legend-sw" style="background:'+CATS[cat].color+'"></span>'+CATS[cat].label+'<span class="sub">'+(present[cat]||0)+'</span>';return row;}
-  LEASING.forEach(function(cat){if(present[cat])legendEl.appendChild(legendRow(cat));});
-  FACILITY.forEach(function(cat){if(present[cat]){legendEl.appendChild(legendRow(cat));facLegendEl.appendChild(legendRow(cat));}});
+  if(legendEl){LEASING.forEach(function(cat){if(present[cat])legendEl.appendChild(legendRow(cat));});}
+  FACILITY.forEach(function(cat){if(present[cat]){if(legendEl)legendEl.appendChild(legendRow(cat));if(facLegendEl)facLegendEl.appendChild(legendRow(cat));}});
   const leasingTotal=LEASING.reduce(function(n,c){return n+(present[c]||0);},0);
-  document.getElementById('statUnits').textContent=leasingTotal;
+  var statUnitsEl=document.getElementById('statUnits');if(statUnitsEl)statUnitsEl.textContent=leasingTotal;
   let baseVB,vb;
   function computeBase(){var pad=Math.max(planW,planH)*0.06;baseVB={x:cMinX-pad,y:cMinY-pad,w:planW+pad*2,h:planH+pad*2};vb=Object.assign({},baseVB);applyVB();}
   function applyVB(){var s=vb.x+' '+vb.y+' '+vb.w+' '+vb.h;for(var i=0;i<LAYERS.length;i++)LAYERS[i].setAttribute('viewBox',s);
-    if(baseVB){var step=EXT_H0/EXT_N*(baseVB.w/vb.w);for(var j=0;j<LAYERS.length;j++){var k=LAYERS[j].dataset.k;if(k)LAYERS[j].style.transform='translateZ(-'+(k*step).toFixed(2)+'px)';}}}
+    if(baseVB){var f=baseVB.w/vb.w;if(f>1.2)f=1.2;if(f<0.55)f=0.55;var step=EXT_H0/EXT_N*f;for(var j=0;j<LAYERS.length;j++){var k=LAYERS[j].dataset.k;if(k)LAYERS[j].style.transform='translateZ(-'+(k*step).toFixed(2)+'px)';}}}
   const MINW=function(){return baseVB.w/6;},MAXW=function(){return baseVB.w/0.7;};
   const mapWrap=document.getElementById('mapWrapper');
   function zoomCenter(fz){const mn=MINW(),mx=MAXW();let nw=vb.w*fz;if(nw<mn)nw=mn;if(nw>mx)nw=mx;const k=nw/vb.w;const cx=vb.x+vb.w/2,cy=vb.y+vb.h/2;vb.w=nw;vb.h=vb.h*k;vb.x=cx-vb.w/2;vb.y=cy-vb.h/2;applyVB();}
@@ -708,6 +707,7 @@ button{font-family:inherit;}
   document.getElementById('zoomIn').addEventListener('click',function(){zoomCenter(0.78);});
   document.getElementById('zoomOut').addEventListener('click',function(){zoomCenter(1.28);});
   document.getElementById('zoomReset').addEventListener('click',resetView);
+  document.getElementById('navToggle').addEventListener('click',function(){document.querySelector('.body').classList.toggle('nav-hidden');});
   const card=document.getElementById('card'),cardBack=document.getElementById('cardBack');let selected=null;
   function icon(p){return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">'+p+'</svg>';}
   const IC_FLOOR='<path d="M3 21h18M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/>';
