@@ -113,7 +113,6 @@ button{font-family:inherit;}
 .floor-svg .unit.hidden-cat{opacity:.05;pointer-events:none;}
 .floor-svg .unit.match{filter:brightness(1.1) saturate(1.08) drop-shadow(0 0 9px rgba(46,143,207,.75));}
 .floor-svg .facic{pointer-events:none;}
-.floor-svg .mall-base{pointer-events:none;}
 #locMarker{pointer-events:none;}
 #locMarker .ring{fill:none;stroke:var(--b-mid);stroke-width:2.5;vector-effect:non-scaling-stroke;transform-box:fill-box;transform-origin:center;animation:pulse 1.8s ease-out infinite;}
 #locMarker .core{fill:var(--b-mid);stroke:#fff;stroke-width:1.5;vector-effect:non-scaling-stroke;}
@@ -610,33 +609,28 @@ button{font-family:inherit;}
     SHOPS.push({id:el.dataset.id,category:cat,el:el,cx:bb.x+bb.width/2,cy:bb.y+bb.height/2,w:bb.width,h:bb.height});
   });
   const NS3='http://www.w3.org/2000/svg';
-  /* ---- extruded block height (stacked dark clones) + half-circle mall floor at the bottom ---- */
+  const EXT_N=8, EXT_H0=14;   // wall layers, and base total height (px) at the fit view; scales with zoom
+  /* ---- extruded block height: stacked, darkened clones of the units behind the top face ---- */
   (function build3D(){
     var vbAttr=svg.getAttribute('viewBox'), stage=svg.parentNode;
-    var units=svg.querySelectorAll('.unit'), N=8, STEP=5;
-    function layer(z){var L=document.createElementNS(NS3,'svg');L.setAttribute('viewBox',vbAttr);L.setAttribute('class','ext');L.style.transform='translateZ(-'+z+'px)';stage.insertBefore(L,svg);LAYERS.push(L);return L;}
-    // ground floor: a perfect half-circle footprint, the deepest layer
-    var floor=layer((N+1)*STEP);
-    var pW=cMaxX-cMinX, pH=cMaxY-cMinY;
-    var cx=(cMinX+cMaxX)/2, cyc=cMaxY+Math.max(pW,pH)*0.03, r=Math.hypot(pW/2,pH)*1.08;
-    var disc=document.createElementNS(NS3,'path');
-    disc.setAttribute('d','M '+(cx-r)+' '+cyc+' A '+r+' '+r+' 0 0 0 '+(cx+r)+' '+cyc+' Z');
-    disc.setAttribute('fill','#ffffff'); disc.setAttribute('stroke','rgba(40,60,90,.12)'); disc.setAttribute('stroke-width','4');
-    floor.appendChild(disc);
-    // extruded side walls: darkened clones of every unit, stacked from the floor up to the roof
-    for(var k=N;k>=1;k--){
-      var L=layer(k*STEP);
+    var units=svg.querySelectorAll('.unit'), step=EXT_H0/EXT_N;
+    for(var k=EXT_N;k>=1;k--){
+      var L=document.createElementNS(NS3,'svg');
+      L.setAttribute('viewBox',vbAttr); L.setAttribute('class','ext');
+      L.dataset.k=k; L.style.transform='translateZ(-'+(k*step)+'px)';
       Array.prototype.forEach.call(units,function(p){
         var c=p.cloneNode(false);
         c.removeAttribute('class'); c.removeAttribute('data-id'); c.removeAttribute('data-cat');
         c.setAttribute('fill', shade(p.getAttribute('fill'), -30));
         L.appendChild(c);
       });
+      stage.insertBefore(L, svg);
+      LAYERS.push(L);
     }
   })();
   /* ---- small facility icons printed on the roof of toilet / customer-service blocks ---- */
   (function facilityIcons(){
-    var S=95;
+    var S=42;
     SHOPS.forEach(function(s){
       if(s.category!=='toilet' && s.category!=='service') return;
       var g=document.createElementNS(NS3,'g');
@@ -680,7 +674,8 @@ button{font-family:inherit;}
   document.getElementById('statUnits').textContent=leasingTotal;
   let baseVB,vb;
   function computeBase(){var pad=Math.max(planW,planH)*0.06;baseVB={x:cMinX-pad,y:cMinY-pad,w:planW+pad*2,h:planH+pad*2};vb=Object.assign({},baseVB);applyVB();}
-  function applyVB(){var s=vb.x+' '+vb.y+' '+vb.w+' '+vb.h;for(var i=0;i<LAYERS.length;i++)LAYERS[i].setAttribute('viewBox',s);}
+  function applyVB(){var s=vb.x+' '+vb.y+' '+vb.w+' '+vb.h;for(var i=0;i<LAYERS.length;i++)LAYERS[i].setAttribute('viewBox',s);
+    if(baseVB){var step=EXT_H0/EXT_N*(baseVB.w/vb.w);for(var j=0;j<LAYERS.length;j++){var k=LAYERS[j].dataset.k;if(k)LAYERS[j].style.transform='translateZ(-'+(k*step).toFixed(2)+'px)';}}}
   const MINW=function(){return baseVB.w/6;},MAXW=function(){return baseVB.w/0.7;};
   const mapWrap=document.getElementById('mapWrapper');
   function zoomCenter(fz){const mn=MINW(),mx=MAXW();let nw=vb.w*fz;if(nw<mn)nw=mn;if(nw>mx)nw=mx;const k=nw/vb.w;const cx=vb.x+vb.w/2,cy=vb.y+vb.h/2;vb.w=nw;vb.h=vb.h*k;vb.x=cx-vb.w/2;vb.y=cy-vb.h/2;applyVB();}
