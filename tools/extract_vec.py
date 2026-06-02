@@ -131,6 +131,40 @@ def slug(name):
     return '-'.join(s.split())
 
 
+def extract_carpark(path, ymin=715, ymax=898, xmin=560, xmax=2800):
+    """Trace the real carpark band (black linework only) that sits above the
+    leasing plan, returning one combined SVG path (integer coords) + bbox.
+    The diagonal hatching / grid (light grey) is skipped."""
+    pg = fitz.open(path)[0]
+    M = pg.rotation_matrix
+    parts = []
+    xs = []
+    ys = []
+
+    def keep(p):
+        return xmin < p.x < xmax and ymin < p.y < ymax
+
+    for d in pg.get_drawings(extended=True):
+        if d.get('type') != 's':
+            continue
+        col = d.get('color') or (0, 0, 0)
+        if hexof(col) != '#000000':
+            continue
+        for it in d['items']:
+            if it[0] == 'l':
+                p1, p2 = it[1] * M, it[2] * M
+                if keep(p1) and keep(p2):
+                    parts.append('M%d %d L%d %d' % (p1.x, p1.y, p2.x, p2.y))
+                    xs += [p1.x, p2.x]; ys += [p1.y, p2.y]
+            elif it[0] == 're':
+                r = it[1] * M
+                if ymin < r.y0 < ymax and ymin < r.y1 < ymax:
+                    parts.append('M%d %d H%d V%d H%d Z' % (r.x0, r.y0, r.x1, r.y1, r.x0))
+                    xs += [r.x0, r.x1]; ys += [r.y0, r.y1]
+    bbox = [min(xs), min(ys), max(xs), max(ys)]
+    return ''.join(parts), bbox
+
+
 if __name__ == '__main__':
     import json
     from collections import Counter
@@ -151,7 +185,10 @@ if __name__ == '__main__':
                          'fill-rule="evenodd" d="%s"/>' % (tag, j + 1, sl, hx, d))
         out[tag] = paths
         open('/tmp/floor_%s.txt' % tag, 'w').write('\n'.join(paths))
+    # the carpark is the same on every floor — trace it once (from Level 1)
+    cpd, cpbb = extract_carpark('TM-ARC-ML-DR-AR-1F-7030.pdf')
+    json.dump({'d': cpd, 'bbox': cpbb}, open('/tmp/carpark.json', 'w'))
+    print('carpark: %d chars, bbox %s' % (len(cpd), [round(v) for v in cpbb]))
     json.dump(out, open('/tmp/floors_vec.json', 'w'))
     json.dump(cats, open('/tmp/cats_vec.json', 'w'))
-    print('\ncategories:', json.dumps(cats, indent=0))
-    print('wrote /tmp/floor_F1.txt, /tmp/floor_BL.txt, /tmp/floors_vec.json, /tmp/cats_vec.json')
+    print('wrote floor_F1/BL.txt, carpark.json, floors_vec.json, cats_vec.json')
