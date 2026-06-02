@@ -95,10 +95,14 @@ button{font-family:inherit;}
 .stat-row .lab{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:600;text-align:right;}
 .side-note{margin-top:auto;font-size:11.5px;line-height:1.7;color:var(--ink-soft);padding:15px 16px;background:var(--soft);}
 
-.canvas-wrap{flex:1;position:relative;min-width:0;overflow:hidden;background:radial-gradient(120% 100% at 50% 6%,#2e6fb0 0%,#1c4e8f 55%,#143a6b 100%);}
+.canvas-wrap{flex:1;position:relative;min-width:0;overflow:hidden;background:radial-gradient(120% 100% at 50% 22%,#f5f7fa 0%,#e7ebf1 58%,#d6dce6 100%);}
 .canvas-wrap::before{content:"";position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);background-size:46px 46px;mask-image:radial-gradient(circle at center,#000,transparent 88%);-webkit-mask-image:radial-gradient(circle at center,#000,transparent 88%);}
 .canvas-wrap::after{content:"";position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 200px -40px rgba(8,22,46,.55);}
 .map-wrapper{position:absolute;inset:0;overflow:hidden;z-index:1;}
+#stage{position:absolute;inset:0;perspective:1700px;perspective-origin:50% 40%;}
+#stage3d{position:absolute;inset:0;transform-style:preserve-3d;transform:rotateX(52deg) scale(1.04);transform-origin:50% 60%;}
+#stage3d>svg{position:absolute;inset:0;width:100%;height:100%;}
+#stage3d>svg.ext{pointer-events:none;visibility:visible;}
 .floor-svg{width:100%;height:100%;display:block;touch-action:none;cursor:grab;visibility:hidden;}
 .floor-svg.ready{visibility:visible;}
 .floor-svg.panning{cursor:grabbing;}
@@ -108,9 +112,8 @@ button{font-family:inherit;}
 .floor-svg .unit.dim{opacity:.16;}
 .floor-svg .unit.hidden-cat{opacity:.05;pointer-events:none;}
 .floor-svg .unit.match{filter:brightness(1.1) saturate(1.08) drop-shadow(0 0 9px rgba(46,143,207,.75));}
-.floor-svg .wall-layer{pointer-events:none;}
-.floor-svg .wall-side path{fill:none;stroke-width:6;stroke-linejoin:round;stroke-linecap:round;}
-.floor-svg .wall-top path{fill:none;stroke-width:4.5;stroke-linejoin:round;stroke-linecap:round;}
+.floor-svg .facic{pointer-events:none;}
+.floor-svg .mall-base{pointer-events:none;}
 #locMarker{pointer-events:none;}
 #locMarker .ring{fill:none;stroke:var(--b-mid);stroke-width:2.5;vector-effect:non-scaling-stroke;transform-box:fill-box;transform-origin:center;animation:pulse 1.8s ease-out infinite;}
 #locMarker .core{fill:var(--b-mid);stroke:#fff;stroke-width:1.5;vector-effect:non-scaling-stroke;}
@@ -260,6 +263,7 @@ button{font-family:inherit;}
     </aside>
     <main class="canvas-wrap" id="canvasWrap">
       <div class="map-wrapper" id="mapWrapper">
+<div id="stage"><div id="stage3d">
 <svg id="floorSvg" class="floor-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3370 2384">
 <defs>
   <filter id="tile3d" x="-25%" y="-25%" width="150%" height="160%">
@@ -528,6 +532,7 @@ button{font-family:inherit;}
 <path class="unit" data-id="G0257" data-cat="kiosk" fill="#9fff9f" fill-rule="evenodd" d="M1672.56,1188.00 L1668.72,1188.24 L1669.20,1188.48 L1672.32,1191.60 L1672.32,1192.08 L1672.56,1192.08 L1672.80,1192.32 L1672.80,1192.80 L1673.04,1192.80 L1673.52,1193.28 L1673.52,1193.76 L1673.76,1193.76 L1673.76,1194.24 L1674.00,1194.24 L1674.00,1194.72 L1674.24,1194.72 L1674.24,1195.20 L1674.48,1195.20 L1674.48,1195.68 L1674.72,1195.68 L1674.72,1196.16 L1674.96,1196.16 L1674.96,1196.64 L1675.20,1196.64 L1675.20,1197.12 L1675.44,1197.12 L1675.44,1197.60 L1675.68,1197.60 L1675.68,1198.56 L1675.92,1198.56 L1675.92,1199.28 L1676.16,1199.28 L1676.16,1200.24 L1676.40,1200.24 L1676.16,1205.52 L1675.92,1207.20 L1675.44,1209.12 L1675.20,1209.84 L1674.96,1210.80 L1674.72,1211.52 L1674.00,1212.96 L1673.76,1213.20 L1673.52,1213.68 L1673.28,1213.92 L1673.04,1214.40 L1672.56,1214.88 L1672.32,1215.36 L1669.44,1218.24 L1668.96,1218.48 L1668.72,1218.72 L1674.96,1218.96 L1680.96,1219.20 L1683.84,1219.44 L1683.84,1219.20 L1692.24,1218.96 L1699.20,1218.72 L1698.24,1217.76 L1697.76,1217.52 L1696.32,1216.08 L1696.08,1216.08 L1696.08,1215.60 L1695.36,1214.88 L1695.12,1214.88 L1695.12,1214.40 L1694.88,1214.16 L1694.64,1214.16 L1694.64,1213.68 L1694.40,1213.44 L1694.16,1213.44 L1694.16,1212.72 L1693.92,1212.72 L1693.92,1212.24 L1693.68,1212.24 L1693.68,1211.76 L1693.44,1211.76 L1693.44,1211.04 L1693.20,1211.04 L1693.20,1210.56 L1692.96,1210.56 L1692.96,1210.08 L1692.72,1210.08 L1692.72,1209.60 L1692.48,1209.60 L1692.48,1208.88 L1692.24,1208.88 L1692.24,1208.40 L1692.00,1208.40 L1692.00,1206.72 L1691.76,1206.72 L1691.76,1204.32 L1691.52,1204.32 L1691.52,1202.40 L1691.76,1200.96 L1692.00,1199.28 L1692.48,1197.84 L1692.72,1196.88 L1693.68,1194.96 L1693.92,1194.24 L1694.16,1194.00 L1694.40,1193.52 L1694.64,1193.28 L1694.88,1192.80 L1695.12,1192.56 L1695.36,1192.08 L1695.60,1191.84 L1695.84,1191.36 L1697.04,1190.16 L1697.52,1189.92 L1698.72,1188.72 L1698.96,1188.24 L1692.24,1188.00 L1672.56,1188.00"/>
 <g id="locMarker" style="display:none"><circle class="ring" cx="0" cy="0" r="26"/><circle class="core" cx="0" cy="0" r="9"/></g>
 </svg>
+</div></div>
       </div>
       <div class="empty-floor" id="emptyFloor">
         <div class="ef-icon"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/></svg></div>
@@ -593,6 +598,7 @@ button{font-family:inherit;}
   const CONTACT={phone:"+971 123 456 789",email:"hello@tilalgrandmall.ae",hours:"10:00 — 22:00"};
   const svg=document.getElementById('floorSvg');
   const marker=document.getElementById('locMarker');
+  const LAYERS=[svg];
   const SHOPS=[];
   let cMinX=1e9,cMinY=1e9,cMaxX=-1e9,cMaxY=-1e9;
   Array.prototype.slice.call(svg.querySelectorAll('.unit')).forEach(function(el){
@@ -603,23 +609,43 @@ button{font-family:inherit;}
     el.setAttribute('fill', c.color);
     SHOPS.push({id:el.dataset.id,category:cat,el:el,cx:bb.x+bb.width/2,cy:bb.y+bb.height/2,w:bb.width,h:bb.height});
   });
-  /* ---- extruded 3D walls: dark offset side + light top, drawn above the colored floors ---- */
-  (function buildWalls(){
-    var NS='http://www.w3.org/2000/svg';
-    var side=document.createElementNS(NS,'g'); side.setAttribute('class','wall-layer wall-side'); side.id='wallSide';
-    var top=document.createElementNS(NS,'g'); top.setAttribute('class','wall-layer wall-top'); top.id='wallTop';
+  const NS3='http://www.w3.org/2000/svg';
+  /* ---- extruded block height (stacked dark clones) + half-circle mall floor at the bottom ---- */
+  (function build3D(){
+    var vbAttr=svg.getAttribute('viewBox'), stage=svg.parentNode;
+    var units=svg.querySelectorAll('.unit'), N=8, STEP=5;
+    function layer(z){var L=document.createElementNS(NS3,'svg');L.setAttribute('viewBox',vbAttr);L.setAttribute('class','ext');L.style.transform='translateZ(-'+z+'px)';stage.insertBefore(L,svg);LAYERS.push(L);return L;}
+    // ground floor: a perfect half-circle footprint, the deepest layer
+    var floor=layer((N+1)*STEP);
+    var pW=cMaxX-cMinX, pH=cMaxY-cMinY;
+    var cx=(cMinX+cMaxX)/2, cyc=cMaxY+Math.max(pW,pH)*0.03, r=Math.hypot(pW/2,pH)*1.08;
+    var disc=document.createElementNS(NS3,'path');
+    disc.setAttribute('d','M '+(cx-r)+' '+cyc+' A '+r+' '+r+' 0 0 0 '+(cx+r)+' '+cyc+' Z');
+    disc.setAttribute('fill','#ffffff'); disc.setAttribute('stroke','rgba(40,60,90,.12)'); disc.setAttribute('stroke-width','4');
+    floor.appendChild(disc);
+    // extruded side walls: darkened clones of every unit, stacked from the floor up to the roof
+    for(var k=N;k>=1;k--){
+      var L=layer(k*STEP);
+      Array.prototype.forEach.call(units,function(p){
+        var c=p.cloneNode(false);
+        c.removeAttribute('class'); c.removeAttribute('data-id'); c.removeAttribute('data-cat');
+        c.setAttribute('fill', shade(p.getAttribute('fill'), -30));
+        L.appendChild(c);
+      });
+    }
+  })();
+  /* ---- small facility icons printed on the roof of toilet / customer-service blocks ---- */
+  (function facilityIcons(){
+    var S=95;
     SHOPS.forEach(function(s){
-      var d=s.el.getAttribute('d'); if(!d) return;
-      var col=CATS[s.category].color;
-      var ps=document.createElementNS(NS,'path'); ps.setAttribute('d',d); ps.setAttribute('fill-rule','evenodd'); ps.setAttribute('stroke',shade(col,-32)); side.appendChild(ps);
-      var pt=document.createElementNS(NS,'path'); pt.setAttribute('d',d); pt.setAttribute('fill-rule','evenodd'); pt.setAttribute('stroke',shade(col,10)); top.appendChild(pt);
+      if(s.category!=='toilet' && s.category!=='service') return;
+      var g=document.createElementNS(NS3,'g');
+      g.setAttribute('class','facic');
+      g.setAttribute('transform','translate('+(s.cx-S/2)+','+(s.cy-S/2)+') scale('+(S/24)+')');
+      g.innerHTML='<circle cx="12" cy="12" r="13" fill="#f5871f" stroke="#fff" stroke-width="1.4"/>'
+        +'<g fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+CAT_ICON[s.category]+'</g>';
+      svg.insertBefore(g, marker);
     });
-    svg.insertBefore(side, marker); svg.insertBefore(top, marker);
-    var EXT=8, KX=11, KY=7, lx=0, ly=0, raf=0;
-    function apply(){ raf=0; var ox=(-lx*KX).toFixed(1), oy=Math.max(4,EXT-ly*KY).toFixed(1); side.setAttribute('transform','translate('+ox+','+oy+')'); }
-    apply();
-    var wrap=document.getElementById('canvasWrap');
-    wrap.addEventListener('mousemove',function(e){ var r=wrap.getBoundingClientRect(); lx=(e.clientX-r.left)/r.width-0.5; ly=(e.clientY-r.top)/r.height-0.5; if(!raf) raf=requestAnimationFrame(apply); });
   })();
   const planW=cMaxX-cMinX,planH=cMaxY-cMinY,ctrX=(cMinX+cMaxX)/2;
   function locationOf(s){const dx=s.cx-ctrX,ry=(s.cy-cMinY)/planH;
@@ -654,22 +680,21 @@ button{font-family:inherit;}
   document.getElementById('statUnits').textContent=leasingTotal;
   let baseVB,vb;
   function computeBase(){var pad=Math.max(planW,planH)*0.06;baseVB={x:cMinX-pad,y:cMinY-pad,w:planW+pad*2,h:planH+pad*2};vb=Object.assign({},baseVB);applyVB();}
-  function applyVB(){svg.setAttribute('viewBox',vb.x+' '+vb.y+' '+vb.w+' '+vb.h);}
+  function applyVB(){var s=vb.x+' '+vb.y+' '+vb.w+' '+vb.h;for(var i=0;i<LAYERS.length;i++)LAYERS[i].setAttribute('viewBox',s);}
   const MINW=function(){return baseVB.w/6;},MAXW=function(){return baseVB.w/0.7;};
-  function clientToVB(cx,cy){const r=svg.getBoundingClientRect();return{x:vb.x+(cx-r.left)/r.width*vb.w,y:vb.y+(cy-r.top)/r.height*vb.h};}
-  function zoomAt(cx,cy,fz){const p=clientToVB(cx,cy);let nw=vb.w*fz;const mn=MINW(),mx=MAXW();if(nw<mn){fz=mn/vb.w;nw=mn;}if(nw>mx){fz=mx/vb.w;nw=mx;}vb.x=p.x-(p.x-vb.x)*fz;vb.y=p.y-(p.y-vb.y)*fz;vb.w=nw;vb.h=vb.h*fz;applyVB();}
-  function zoomCenter(fz){const r=svg.getBoundingClientRect();zoomAt(r.left+r.width/2,r.top+r.height/2,fz);}
+  const mapWrap=document.getElementById('mapWrapper');
+  function zoomCenter(fz){const mn=MINW(),mx=MAXW();let nw=vb.w*fz;if(nw<mn)nw=mn;if(nw>mx)nw=mx;const k=nw/vb.w;const cx=vb.x+vb.w/2,cy=vb.y+vb.h/2;vb.w=nw;vb.h=vb.h*k;vb.x=cx-vb.w/2;vb.y=cy-vb.h/2;applyVB();}
   function resetView(){animateVB(Object.assign({},baseVB));}
   function focusOn(s){const bb=s.el.getBBox();const m=Math.max(bb.width,bb.height)*1.9+150;let nv={x:bb.x+bb.width/2-m,y:bb.y+bb.height/2-m,w:m*2,h:m*2};if(nv.w<MINW()){var fz=MINW()/nv.w;nv.w=MINW();nv.h*=fz;}animateVB(nv);}
   function animateVB(target){const from=Object.assign({},vb);const t0=performance.now(),dur=540;
     function step(t){let k=Math.min(1,(t-t0)/dur);k=k<.5?4*k*k*k:1-Math.pow(-2*k+2,3)/2;
       vb={x:from.x+(target.x-from.x)*k,y:from.y+(target.y-from.y)*k,w:from.w+(target.w-from.w)*k,h:from.h+(target.h-from.h)*k};applyVB();if(k<1)requestAnimationFrame(step);}requestAnimationFrame(step);}
-  svg.addEventListener('wheel',function(e){e.preventDefault();zoomAt(e.clientX,e.clientY,e.deltaY<0?0.86:1.16);},{passive:false});
+  svg.addEventListener('wheel',function(e){e.preventDefault();zoomCenter(e.deltaY<0?0.86:1.16);},{passive:false});
   let pdown=null,didPan=false;
   svg.addEventListener('pointerdown',function(e){pdown={x:e.clientX,y:e.clientY,vbx:vb.x,vby:vb.y};didPan=false;});
   svg.addEventListener('pointermove',function(e){
     if(pdown){const dx=e.clientX-pdown.x,dy=e.clientY-pdown.y;if(!didPan&&Math.hypot(dx,dy)>5){didPan=true;svg.classList.add('panning');}
-      if(didPan){const r=svg.getBoundingClientRect();vb.x=pdown.vbx-dx*(vb.w/r.width);vb.y=pdown.vby-dy*(vb.h/r.height);applyVB();}}
+      if(didPan){const r=mapWrap.getBoundingClientRect();vb.x=pdown.vbx-dx*(vb.w/r.width);vb.y=pdown.vby-dy*(vb.h/r.height);applyVB();}}
   });
   function endPan(){pdown=null;svg.classList.remove('panning');}
   svg.addEventListener('pointerup',function(e){var tap=pdown&&!didPan;endPan();if(tap){var el=document.elementFromPoint(e.clientX,e.clientY);if(el&&el.classList&&el.classList.contains('unit')){var s=SHOPS.find(function(x){return x.el===el;});if(s)selectShop(s);}}});
@@ -677,7 +702,7 @@ button{font-family:inherit;}
   const ptrs=new Map();let pinch=0;
   svg.addEventListener('pointerdown',function(e){ptrs.set(e.pointerId,e);});
   svg.addEventListener('pointermove',function(e){if(!ptrs.has(e.pointerId))return;ptrs.set(e.pointerId,e);
-    if(ptrs.size===2){const p=[...ptrs.values()];const d=Math.hypot(p[0].clientX-p[1].clientX,p[0].clientY-p[1].clientY);if(pinch){zoomAt((p[0].clientX+p[1].clientX)/2,(p[0].clientY+p[1].clientY)/2,pinch/d);}pinch=d;didPan=true;}});
+    if(ptrs.size===2){const p=[...ptrs.values()];const d=Math.hypot(p[0].clientX-p[1].clientX,p[0].clientY-p[1].clientY);if(pinch){zoomCenter(pinch/d);}pinch=d;didPan=true;}});
   function clrPtr(e){ptrs.delete(e.pointerId);if(ptrs.size<2)pinch=0;}
   svg.addEventListener('pointerup',clrPtr); svg.addEventListener('pointercancel',clrPtr);
   svg.addEventListener('dblclick',function(e){e.preventDefault();resetView();});
