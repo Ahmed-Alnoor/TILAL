@@ -77,7 +77,8 @@ def extract(path, palette):
         f = d.get('fill')
         if f is None:
             continue
-        cat = palette.get(hexof(f))
+        hx = hexof(f)
+        cat = palette.get(hx)
         if cat is None:
             continue
         r = d['rect']
@@ -96,13 +97,45 @@ def extract(path, palette):
         # keep only the leasing plan; drop legend swatches, title block, key plans
         if not (500 < cx < 2920 and 855 < cy < 1740):
             continue
-        rooms.append((cat, hexof(f), d_attr, abs(r.width * r.height), cx, cy))
+        # disambiguate the colour-collision groups by the room's printed label
+        if hx in ('#e4c9c9', '#f7ece8'):
+            txt = pg.get_textbox(r).upper()
+            cat = split_food(hx, txt)
+        rooms.append((cat, hx, d_attr, abs(r.width * r.height), cx, cy))
     return rooms
 
 
+def split_food(hx, txt):
+    """#e4c9c9 = FC KITCHEN / FOOD COURT STALL / FOOD COURT (same fill);
+       #f7ece8 = FV KITCHEN / FOOD VILLAGE STALL / FOOD VILLAGE (same fill).
+       Split by the function name printed inside the room."""
+    if hx == '#e4c9c9':
+        if 'KITCHEN' in txt or 'FC-FF' in txt:
+            return 'FC KITCHEN'
+        if 'STALL' in txt:
+            return 'FOOD COURT STALL'
+        if 'FOOD COURT' in txt:
+            return 'FOOD COURT'
+        return 'FC KITCHEN'
+    else:
+        if 'KITCHEN' in txt or 'FV-FF' in txt:
+            return 'FV KITCHEN'
+        if 'STALL' in txt:
+            return 'FOOD VILLAGE STALL'
+        return 'FOOD VILLAGE'
+
+
+
+def slug(name):
+    s = name.lower().replace('&', 'n').replace('/', ' ').replace('.', '')
+    return '-'.join(s.split())
+
 
 if __name__ == '__main__':
+    import json
     from collections import Counter
+    out = {}
+    cats = {}
     for path, pal, tag in [('TM-ARC-ML-DR-AR-1F-7030.pdf', PAL_F1, 'F1'),
                            ('TM-ARC-ML-DR-AR-BL-7010.pdf', PAL_BL, 'BL')]:
         rooms = extract(path, pal)
@@ -110,3 +143,15 @@ if __name__ == '__main__':
         print('%s: %d rooms' % (tag, len(rooms)))
         for k, v in c.most_common():
             print('   %-24s %d' % (k, v))
+        paths = []
+        for j, (cat, hx, d, a, cx, cy) in enumerate(rooms):
+            sl = slug(cat)
+            cats[sl] = {'label': cat, 'color': hx}
+            paths.append('<path class="unit" data-id="%s%04d" data-cat="%s" fill="%s" '
+                         'fill-rule="evenodd" d="%s"/>' % (tag, j + 1, sl, hx, d))
+        out[tag] = paths
+        open('/tmp/floor_%s.txt' % tag, 'w').write('\n'.join(paths))
+    json.dump(out, open('/tmp/floors_vec.json', 'w'))
+    json.dump(cats, open('/tmp/cats_vec.json', 'w'))
+    print('\ncategories:', json.dumps(cats, indent=0))
+    print('wrote /tmp/floor_F1.txt, /tmp/floor_BL.txt, /tmp/floors_vec.json, /tmp/cats_vec.json')
