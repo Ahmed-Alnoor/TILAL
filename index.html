@@ -115,8 +115,8 @@ button{font-family:inherit;}
 .canvas-wrap::before{content:"";position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px);background-size:48px 48px;mask-image:radial-gradient(circle at 50% 46%,#000 35%,transparent 82%);-webkit-mask-image:radial-gradient(circle at 50% 46%,#000 35%,transparent 82%);}
 .canvas-wrap::after{content:"";position:absolute;inset:0;pointer-events:none;}
 .map-wrapper{position:absolute;inset:0;overflow:hidden;z-index:1;}
-#stage{position:absolute;inset:0;perspective:2000px;perspective-origin:50% 50%;}
-#stage3d{position:absolute;inset:0;transform-style:preserve-3d;transform:rotateX(44deg) scale(1.08) translateY(3%);transform-origin:50% 50%;}
+#stage{position:absolute;inset:0;perspective:2200px;perspective-origin:50% 60%;}
+#stage3d{position:absolute;inset:0;transform-style:preserve-3d;transform:rotateX(40deg) scale(0.92) translateY(9%);transform-origin:50% 50%;}
 #stage3d>svg{position:absolute;inset:0;width:100%;height:100%;}
 #stage3d>svg.ext{pointer-events:none;visibility:visible;}
 .floor-svg{width:100%;height:100%;display:block;touch-action:none;cursor:grab;visibility:hidden;}
@@ -251,6 +251,12 @@ button{font-family:inherit;}
 @media (max-width:1100px){.kicker{display:none;}}
 @media (max-width:860px){.header{height:64px;padding:0 14px;}.logo-mark .lm-svg{height:24px;}.logo-mark .lm-sub .tx{font-size:9px;letter-spacing:.3em;}.logo-mark .lm-sub .ln{width:18px;}.card{width:calc(100% - 28px);}.floors .floor-tab{padding:9px 12px;}}
 
+/* ===== white corner logo (top-right) ===== */
+.corner-logo{position:absolute;top:18px;right:24px;z-index:26;display:flex;flex-direction:column;align-items:flex-end;line-height:1;user-select:none;pointer-events:none;filter:drop-shadow(0 2px 8px rgba(0,0,0,.45));}
+.corner-logo .cl-svg{height:30px;display:block;}
+.corner-logo .cl-sub{display:flex;align-items:center;gap:8px;margin-top:7px;font-family:var(--head);font-weight:500;font-size:10px;letter-spacing:.4em;color:#fff;padding-left:.4em;}
+.corner-logo .cl-sub .ln{width:22px;height:1.4px;background:#fff;opacity:.85;}
+@media (max-width:860px){.corner-logo .cl-svg{height:22px;}.corner-logo .cl-sub{font-size:8.5px;letter-spacing:.3em;}}
 /* ===== Modern refinements — soft corners, cleaner glass controls ===== */
 /* headerless: floating top control cluster */
 .topbar{position:absolute;top:16px;left:50%;transform:translateX(-50%);z-index:26;display:flex;align-items:center;gap:12px;}
@@ -309,6 +315,16 @@ button{font-family:inherit;}
         <button class="floor-tab active" data-floor="G">Ground</button>
         <button class="floor-tab" data-floor="F1">Level 1</button>
       </div>
+    </div>
+    <div class="corner-logo" aria-label="Tilal Grand Mall">
+      <svg class="cl-svg" viewBox="0 0 400 100" fill="#ffffff">
+        <rect x="0" y="0" width="80" height="20"/><rect x="30" y="0" width="20" height="100"/>
+        <rect x="100" y="0" width="20" height="100"/>
+        <rect x="140" y="0" width="20" height="100"/><rect x="140" y="80" width="64" height="20"/>
+        <path d="M224,100 L270,0 L316,100 L296,100 L270,40 L244,100 Z"/>
+        <rect x="336" y="0" width="20" height="100"/><rect x="336" y="80" width="64" height="20"/>
+      </svg>
+      <span class="cl-sub"><span class="ln"></span>GRAND MALL<span class="ln"></span></span>
     </div>
     <aside class="sidebar" id="sidebar">
       <div class="view-toggle">
@@ -1661,7 +1677,7 @@ button{font-family:inherit;}
   const marker=document.getElementById('locMarker');
   const stage3d=svg.parentNode;
   const NS3='http://www.w3.org/2000/svg';
-  const EXT_N=16, EXT_H0=13;   // wall layers, and base extrusion height (px) at the fit view
+  const EXT_N=5, EXT_H0=13;   // wall layers, and base extrusion height (px) at the fit view
   function shade(hex,amt){
     if(hex.charAt(0)!=='#'){return hex;}
     hex=hex.replace('#','');var r=parseInt(hex.substr(0,2),16),g=parseInt(hex.substr(2,2),16),b=parseInt(hex.substr(4,2),16);
@@ -1913,8 +1929,11 @@ button{font-family:inherit;}
   function computeBase(){var pad=Math.max(planW,planH)*0.14;   /* room for the gray ground apron */
     var bw=cMaxX-cMinX, bh=cMaxY-cMinY;
     baseVB={x:cMinX-pad,y:cMinY-pad,w:bw+pad*2,h:bh+pad*2};vb=Object.assign({},baseVB);baseVBready=true;applyVB();}
-  function applyVB(){var s=vb.x+' '+vb.y+' '+vb.w+' '+vb.h;for(var i=0;i<LAYERS.length;i++)LAYERS[i].setAttribute('viewBox',s);
-    if(baseVB){var f=baseVB.w/vb.w;if(f>1.2)f=1.2;if(f<0.55)f=0.55;var step=EXT_H0/EXT_N*f;for(var j=0;j<LAYERS.length;j++){var k=LAYERS[j].dataset.k;if(k)LAYERS[j].style.transform='translateZ(-'+(k*step).toFixed(2)+'px)';}}}
+  var _vbRAF=0,_lastW=-1;
+  function applyVB(){if(_vbRAF)return;_vbRAF=requestAnimationFrame(_applyVBnow);}
+  function _applyVBnow(){_vbRAF=0;
+    var s=vb.x+' '+vb.y+' '+vb.w+' '+vb.h;for(var i=0;i<LAYERS.length;i++)LAYERS[i].setAttribute('viewBox',s);
+    if(baseVB&&vb.w!==_lastW){_lastW=vb.w;var f=baseVB.w/vb.w;if(f>1.2)f=1.2;if(f<0.55)f=0.55;var step=EXT_H0/EXT_N*f;for(var j=0;j<LAYERS.length;j++){var k=LAYERS[j].dataset.k;if(k)LAYERS[j].style.transform='translateZ(-'+(k*step).toFixed(2)+'px)';}}}
   const MINW=function(){return baseVB.w/6;},MAXW=function(){return baseVB.w/0.7;};
   const mapWrap=document.getElementById('mapWrapper');
   function zoomCenter(fz){const mn=MINW(),mx=MAXW();let nw=vb.w*fz;if(nw<mn)nw=mn;if(nw>mx)nw=mx;const k=nw/vb.w;const cx=vb.x+vb.w/2,cy=vb.y+vb.h/2;vb.w=nw;vb.h=vb.h*k;vb.x=cx-vb.w/2;vb.y=cy-vb.h/2;applyVB();}
