@@ -8,28 +8,33 @@
 @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=Manrope:wght@300;400;500;600;700&display=swap');
 @font-face{font-family:'Radikal';src:url('fonts/Radikal.woff2') format('woff2');font-weight:300 800;font-display:swap;}
 :root{
-  --ivory:#eef4fb;        /* cloud page base */
-  --ivory-2:#f6f9fd;      /* lighter panels */
+  --ivory:#f4f4f1;        /* off-white page base */
+  --ivory-2:#fafaf8;      /* lighter panels */
   --paper:#ffffff;        /* cards */
-  --emerald:#1c4e8f;      /* primary luxe green */
+  --emerald:#1c4e8f;      /* primary brand */
   --emerald-2:#2e6fb0;
-  --brass:#2e8fcf;        /* champagne gold */
+  --brass:#2e8fcf;        /* accent */
   --brass-2:#5aa9db;
   --b-deep:#1c4e8f;
   --b-mid:#2e6fb0;
-  --text:#1d231e;
-  --muted:#8b9086;
-  --ink-soft:#5b6157;
-  --line:rgba(29,35,30,.10);
-  --hair:rgba(29,35,30,.07);
-  --soft:#f1f5fb;
+  --text:#1f2733;
+  --muted:#8a8f96;
+  --ink-soft:#5b626c;
+  --line:rgba(31,39,51,.10);
+  --hair:rgba(31,39,51,.06);
+  --soft:#eef0ee;
   --brand:linear-gradient(135deg,#2e6fb0 0%,#1c4e8f 100%);
   --glow:rgba(28,78,143,.32);
-  --shadow:0 24px 60px -20px rgba(20,40,30,.30), 0 8px 24px -12px rgba(20,40,30,.18);
-  --shadow-sm:0 10px 30px -14px rgba(20,40,30,.28);
+  --shadow:0 26px 60px -24px rgba(30,45,70,.30), 0 8px 24px -14px rgba(30,45,70,.16);
+  --shadow-sm:0 12px 30px -16px rgba(30,45,70,.26);
+  /* off-white 3D canvas + gray ground */
+  --canvas-1:#fbfbf9;
+  --canvas-2:#f1f1ee;
+  --canvas-3:#e7e7e3;
+  --ground:#d6d8d4;
   --head:'Radikal','Sora',system-ui,sans-serif;
   --body:'Manrope',system-ui,sans-serif;
-  --sidebar-w:316px;
+  --sidebar-w:300px;
 }
 *{box-sizing:border-box;}
 html,body{height:100%;margin:0;}
@@ -44,15 +49,16 @@ button{font-family:inherit;}
 .kicker{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;}
 .kicker .t{font-family:var(--head);font-size:12px;letter-spacing:.46em;text-transform:uppercase;color:var(--b-mid);font-weight:500;}
 .kicker .d{font-size:9.5px;letter-spacing:.36em;text-transform:uppercase;color:var(--muted);margin-top:6px;}
-.floors{display:flex;gap:3px;padding:4px;background:var(--soft);border:1px solid var(--hair);}
-.floor-tab{border:0;background:transparent;color:var(--ink-soft);font-family:var(--head);font-weight:500;font-size:12.5px;letter-spacing:.05em;padding:9px 18px;cursor:pointer;transition:all .2s;}
+.hgroup{display:flex;align-items:center;gap:14px;}
+.floors{display:flex;gap:3px;padding:4px;background:var(--soft);border:1px solid var(--hair);border-radius:13px;}
+.floor-tab{border:0;background:transparent;color:var(--ink-soft);font-family:var(--head);font-weight:500;font-size:12.5px;letter-spacing:.05em;padding:9px 18px;border-radius:9px;cursor:pointer;transition:all .2s;}
 .floor-tab.active{background:var(--paper);color:var(--emerald);box-shadow:var(--shadow-sm);}
 .floor-tab:not(.active):hover{color:var(--text);}
 
 .body{flex:1;display:flex;min-height:0;position:relative;}
 
-/* sidebar is a permanent in-flow panel */
-.sidebar{position:relative;top:0;left:0;height:100%;width:var(--sidebar-w);max-width:88%;flex:none;border-right:1px solid var(--line);background:#ffffff;display:flex;flex-direction:column;padding:20px;gap:18px;overflow-y:auto;z-index:25;}
+/* sidebar floats over the canvas as a glass panel and can slide away */
+.sidebar{position:absolute;top:16px;left:16px;bottom:16px;width:var(--sidebar-w);max-width:calc(100% - 32px);flex:none;border:1px solid rgba(255,255,255,.7);border-radius:20px;background:rgba(255,255,255,.74);backdrop-filter:blur(20px) saturate(1.5);-webkit-backdrop-filter:blur(20px) saturate(1.5);box-shadow:var(--shadow);display:flex;flex-direction:column;padding:18px;gap:16px;overflow-y:auto;z-index:25;transition:transform .42s cubic-bezier(.22,1,.36,1),opacity .3s ease;}
 .view-toggle{display:flex;gap:6px;padding:5px;background:var(--soft);border:1px solid var(--hair);}
 .view-toggle .vt-btn{flex:1;}
 .vt-btn{display:flex;flex-direction:column;align-items:center;gap:5px;padding:11px 8px;border:0;background:transparent;color:var(--ink-soft);font-family:var(--head);font-weight:500;font-size:12.5px;letter-spacing:.04em;cursor:pointer;transition:all .2s;}
@@ -105,12 +111,12 @@ button{font-family:inherit;}
 .stat-row .lab{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:600;text-align:right;}
 .side-note{margin-top:auto;font-size:11.5px;line-height:1.7;color:var(--ink-soft);padding:15px 16px;background:var(--soft);}
 
-.canvas-wrap{flex:1;position:relative;min-width:0;overflow:hidden;background:radial-gradient(120% 100% at 50% 12%,#3a86c8 0%,#1f5697 52%,#143a6b 100%);}
-.canvas-wrap::before{content:"";position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);background-size:46px 46px;mask-image:radial-gradient(circle at center,#000,transparent 88%);-webkit-mask-image:radial-gradient(circle at center,#000,transparent 88%);}
-.canvas-wrap::after{content:"";position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 200px -40px rgba(8,22,46,.55);}
+.canvas-wrap{flex:1;position:relative;min-width:0;overflow:hidden;background:radial-gradient(130% 120% at 50% 8%,var(--canvas-1) 0%,var(--canvas-2) 55%,var(--canvas-3) 100%);}
+.canvas-wrap::before{content:"";position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(rgba(31,39,51,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(31,39,51,.035) 1px,transparent 1px);background-size:48px 48px;mask-image:radial-gradient(circle at 50% 42%,#000 35%,transparent 80%);-webkit-mask-image:radial-gradient(circle at 50% 42%,#000 35%,transparent 80%);}
+.canvas-wrap::after{content:"";position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 180px -60px rgba(60,75,100,.18);}
 .map-wrapper{position:absolute;inset:0;overflow:hidden;z-index:1;}
-#stage{position:absolute;inset:0;perspective:1650px;perspective-origin:50% 44%;-webkit-mask-image:radial-gradient(140% 118% at 50% 44%,#000 60%,rgba(0,0,0,0) 100%);mask-image:radial-gradient(140% 118% at 50% 44%,#000 60%,rgba(0,0,0,0) 100%);}
-#stage3d{position:absolute;inset:0;transform-style:preserve-3d;transform:rotateX(51deg) scale(1.34) translateY(-5%);transform-origin:50% 50%;}
+#stage{position:absolute;inset:0;perspective:1750px;perspective-origin:50% 46%;}
+#stage3d{position:absolute;inset:0;transform-style:preserve-3d;transform:rotateX(49deg) scale(1.32) translateY(-3%);transform-origin:50% 50%;}
 #stage3d>svg{position:absolute;inset:0;width:100%;height:100%;}
 #stage3d>svg.ext{pointer-events:none;visibility:visible;}
 .floor-svg{width:100%;height:100%;display:block;touch-action:none;cursor:grab;visibility:hidden;}
@@ -131,10 +137,11 @@ button{font-family:inherit;}
 .zoom-ctl button{width:44px;height:44px;border:1px solid var(--line);background:rgba(255,255,255,.92);backdrop-filter:blur(8px);color:var(--b-mid);font-size:20px;font-weight:500;cursor:pointer;display:grid;place-items:center;box-shadow:var(--shadow-sm);transition:all .18s;}
 .zoom-ctl button:hover{background:var(--brand);color:#fff;border-color:transparent;}
 .zoom-ctl button svg{width:18px;height:18px;}
-.nav-toggle{position:absolute;top:20px;left:20px;z-index:9;width:44px;height:44px;border:1px solid var(--line);background:rgba(255,255,255,.92);backdrop-filter:blur(8px);color:var(--b-mid);cursor:pointer;display:grid;place-items:center;box-shadow:var(--shadow-sm);transition:all .18s;}
+.nav-toggle{flex:none;width:42px;height:42px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--b-mid);cursor:pointer;display:grid;place-items:center;transition:all .18s;}
 .nav-toggle:hover{background:var(--brand);color:#fff;border-color:transparent;}
+.nav-toggle:active{transform:scale(.95);}
 .nav-toggle svg{width:20px;height:20px;}
-.body.nav-hidden .sidebar{display:none;}
+.body.nav-hidden .sidebar{transform:translateX(calc(-100% - 28px));opacity:0;pointer-events:none;}
 .floor-tag{position:absolute;left:20px;bottom:20px;z-index:8;padding:10px 16px;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border:1px solid var(--line);font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft);box-shadow:var(--shadow-sm);}
 .floor-tag b{background:var(--brand);-webkit-background-clip:text;background-clip:text;color:transparent;font-family:var(--head);}
 .compass{position:absolute;right:20px;bottom:20px;z-index:8;width:48px;height:48px;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border:1px solid var(--line);box-shadow:var(--shadow-sm);display:grid;place-items:center;}
@@ -242,16 +249,61 @@ button{font-family:inherit;}
 .park-stat .pn{font-family:var(--head);font-size:24px;font-weight:700;color:var(--emerald);}
 .park-stat .pl{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600;}
 @media (max-width:1100px){.kicker{display:none;}}
-@media (max-width:860px){.header{height:64px;padding:0 14px;}.logo-mark .lm-svg{height:24px;}.logo-mark .lm-sub .tx{font-size:9px;letter-spacing:.3em;}.logo-mark .lm-sub .ln{width:18px;}.card{width:calc(100% - 28px);max-height:90vh;}.floors .floor-tab{padding:9px 12px;}}
+@media (max-width:860px){.header{height:64px;padding:0 14px;}.logo-mark .lm-svg{height:24px;}.logo-mark .lm-sub .tx{font-size:9px;letter-spacing:.3em;}.logo-mark .lm-sub .ln{width:18px;}.card{width:calc(100% - 28px);}.floors .floor-tab{padding:9px 12px;}}
+
+/* ===== Modern refinements — soft corners, cleaner glass controls ===== */
+.view-toggle{border-radius:14px;}
+.vt-btn{border-radius:10px;}
+.search{border-radius:13px;}
+.search input{font-size:13.5px;}
+.chip{border-radius:11px;}
+.chip .dot{border-radius:4px;}
+.cat-nav button{border-radius:13px;}
+.cat-nav button .nsw{border-radius:4px;}
+.panel,.side-note{border-radius:14px;}
+.legend-sw,.cc-cnt{border-radius:6px;}
+/* floating map controls -> white pills */
+.zoom-ctl{top:auto;bottom:24px;right:24px;gap:8px;}
+.zoom-ctl button{width:42px;height:42px;border-radius:12px;background:rgba(255,255,255,.86);border-color:rgba(31,39,51,.08);box-shadow:var(--shadow-sm);}
+.floor-tag{left:50%;transform:translateX(-50%);bottom:24px;border-radius:12px;background:rgba(255,255,255,.86);border-color:rgba(31,39,51,.08);}
+.compass{display:none;}
+/* list & parking views are document-style: clear the floating sidebar */
+.list-view{transition:padding-left .42s cubic-bezier(.22,1,.36,1);padding-left:calc(var(--sidebar-w) + 54px);}
+.parking-view{transition:padding-left .42s cubic-bezier(.22,1,.36,1);padding-left:calc(var(--sidebar-w) + 16px);}
+.body.nav-hidden .list-view{padding-left:38px;}
+.body.nav-hidden .parking-view{padding-left:0;}
+@media (max-width:900px){
+  .list-view,.body.nav-hidden .list-view{padding-left:24px;}
+  .parking-view,.body.nav-hidden .parking-view{padding-left:0;}
+}
+/* selection / hover glow tuned for the light ground */
+.floor-svg .unit:hover{fill:#ffffff;filter:drop-shadow(0 3px 10px rgba(46,103,176,.45)) brightness(1.03);}
+.floor-svg .unit.selected{fill:#ffffff;filter:drop-shadow(0 4px 14px rgba(46,103,176,.55));}
+/* detail panel -> floating rounded card */
+.card{top:16px;right:16px;left:auto;height:auto;bottom:16px;width:384px;border-radius:20px;border-left:0;border:1px solid var(--line);box-shadow:var(--shadow);}
+.card .hero{border-radius:20px 20px 0 0;}
+.card .row .ic{border-radius:10px;}
+.card .btn{border-radius:12px;}
+.cat-card,.shop-card{border-radius:16px;}
+.shop-logo{border-radius:12px;}
+.empty-floor .ef-icon{border-radius:18px;}
+.toast{border-radius:12px;}
+.tooltip{border-radius:10px;}
+.lv-head .back{border-radius:11px;}
+.plate-box{border-radius:16px;}
+@media (max-width:860px){.card{top:auto;bottom:14px;left:14px;right:14px;width:auto;max-height:78vh;}}
 </style>
 </head>
 <body>
 <div class="app">
   <header class="header">
-    <div class="floors" id="floors">
-      <button class="floor-tab" data-floor="BL">Basement</button>
-      <button class="floor-tab active" data-floor="G">Ground</button>
-      <button class="floor-tab" data-floor="F1">Level 1</button>
+    <div class="hgroup">
+      <button class="nav-toggle" id="navToggle" aria-label="Toggle menu" title="Hide / show menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+      <div class="floors" id="floors">
+        <button class="floor-tab" data-floor="BL">Basement</button>
+        <button class="floor-tab active" data-floor="G">Ground</button>
+        <button class="floor-tab" data-floor="F1">Level 1</button>
+      </div>
     </div>
     <div class="kicker"><div class="t">Interactive Directory</div><div class="d" id="kickerSub">Ground Floor Leasing Plan</div></div>
     <div class="logo-mark">
@@ -607,7 +659,6 @@ button{font-family:inherit;}
           <svg id="parkSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 820"></svg>
         </div>
       </div>
-      <button class="nav-toggle" id="navToggle" aria-label="Toggle menu" title="Hide / show menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
       <div class="zoom-ctl">
         <button id="zoomIn" aria-label="Zoom in">+</button>
         <button id="zoomOut" aria-label="Zoom out">&minus;</button>
@@ -1652,6 +1703,28 @@ button{font-family:inherit;}
       stage3d.insertBefore(L, svg);
       LAYERS.push(L);
     }
+    buildGround();
+  }
+  /* ---- gray ground / site podium so the mall sits on something ---- */
+  function buildGround(){
+    var step=EXT_H0/EXT_N, gk=EXT_N+10;            // sits below the deepest wall layer
+    var m=Math.max(planW,planH)*0.11;
+    var gx=cMinX-m, gy=cMinY-m, gw=planW+2*m, gh=planH+2*m, rr=Math.min(gw,gh)*0.05;
+    var G=document.createElementNS(NS3,'svg');
+    G.setAttribute('viewBox',svg.getAttribute('viewBox'));
+    G.setAttribute('class','ext ground');
+    G.dataset.k=gk; G.style.transform='translateZ(-'+(gk*step)+'px)';
+    G.innerHTML=
+      '<defs>'+
+        '<filter id="groundShadow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="38"/></filter>'+
+        '<linearGradient id="groundFill" x1="0" y1="0" x2="0" y2="1">'+
+          '<stop offset="0" stop-color="#e4e6e2"/><stop offset="1" stop-color="#cdd0cb"/></linearGradient>'+
+      '</defs>'+
+      '<rect x="'+gx.toFixed(1)+'" y="'+gy.toFixed(1)+'" width="'+gw.toFixed(1)+'" height="'+gh.toFixed(1)+'" rx="'+rr.toFixed(1)+'" fill="url(#groundFill)" stroke="#c1c5bf" stroke-width="3"/>'+
+      '<rect x="'+(gx+26).toFixed(1)+'" y="'+(gy+26).toFixed(1)+'" width="'+(gw-52).toFixed(1)+'" height="'+(gh-52).toFixed(1)+'" rx="'+(rr*0.82).toFixed(1)+'" fill="none" stroke="rgba(110,118,110,.20)" stroke-width="2"/>'+
+      '<rect x="'+(cMinX-14).toFixed(1)+'" y="'+(cMinY+28).toFixed(1)+'" width="'+(planW+28).toFixed(1)+'" height="'+(planH+28).toFixed(1)+'" rx="48" fill="rgba(45,60,50,.28)" filter="url(#groundShadow)"/>';
+    stage3d.insertBefore(G, stage3d.firstChild);
+    LAYERS.push(G);
   }
   /* ---- small facility icons printed on toilet / customer-service roofs ---- */
   function facilityIcons(){
@@ -1822,7 +1895,7 @@ button{font-family:inherit;}
     const area=ry<0.34?"Upper Concourse":ry<0.64?"Central Galleria":"Outer Promenade";return{wing:wing,area:area};}
 
   let baseVBready=false;
-  function computeBase(){var pad=Math.max(planW,planH)*0.06;
+  function computeBase(){var pad=Math.max(planW,planH)*0.14;   /* room for the gray ground apron */
     var bw=cMaxX-cMinX, bh=cMaxY-cMinY;
     baseVB={x:cMinX-pad,y:cMinY-pad,w:bw+pad*2,h:bh+pad*2};vb=Object.assign({},baseVB);baseVBready=true;applyVB();}
   function applyVB(){var s=vb.x+' '+vb.y+' '+vb.w+' '+vb.h;for(var i=0;i<LAYERS.length;i++)LAYERS[i].setAttribute('viewBox',s);
@@ -1949,7 +2022,9 @@ button{font-family:inherit;}
   document.querySelectorAll('.floor-tab').forEach(function(tab){tab.addEventListener('click',function(){
     if(tab.classList.contains('active'))return;
     document.querySelectorAll('.floor-tab').forEach(function(t){t.classList.remove('active');});tab.classList.add('active');
-    if(currentView==='list')setView('map');
+    /* picking a floor always returns to the map; switch BEFORE rebuilding so the
+       map container is visible and unit geometry (getBBox) resolves correctly */
+    if(currentView!=='map')setView('map');
     loadFloor(tab.dataset.floor);
   });});
 
