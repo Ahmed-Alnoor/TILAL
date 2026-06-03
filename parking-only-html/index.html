@@ -161,9 +161,23 @@ function buildBand(zoneIds, centerZ){
     x+=per*SW+ZGAP;
   });
 }
+function buildClusterAt(zoneId, leftX, centerZ){
+  const z=ZONES.find(z=>z.id===zoneId);
+  const zoneSlots=slots.filter(s=>s.zone===zoneId);
+  const per=Math.ceil(zoneSlots.length/2);
+  const topZ=centerZ-GUT/2-SL/2, botZ=centerZ+GUT/2+SL/2;
+  zoneSlots.forEach((s,i)=>{const top=i<per;const col=top?i:i-per;stallRecords.push({slot:s,x:leftX+SW/2+col*SW,z:top?topZ:botZ,faceUp:top});});
+  z._cx=leftX+per*SW/2; z._cz=centerZ;
+}
 const bandGap=AISLE+islandDepth;
-buildBand(['A','B','C','D','E'], -bandGap/2);
-buildBand(['F','G','H','I','J'],  bandGap/2);
+buildBand(['B','C','D','E','F'], -bandGap/2);
+buildBand(['G','H','I','J'],  bandGap/2);
+// body extent (used for columns/arrows) before adding the detached left cluster
+let bodyMinX=1e9,bodyMaxX=-1e9;
+stallRecords.forEach(r=>{bodyMinX=Math.min(bodyMinX,r.x-SW/2);bodyMaxX=Math.max(bodyMaxX,r.x+SW/2);});
+// far-left detached cluster (Zone A) past an entrance gap — like the plan's left section
+const wA=Math.ceil(14/2)*SW;
+buildClusterAt('A', bodyMinX-15-wA, 0);
 
 // bbox
 let minX=1e9,maxX=-1e9,minZ=1e9,maxZ=-1e9;
@@ -185,6 +199,23 @@ ground.rotation.x=-Math.PI/2;ground.position.set(cX,0,cZ);ground.receiveShadow=t
 // kerb
 const kerb=new THREE.Mesh(new THREE.BoxGeometry(lotW+3,1.2,lotH+3),new THREE.MeshStandardMaterial({color:0x202736,roughness:1}));
 kerb.position.set(cX,-0.6,cZ);scene.add(kerb);
+
+/* ---- curved drive-aisle / racetrack lane markings (painted overlay) ---- */
+function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+function laneTexture(){
+  const W=Math.min(2048,Math.round(lotW*6)), H=Math.max(64,Math.round(W*lotH/lotW));
+  const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
+  x.clearRect(0,0,W,H);x.strokeStyle='rgba(236,242,252,.5)';x.lineCap='round';x.lineWidth=Math.max(2,W*0.0018);
+  const m=Math.round(W*0.012), r=Math.round(H*0.18);
+  roundRect(x,m,m,W-2*m,H-2*m,r);x.stroke();              // perimeter racetrack loop
+  const cy=H/2, cm=m+r;
+  x.beginPath();x.moveTo(cm,cy);x.lineTo(W-cm,cy);x.stroke(); // central spine
+  // rounded turn-arcs along the spine
+  for(let i=1;i<6;i++){const px=m+(W-2*m)*i/6;x.beginPath();x.arc(px,cy,r*0.55,0,Math.PI*2);x.stroke();}
+  return new THREE.CanvasTexture(c);
+}
+const laneOv=new THREE.Mesh(new THREE.PlaneGeometry(lotW,lotH),new THREE.MeshBasicMaterial({map:laneTexture(),transparent:true,depthWrite:false}));
+laneOv.rotation.x=-Math.PI/2;laneOv.position.set(cX,0.015,cZ);scene.add(laneOv);
 
 /* ---- shared stall marking texture (white outline on transparent) ---- */
 function markingTexture(){
@@ -242,7 +273,7 @@ function buildCars(){
 const colMat=new THREE.MeshStandardMaterial({color:0xb9c2cf,roughness:.85});
 const colGeo=new THREE.BoxGeometry(0.7,7,0.7);
 [-bandGap/2, bandGap/2].forEach(bz=>{
-  for(let gx=minX+padX; gx<=maxX-padX; gx+=13){
+  for(let gx=bodyMinX; gx<=bodyMaxX; gx+=13){
     const col=new THREE.Mesh(colGeo,colMat);col.position.set(gx,3.5,bz);col.castShadow=true;scene.add(col);
   }
 });
@@ -251,17 +282,10 @@ const colGeo=new THREE.BoxGeometry(0.7,7,0.7);
 function arrowTex(){const c=document.createElement('canvas');c.width=64;c.height=128;const x=c.getContext('2d');x.clearRect(0,0,64,128);x.fillStyle='rgba(236,242,252,.6)';x.beginPath();x.moveTo(32,16);x.lineTo(56,64);x.lineTo(40,64);x.lineTo(40,112);x.lineTo(24,112);x.lineTo(24,64);x.lineTo(8,64);x.closePath();x.fill();return new THREE.CanvasTexture(c);}
 const aTex=arrowTex();const aGeo=new THREE.PlaneGeometry(2.4,4.8);
 [-bandGap/2-AISLE/2-islandDepth/2-0.5,0,bandGap/2+AISLE/2+islandDepth/2+0.5].forEach(az=>{
-  for(let gx=minX+padX+6; gx<=maxX-padX; gx+=22){
+  for(let gx=bodyMinX+6; gx<=bodyMaxX; gx+=22){
     const a=new THREE.Mesh(aGeo,new THREE.MeshBasicMaterial({map:aTex,transparent:true,depthWrite:false}));
     a.rotation.x=-Math.PI/2;a.position.set(gx,0.03,az);scene.add(a);
   }
-});
-
-/* ---- subtle zone letters painted flat on ground ---- */
-function letterTex(ch){const c=document.createElement('canvas');c.width=c.height=128;const x=c.getContext('2d');x.clearRect(0,0,128,128);x.fillStyle='rgba(236,242,252,.16)';x.font='bold 110px Inter,Arial';x.textAlign='center';x.textBaseline='middle';x.fillText(ch,64,68);return new THREE.CanvasTexture(c);}
-ZONES.forEach(z=>{
-  const m=new THREE.Mesh(new THREE.PlaneGeometry(6,6),new THREE.MeshBasicMaterial({map:letterTex(z.id),transparent:true,depthWrite:false}));
-  m.rotation.x=-Math.PI/2;m.position.set(z._cx,0.025,z._cz);scene.add(m);
 });
 
 /* ============ INTERACTION ============ */
