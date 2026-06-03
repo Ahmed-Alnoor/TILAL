@@ -3,55 +3,38 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Tilal Mall — 3D Ground Floor Parking</title>
+<title>Tilal Mall — Ground Floor Parking · 3D</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 html,body{height:100%;overflow:hidden;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;color:#eaf2ff;}
-body{
-  background:
-    radial-gradient(1200px 600px at 15% -10%, rgba(99,179,255,.40), transparent 60%),
-    radial-gradient(1000px 700px at 110% 10%, rgba(56,120,255,.34), transparent 55%),
-    linear-gradient(160deg,#0a2a6b 0%, #0c3a8f 35%, #08409c 60%, #052a66 100%);
-}
+body{background:
+  radial-gradient(1200px 600px at 15% -10%, rgba(99,179,255,.40), transparent 60%),
+  radial-gradient(1000px 700px at 110% 10%, rgba(56,120,255,.34), transparent 55%),
+  linear-gradient(160deg,#0a2a6b 0%, #0c3a8f 35%, #08409c 60%, #052a66 100%);}
 #scene{position:fixed;inset:0;display:block;cursor:grab;}
 #scene.grabbing{cursor:grabbing;}
-
-/* top bar */
-.topbar{position:fixed;top:0;left:0;right:0;display:flex;align-items:center;gap:12px;flex-wrap:wrap;
-  padding:14px 18px;z-index:10;}
-.brand{display:flex;align-items:center;gap:12px;background:rgba(8,22,48,.55);border:1px solid rgba(150,190,255,.2);
-  backdrop-filter:blur(14px);border-radius:16px;padding:10px 16px;}
-.logo{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;font-weight:800;font-size:18px;
-  background:linear-gradient(135deg,#6db4ff,#2f6dff);box-shadow:inset 0 0 18px rgba(255,255,255,.25);}
+.topbar{position:fixed;top:0;left:0;right:0;display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 18px;z-index:10;}
+.brand{display:flex;align-items:center;gap:12px;background:rgba(8,22,48,.55);border:1px solid rgba(150,190,255,.2);backdrop-filter:blur(14px);border-radius:16px;padding:10px 16px;}
+.logo{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;font-weight:800;font-size:18px;background:linear-gradient(135deg,#6db4ff,#2f6dff);box-shadow:inset 0 0 18px rgba(255,255,255,.25);}
 .brand h1{font-size:16px;letter-spacing:.04em;}
 .brand p{font-size:11px;color:#a9c2e6;margin-top:2px;}
 .spacer{flex:1;}
-.search-box{display:flex;align-items:center;gap:8px;background:rgba(8,22,48,.55);border:1px solid rgba(150,190,255,.2);
-  backdrop-filter:blur(14px);border-radius:14px;padding:10px 14px;min-width:270px;}
+.search-box{display:flex;align-items:center;gap:8px;background:rgba(8,22,48,.55);border:1px solid rgba(150,190,255,.2);backdrop-filter:blur(14px);border-radius:14px;padding:10px 14px;min-width:260px;}
 .search-box input{background:transparent;border:0;outline:0;color:#eaf2ff;width:100%;font-size:14px;}
 .search-box input::placeholder{color:#88a4d0;}
-.btn{border:1px solid rgba(150,190,255,.2);border-radius:14px;padding:11px 16px;font-size:13px;font-weight:700;
-  cursor:pointer;color:#eaf2ff;background:rgba(8,22,48,.55);backdrop-filter:blur(14px);transition:.2s;white-space:nowrap;}
+.btn{border:1px solid rgba(150,190,255,.2);border-radius:14px;padding:11px 16px;font-size:13px;font-weight:700;cursor:pointer;color:#eaf2ff;background:rgba(8,22,48,.55);backdrop-filter:blur(14px);transition:.2s;white-space:nowrap;}
 .btn:hover{transform:translateY(-1px);background:rgba(30,70,140,.7);}
 .btn.primary{background:linear-gradient(135deg,#22c55e,#15a34a);border-color:transparent;color:#04230f;}
 .btn.primary.checked{background:linear-gradient(135deg,#f59e0b,#d97706);color:#2b1500;}
-
-/* stats + legend */
 .hud{position:fixed;top:78px;left:18px;z-index:10;display:flex;flex-direction:column;gap:10px;}
 .stats{display:flex;gap:8px;}
-.stat{background:rgba(8,22,48,.55);border:1px solid rgba(150,190,255,.2);backdrop-filter:blur(14px);
-  border-radius:14px;padding:10px 14px;min-width:78px;}
+.stat{background:rgba(8,22,48,.55);border:1px solid rgba(150,190,255,.2);backdrop-filter:blur(14px);border-radius:14px;padding:10px 14px;min-width:78px;}
 .stat b{display:block;font-size:20px;}
 .stat span{font-size:10px;color:#a9c2e6;text-transform:uppercase;letter-spacing:.1em;}
 .stat.green b{color:#5af08a;}.stat.red b{color:#ff7a7a;}
-.legend{background:rgba(8,22,48,.55);border:1px solid rgba(150,190,255,.2);backdrop-filter:blur(14px);
-  border-radius:14px;padding:10px 14px;font-size:12px;color:#c7d8f5;display:flex;flex-direction:column;gap:6px;}
+.legend{background:rgba(8,22,48,.55);border:1px solid rgba(150,190,255,.2);backdrop-filter:blur(14px);border-radius:14px;padding:10px 14px;font-size:12px;color:#c7d8f5;display:flex;flex-direction:column;gap:6px;}
 .legend i{width:12px;height:12px;border-radius:4px;display:inline-block;vertical-align:-2px;margin-right:6px;}
-
-/* slot info panel */
-.panel{position:fixed;right:18px;top:78px;width:300px;z-index:10;background:rgba(8,22,48,.7);
-  border:1px solid rgba(150,190,255,.25);backdrop-filter:blur(16px);border-radius:18px;padding:20px;
-  box-shadow:0 24px 60px rgba(0,0,0,.4);transform:translateX(120%);transition:transform .35s;}
+.panel{position:fixed;right:18px;top:78px;width:300px;z-index:10;background:rgba(8,22,48,.7);border:1px solid rgba(150,190,255,.25);backdrop-filter:blur(16px);border-radius:18px;padding:20px;box-shadow:0 24px 60px rgba(0,0,0,.4);transform:translateX(120%);transition:transform .35s;}
 .panel.open{transform:translateX(0);}
 .panel h2{font-size:34px;letter-spacing:.04em;}
 .panel .sub{color:#a9c2e6;font-size:13px;margin:2px 0 16px;}
@@ -63,36 +46,25 @@ body{
 .kv span:first-child{color:#a9c2e6;}.kv span:last-child{font-weight:700;}
 .panel .x{position:absolute;top:14px;right:16px;cursor:pointer;color:#a9c2e6;font-size:20px;}
 .panel .focus{margin-top:16px;width:100%;text-align:center;}
-
-/* help + toast */
-.help{position:fixed;left:18px;bottom:16px;z-index:10;font-size:12px;color:#bcd0f0;background:rgba(8,22,48,.5);
-  border:1px solid rgba(150,190,255,.18);border-radius:12px;padding:8px 14px;backdrop-filter:blur(10px);}
-.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(140%);background:#0e2a5e;
-  border:1px solid rgba(150,190,255,.25);padding:12px 22px;border-radius:14px;font-size:14px;font-weight:600;
-  box-shadow:0 20px 40px rgba(0,0,0,.4);transition:transform .35s;z-index:20;}
+.help{position:fixed;left:18px;bottom:16px;z-index:10;font-size:12px;color:#bcd0f0;background:rgba(8,22,48,.5);border:1px solid rgba(150,190,255,.18);border-radius:12px;padding:8px 14px;backdrop-filter:blur(10px);}
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(140%);background:#0e2a5e;border:1px solid rgba(150,190,255,.25);padding:12px 22px;border-radius:14px;font-size:14px;font-weight:600;box-shadow:0 20px 40px rgba(0,0,0,.4);transition:transform .35s;z-index:20;}
 .toast.show{transform:translateX(-50%) translateY(0);}
-.loader{position:fixed;inset:0;display:grid;place-items:center;z-index:30;font-size:15px;color:#cfe0ff;
-  background:rgba(5,18,45,.6);}
+.loader{position:fixed;inset:0;display:grid;place-items:center;z-index:30;font-size:15px;color:#cfe0ff;background:rgba(5,18,45,.6);}
 </style>
 </head>
 <body>
 <canvas id="scene"></canvas>
-
 <div class="topbar">
-  <div class="brand">
-    <div class="logo">P</div>
-    <div><h1>TILAL MALL · 3D GROUND PARKING</h1><p>262 bays · zones A–J · navigate freely</p></div>
+  <div class="brand"><div class="logo">P</div>
+    <div><h1>TILAL MALL · GROUND FLOOR PARKING</h1><p>262 bays · zones A–J · 3D walkthrough</p></div>
   </div>
   <div class="spacer"></div>
-  <div class="search-box"><span>🔎</span>
-    <input id="search" type="text" placeholder="Search plate or slot (e.g. A03, DXB...)" autocomplete="off"/>
-  </div>
+  <div class="search-box"><span>🔎</span><input id="search" type="text" placeholder="Search plate or slot (e.g. A03, DXB...)" autocomplete="off"/></div>
   <button class="btn" id="clearBtn">Clear</button>
   <button class="btn primary" id="availBtn">Check availability</button>
   <button class="btn" id="resetBtn">Reset view</button>
   <button class="btn" id="topBtn">Top view</button>
 </div>
-
 <div class="hud">
   <div class="stats">
     <div class="stat"><b id="totalStat">262</b><span>Total</span></div>
@@ -100,11 +72,10 @@ body{
     <div class="stat red"><b id="busyStat">—</b><span>Busy</span></div>
   </div>
   <div class="legend">
-    <span><i style="background:#cdd7e8"></i>Unknown — run availability</span>
+    <span><i style="background:#5a6273"></i>Unknown — run availability</span>
     <span><i style="background:#22c55e"></i>Free &nbsp; <i style="background:#ef4444"></i>Busy</span>
   </div>
 </div>
-
 <div class="panel" id="panel">
   <div class="x" id="panelX">✕</div>
   <h2 id="pName">A01</h2>
@@ -118,7 +89,6 @@ body{
   </div>
   <button class="btn focus" id="focusBtn">Fly to this bay</button>
 </div>
-
 <div class="help">🖱️ Left-drag orbit · right-drag pan · scroll zoom · click a bay</div>
 <div class="toast" id="toast"></div>
 <div class="loader" id="loader">Loading 3D parking…</div>
@@ -133,313 +103,226 @@ body{
 import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 
-/* ---------- data ---------- */
-const ZONES=[
-  {id:'A',count:14},{id:'B',count:28},{id:'C',count:24},{id:'D',count:20},{id:'E',count:32},
-  {id:'F',count:24},{id:'G',count:28},{id:'H',count:24},{id:'I',count:16},{id:'J',count:52}
-];
+/* ============ DATA ============ */
+const ZONES=[{id:'A',count:14},{id:'B',count:28},{id:'C',count:24},{id:'D',count:20},{id:'E',count:32},
+  {id:'F',count:24},{id:'G',count:28},{id:'H',count:24},{id:'I',count:16},{id:'J',count:52}];
 const slots=[];
 let availabilityChecked=false, selected=null;
 ZONES.forEach(z=>{for(let i=1;i<=z.count;i++)slots.push({id:z.id+String(i).padStart(2,'0'),zone:z.id,busy:false,plate:null,match:false});});
-
-function randomPlate(){
-  const codes='ABCDEFGHIJKLMNOPQRST'.split('');
-  return 'DXB '+codes[Math.floor(Math.random()*codes.length)]+' '+Math.floor(1000+Math.random()*89000);
-}
-function assignBusy(){
-  slots.forEach(s=>{s.busy=false;s.plate=null;});
-  const idx=[...slots.keys()];
-  for(let i=idx.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[idx[i],idx[j]]=[idx[j],idx[i]];}
-  for(let k=0;k<50;k++){slots[idx[k]].busy=true;slots[idx[k]].plate=randomPlate();}
-}
+const byId=Object.fromEntries(slots.map(s=>[s.id,s]));
+function randomPlate(){const c='ABCDEFGHIJKLMNOPQRST'.split('');return 'DXB '+c[Math.floor(Math.random()*c.length)]+' '+Math.floor(1000+Math.random()*89000);}
+function assignBusy(){slots.forEach(s=>{s.busy=false;s.plate=null;});const idx=[...slots.keys()];for(let i=idx.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[idx[i],idx[j]]=[idx[j],idx[i]];}for(let k=0;k<50;k++){slots[idx[k]].busy=true;slots[idx[k]].plate=randomPlate();}}
 assignBusy();
 
-/* ---------- three.js setup ---------- */
+/* ============ THREE SETUP ============ */
 const canvas=document.getElementById('scene');
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 renderer.setSize(innerWidth,innerHeight);
-renderer.shadowMap.enabled=true;
-renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;
+renderer.outputColorSpace=THREE.SRGBColorSpace;
 
 const scene=new THREE.Scene();
-scene.fog=new THREE.Fog(0x0a3a8a,180,520);
-
-const camera=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,0.1,2000);
-const HOME={pos:new THREE.Vector3(0,120,160),tgt:new THREE.Vector3(0,0,0)};
-camera.position.copy(HOME.pos);
-
+scene.fog=new THREE.Fog(0x0d2f6e,260,700);
+const camera=new THREE.PerspectiveCamera(52,innerWidth/innerHeight,0.1,3000);
 const controls=new OrbitControls(camera,renderer.domElement);
 controls.enableDamping=true;controls.dampingFactor=.08;
-controls.maxPolarAngle=Math.PI*0.49;controls.minDistance=12;controls.maxDistance=420;
-controls.target.copy(HOME.tgt);
+controls.maxPolarAngle=Math.PI*0.495;controls.minDistance=10;controls.maxDistance=600;
 
 /* lights */
-scene.add(new THREE.HemisphereLight(0xbcd6ff,0x20304a,0.9));
-const sun=new THREE.DirectionalLight(0xffffff,1.1);
-sun.position.set(80,160,60);sun.castShadow=true;
-sun.shadow.mapSize.set(2048,2048);
-const d=260;Object.assign(sun.shadow.camera,{left:-d,right:d,top:d,bottom:-d,near:1,far:600});
-scene.add(sun);
+scene.add(new THREE.HemisphereLight(0xcfe2ff,0x2a3242,1.0));
+const sun=new THREE.DirectionalLight(0xfff4e6,1.25);
+sun.position.set(120,180,80);sun.castShadow=true;sun.shadow.mapSize.set(4096,4096);
+const sd=320;Object.assign(sun.shadow.camera,{left:-sd,right:sd,top:sd,bottom:-sd,near:1,far:800});
+sun.shadow.bias=-0.0004;scene.add(sun);
+const fill=new THREE.DirectionalLight(0x9fc0ff,0.35);fill.position.set(-100,90,-60);scene.add(fill);
 
-/* ---------- layout geometry ---------- */
-const SLOT_W=4, SLOT_L=8, GAP=0.5, COL_GAP=1, LANE=12, ZONE_GAP=14;
-const slotW=SLOT_W, slotL=SLOT_L;
+/* ============ LAYOUT GEOMETRY ============ */
+const SW=2.7, SL=5.3, GUT=0.7, AISLE=7, ZGAP=5;
+const islandDepth=2*SL+GUT;
+const stallRecords=[]; // {slot, x, z}  (z = stall center)
 
-// compute total width to center
-function zoneWidth(){return SLOT_W*2+COL_GAP+LANE;}
-let totalW=0;
-ZONES.forEach((z,i)=>{totalW+=zoneWidth()+(i<ZONES.length-1?ZONE_GAP:0);});
-
-/* ground / asphalt */
-const groundW=totalW+60;
-const maxCount=Math.max(...ZONES.map(z=>z.count));
-const colLen=Math.ceil(maxCount/2)*(SLOT_L+GAP);
-const groundL=colLen+70;
-const ground=new THREE.Mesh(
-  new THREE.PlaneGeometry(groundW,groundL),
-  new THREE.MeshStandardMaterial({color:0x2c3340,roughness:.95})
-);
-ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
-
-/* outer kerb */
-const kerb=new THREE.Mesh(new THREE.BoxGeometry(groundW+4,1.4,groundL+4),
-  new THREE.MeshStandardMaterial({color:0x1a2030,roughness:1}));
-kerb.position.y=-0.7;scene.add(kerb);
-
-/* slot canvas texture helper */
-function makeSlotTexture(slot){
-  const c=document.createElement('canvas');c.width=128;c.height=256;
-  const ctx=c.getContext('2d');
-  slot._c=c;slot._ctx=ctx;
-  const tex=new THREE.CanvasTexture(c);
-  tex.anisotropy=4;
-  slot._tex=tex;
-  drawSlot(slot);
-  return tex;
-}
-function drawSlot(slot){
-  const ctx=slot._ctx;const W=128,H=256;
-  ctx.clearRect(0,0,W,H);
-  let top,bot,txt;
-  if(!availabilityChecked){top='#eef2f9';bot='#cdd7e8';txt='#0a1830';}
-  else if(slot.busy){top='#f87171';bot='#dc2626';txt='#2b0606';}
-  else{top='#4ade80';bot='#16a34a';txt='#05260f';}
-  const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,top);g.addColorStop(1,bot);
-  ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
-  // border
-  ctx.lineWidth=10;ctx.strokeStyle=slot.match?'#ffd54a':(slot===selected?'#ffffff':'rgba(255,255,255,.65)');
-  ctx.strokeRect(5,5,W-10,H-10);
-  // id text
-  ctx.fillStyle=txt;ctx.font='bold 46px Inter,Arial';ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.save();ctx.translate(W/2,H/2);ctx.rotate(-Math.PI/2);ctx.fillText(slot.id,0,0);ctx.restore();
-  if(slot._tex)slot._tex.needsUpdate=true;
-}
-
-/* zone label sprite */
-function makeLabel(text){
-  const c=document.createElement('canvas');c.width=256;c.height=128;
-  const ctx=c.getContext('2d');
-  ctx.fillStyle='rgba(47,109,255,.92)';roundRect(ctx,8,30,240,68,18);ctx.fill();
-  ctx.fillStyle='#eaf3ff';ctx.font='bold 70px Inter,Arial';ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.fillText(text,128,66);
-  const tex=new THREE.CanvasTexture(c);
-  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,depthTest:false}));
-  sp.scale.set(14,7,1);
-  return sp;
-}
-function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
-
-/* build slots in the scene */
-const slotMeshes=[];
-const slotGeo=new THREE.BoxGeometry(slotW,0.4,slotL);
-let xCursor=-totalW/2;
-ZONES.forEach(z=>{
-  const zoneSlots=slots.filter(s=>s.zone===z.id);
-  const half=Math.ceil(zoneSlots.length/2);
-  const colAx=xCursor+SLOT_W/2;
-  const colBx=xCursor+SLOT_W+COL_GAP+LANE+SLOT_W/2;
-  const colLenA=half*(SLOT_L+GAP);
-  const startZ=-colLenA/2;
-
-  zoneSlots.forEach((s,i)=>{
-    const inA=i<half;
-    const col=inA?i:i-half;
-    const x=inA?colAx:colBx;
-    const zc=startZ+col*(SLOT_L+GAP)+SLOT_L/2;
-    const tex=makeSlotTexture(s);
-    const mats=[
-      new THREE.MeshStandardMaterial({color:0x223,roughness:1}),
-      new THREE.MeshStandardMaterial({color:0x223,roughness:1}),
-      new THREE.MeshStandardMaterial({map:tex,roughness:.6}), // top
-      new THREE.MeshStandardMaterial({color:0x223,roughness:1}),
-      new THREE.MeshStandardMaterial({color:0x223,roughness:1}),
-      new THREE.MeshStandardMaterial({color:0x223,roughness:1}),
-    ];
-    const m=new THREE.Mesh(slotGeo,mats);
-    m.position.set(x,0.2,zc);
-    m.castShadow=true;m.receiveShadow=true;
-    m.userData.slot=s;
-    s._mesh=m;s._pos=new THREE.Vector3(x,0,zc);
-    scene.add(m);slotMeshes.push(m);
+function buildBand(zoneIds, centerZ){
+  // first pass: total width
+  let total=0; const zs=zoneIds.map(id=>ZONES.find(z=>z.id===id));
+  zs.forEach((z,i)=>{const per=Math.ceil(z.count/2);total+=per*SW+(i<zs.length-1?ZGAP:0);});
+  let x=-total/2;
+  zs.forEach(z=>{
+    const zoneSlots=slots.filter(s=>s.zone===z.id);
+    const per=Math.ceil(zoneSlots.length/2);
+    const topZ=centerZ-GUT/2-SL/2;     // back-to-back rows
+    const botZ=centerZ+GUT/2+SL/2;
+    zoneSlots.forEach((s,i)=>{
+      const top=i<per;const col=top?i:i-per;
+      stallRecords.push({slot:s, x:x+SW/2+col*SW, z:top?topZ:botZ, faceUp:top});
+    });
+    z._cx=x+(per*SW)/2; z._cz=centerZ;
+    x+=per*SW+ZGAP;
   });
+}
+const bandGap=AISLE+islandDepth;
+buildBand(['A','B','C','D','E'], -bandGap/2);
+buildBand(['F','G','H','I','J'],  bandGap/2);
 
-  // zone label floating above middle
-  const lbl=makeLabel(z.id);
-  lbl.position.set((colAx+colBx)/2,10,startZ-9);
-  scene.add(lbl);
+// bbox
+let minX=1e9,maxX=-1e9,minZ=1e9,maxZ=-1e9;
+stallRecords.forEach(r=>{minX=Math.min(minX,r.x-SW/2);maxX=Math.max(maxX,r.x+SW/2);minZ=Math.min(minZ,r.z-SL/2);maxZ=Math.max(maxZ,r.z+SL/2);});
+const padX=18, padZ=14;
+minX-=padX;maxX+=padX;minZ-=padZ;maxZ+=padZ;
+const lotW=maxX-minX, lotH=maxZ-minZ, cX=(minX+maxX)/2, cZ=(minZ+maxZ)/2;
 
-  // lane stripe
-  const lane=new THREE.Mesh(new THREE.PlaneGeometry(LANE-1,colLenA+SLOT_L),
-    new THREE.MeshStandardMaterial({color:0x363d4c,roughness:1}));
-  lane.rotation.x=-Math.PI/2;lane.position.set((colAx+colBx)/2,0.02,0);scene.add(lane);
+/* ---- ground (asphalt with subtle texture) ---- */
+function asphaltTexture(){
+  const c=document.createElement('canvas');c.width=c.height=512;const x=c.getContext('2d');
+  x.fillStyle='#2c313b';x.fillRect(0,0,512,512);
+  for(let i=0;i<14000;i++){const v=Math.random()*22-11;x.fillStyle='rgba('+(44+v)+','+(49+v)+','+(59+v)+',.5)';x.fillRect(Math.random()*512,Math.random()*512,2,2);}
+  const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(lotW/12,lotH/12);return t;
+}
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(lotW,lotH),
+  new THREE.MeshStandardMaterial({map:asphaltTexture(),roughness:.96,metalness:0}));
+ground.rotation.x=-Math.PI/2;ground.position.set(cX,0,cZ);ground.receiveShadow=true;scene.add(ground);
+// kerb
+const kerb=new THREE.Mesh(new THREE.BoxGeometry(lotW+3,1.2,lotH+3),new THREE.MeshStandardMaterial({color:0x202736,roughness:1}));
+kerb.position.set(cX,-0.6,cZ);scene.add(kerb);
 
-  xCursor+=zoneWidth()+ZONE_GAP;
+/* ---- shared stall marking texture (white outline on transparent) ---- */
+function markingTexture(){
+  const c=document.createElement('canvas');c.width=96;c.height=192;const x=c.getContext('2d');
+  x.clearRect(0,0,96,192);x.strokeStyle='rgba(236,242,252,.82)';x.lineWidth=7;
+  // two long side lines + closed end (U shape open toward aisle = top)
+  x.beginPath();x.moveTo(8,8);x.lineTo(8,184);x.moveTo(88,8);x.lineTo(88,184);x.moveTo(8,184);x.lineTo(88,184);x.stroke();
+  const t=new THREE.CanvasTexture(c);t.anisotropy=4;return t;
+}
+const markTex=markingTexture();
+const markGeo=new THREE.PlaneGeometry(SW,SL);
+const overlayGeo=new THREE.PlaneGeometry(SW-0.3,SL-0.3);
+
+/* ---- build stalls ---- */
+const overlayMeshes=[]; const carGroup=new THREE.Group();scene.add(carGroup);
+stallRecords.forEach(r=>{
+  const s=r.slot;
+  // painted marking, flush on ground
+  const mk=new THREE.Mesh(markGeo,new THREE.MeshBasicMaterial({map:markTex,transparent:true,depthWrite:false}));
+  mk.rotation.x=-Math.PI/2; if(!r.faceUp)mk.rotation.z=Math.PI; mk.position.set(r.x,0.02,r.z);scene.add(mk);
+  // status / picker overlay
+  const ov=new THREE.Mesh(overlayGeo,new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0,depthWrite:false}));
+  ov.rotation.x=-Math.PI/2;ov.position.set(r.x,0.04,r.z);ov.userData.slot=s;
+  scene.add(ov);overlayMeshes.push(ov);
+  s._ov=ov; s._pos=new THREE.Vector3(r.x,0,r.z); s._faceUp=r.faceUp;
 });
+function paintStatus(s){
+  const m=s._ov.material;
+  if(s.match){m.color.set(0xffd54a);m.opacity=.85;}
+  else if(s===selected){m.color.set(0xffffff);m.opacity=.55;}
+  else if(!availabilityChecked){m.color.set(0xffffff);m.opacity=0;}
+  else if(s.busy){m.color.set(0xef4444);m.opacity=.6;}
+  else{m.color.set(0x22c55e);m.opacity=.55;}
+}
 
-/* car boxes for occupied slots (added on availability) */
-const carGroup=new THREE.Group();scene.add(carGroup);
+/* ---- cars on busy ---- */
+function makeCar(){
+  const g=new THREE.Group();
+  const col=new THREE.Color().setHSL(Math.random(),.45,.45+Math.random()*.15);
+  const body=new THREE.Mesh(new THREE.BoxGeometry(SW*0.72,0.9,SL*0.82),new THREE.MeshStandardMaterial({color:col,roughness:.35,metalness:.4}));
+  body.position.y=0.75;body.castShadow=true;g.add(body);
+  const cab=new THREE.Mesh(new THREE.BoxGeometry(SW*0.62,0.7,SL*0.42),new THREE.MeshStandardMaterial({color:0x10151c,roughness:.15,metalness:.6}));
+  cab.position.set(0,1.35,-SL*0.05);cab.castShadow=true;g.add(cab);
+  const wgeo=new THREE.CylinderGeometry(0.38,0.38,0.3,16),wmat=new THREE.MeshStandardMaterial({color:0x0a0a0c,roughness:.8});
+  [[-1,1],[1,1],[-1,-1],[1,-1]].forEach(([sx,sz])=>{const w=new THREE.Mesh(wgeo,wmat);w.rotation.z=Math.PI/2;w.position.set(sx*SW*0.34,0.38,sz*SL*0.3);g.add(w);});
+  return g;
+}
 function buildCars(){
   carGroup.clear();
   if(!availabilityChecked)return;
-  slots.filter(s=>s.busy).forEach(s=>{
-    const hue=Math.random();
-    const col=new THREE.Color().setHSL(hue,.5,.5);
-    const body=new THREE.Mesh(new THREE.BoxGeometry(slotW*0.7,1.6,slotL*0.78),
-      new THREE.MeshStandardMaterial({color:col,roughness:.4,metalness:.3}));
-    body.position.set(s._pos.x,1.1,s._pos.z);body.castShadow=true;
-    const cabin=new THREE.Mesh(new THREE.BoxGeometry(slotW*0.6,1,slotL*0.4),
-      new THREE.MeshStandardMaterial({color:0x111418,roughness:.2,metalness:.6}));
-    cabin.position.set(s._pos.x,2.1,s._pos.z);cabin.castShadow=true;carGroup.add(body);carGroup.add(cabin);
-  });
+  slots.filter(s=>s.busy).forEach(s=>{const car=makeCar();car.position.set(s._pos.x,0,s._pos.z);car.rotation.y=(Math.random()-.5)*0.06;carGroup.add(car);});
 }
 
-/* ---------- interaction ---------- */
-const ray=new THREE.Raycaster();const mouse=new THREE.Vector2();
-let hovered=null;
-function setPointer(e){const r=canvas.getBoundingClientRect();mouse.x=((e.clientX-r.left)/r.width)*2-1;mouse.y=-((e.clientY-r.top)/r.height)*2+1;}
+/* ---- columns (structure) ---- */
+const colMat=new THREE.MeshStandardMaterial({color:0xb9c2cf,roughness:.85});
+const colGeo=new THREE.BoxGeometry(0.7,7,0.7);
+[-bandGap/2, bandGap/2].forEach(bz=>{
+  for(let gx=minX+padX; gx<=maxX-padX; gx+=13){
+    const col=new THREE.Mesh(colGeo,colMat);col.position.set(gx,3.5,bz);col.castShadow=true;scene.add(col);
+  }
+});
 
+/* ---- directional arrows in aisles ---- */
+function arrowTex(){const c=document.createElement('canvas');c.width=64;c.height=128;const x=c.getContext('2d');x.clearRect(0,0,64,128);x.fillStyle='rgba(236,242,252,.6)';x.beginPath();x.moveTo(32,16);x.lineTo(56,64);x.lineTo(40,64);x.lineTo(40,112);x.lineTo(24,112);x.lineTo(24,64);x.lineTo(8,64);x.closePath();x.fill();return new THREE.CanvasTexture(c);}
+const aTex=arrowTex();const aGeo=new THREE.PlaneGeometry(2.4,4.8);
+[-bandGap/2-AISLE/2-islandDepth/2-0.5,0,bandGap/2+AISLE/2+islandDepth/2+0.5].forEach(az=>{
+  for(let gx=minX+padX+6; gx<=maxX-padX; gx+=22){
+    const a=new THREE.Mesh(aGeo,new THREE.MeshBasicMaterial({map:aTex,transparent:true,depthWrite:false}));
+    a.rotation.x=-Math.PI/2;a.position.set(gx,0.03,az);scene.add(a);
+  }
+});
+
+/* ---- subtle zone letters painted flat on ground ---- */
+function letterTex(ch){const c=document.createElement('canvas');c.width=c.height=128;const x=c.getContext('2d');x.clearRect(0,0,128,128);x.fillStyle='rgba(236,242,252,.16)';x.font='bold 110px Inter,Arial';x.textAlign='center';x.textBaseline='middle';x.fillText(ch,64,68);return new THREE.CanvasTexture(c);}
+ZONES.forEach(z=>{
+  const m=new THREE.Mesh(new THREE.PlaneGeometry(6,6),new THREE.MeshBasicMaterial({map:letterTex(z.id),transparent:true,depthWrite:false}));
+  m.rotation.x=-Math.PI/2;m.position.set(z._cx,0.025,z._cz);scene.add(m);
+});
+
+/* ============ INTERACTION ============ */
+const ray=new THREE.Raycaster();const mouse=new THREE.Vector2();let hovered=null;
+function setPointer(e){const r=canvas.getBoundingClientRect();mouse.x=((e.clientX-r.left)/r.width)*2-1;mouse.y=-((e.clientY-r.top)/r.height)*2+1;}
 let downX,downY,moved=false;
 canvas.addEventListener('pointerdown',e=>{downX=e.clientX;downY=e.clientY;moved=false;canvas.classList.add('grabbing');});
-canvas.addEventListener('pointerup',()=>canvas.classList.remove('grabbing'));
-canvas.addEventListener('pointermove',e=>{
-  if(downX!==undefined&&(Math.abs(e.clientX-downX)>4||Math.abs(e.clientY-downY)>4))moved=true;
-  setPointer(e);
-});
-canvas.addEventListener('click',e=>{
-  if(moved)return; // was a drag
-  setPointer(e);
-  ray.setFromCamera(mouse,camera);
-  const hit=ray.intersectObjects(slotMeshes,false)[0];
-  if(hit)selectSlot(hit.object.userData.slot);
-});
+addEventListener('pointerup',()=>canvas.classList.remove('grabbing'));
+canvas.addEventListener('pointermove',e=>{if(downX!==undefined&&(Math.abs(e.clientX-downX)>4||Math.abs(e.clientY-downY)>4))moved=true;setPointer(e);});
+canvas.addEventListener('click',e=>{if(moved)return;setPointer(e);ray.setFromCamera(mouse,camera);const h=ray.intersectObjects(overlayMeshes,false)[0];if(h)selectSlot(h.object.userData.slot);});
+function updateHover(){ray.setFromCamera(mouse,camera);const h=ray.intersectObjects(overlayMeshes,false)[0];const m=h?h.object:null;
+  if(hovered&&hovered!==m){const s=hovered.userData.slot;if(s!==selected&&!s.match)paintStatus(s);}
+  if(m){const s=m.userData.slot;if(s!==selected&&!s.match){m.material.opacity=Math.max(m.material.opacity,.3);}canvas.style.cursor='pointer';}else canvas.style.cursor='';
+  hovered=m;}
 
-/* hover highlight */
-function updateHover(){
-  ray.setFromCamera(mouse,camera);
-  const hit=ray.intersectObjects(slotMeshes,false)[0];
-  const m=hit?hit.object:null;
-  if(hovered&&hovered!==m)hovered.scale.set(1,1,1);
-  if(m){m.scale.set(1.06,1.6,1.06);canvas.style.cursor='pointer';}
-  else canvas.style.cursor='';
-  hovered=m;
-}
-
-/* ---------- UI ---------- */
+/* ============ UI ============ */
 const panel=document.getElementById('panel');
 function selectSlot(s){
-  if(selected)drawSlot(selected);
-  selected=s;drawSlot(s);
+  const prev=selected;selected=s;if(prev)paintStatus(prev);paintStatus(s);
   document.getElementById('pName').textContent=s.id;
   document.getElementById('pZone').textContent='Zone '+s.zone+' · Ground floor';
   document.getElementById('pId').textContent=s.id;
   document.getElementById('pZoneV').textContent='Zone '+s.zone;
   const sb=document.getElementById('pStatus'),pr=document.getElementById('pPlateRow');
-  if(!availabilityChecked){
-    sb.innerHTML='<span class="pill unknown">● Status hidden</span>';
-    document.getElementById('pStatusV').textContent='Unknown';pr.style.display='none';
-  }else if(s.busy){
-    sb.innerHTML='<span class="pill busy">● Occupied</span>';
-    document.getElementById('pStatusV').textContent='Busy';
-    document.getElementById('pPlate').textContent=s.plate;pr.style.display='flex';
-  }else{
-    sb.innerHTML='<span class="pill free">● Available</span>';
-    document.getElementById('pStatusV').textContent='Free';pr.style.display='none';
-  }
+  if(!availabilityChecked){sb.innerHTML='<span class="pill unknown">● Status hidden</span>';document.getElementById('pStatusV').textContent='Unknown';pr.style.display='none';}
+  else if(s.busy){sb.innerHTML='<span class="pill busy">● Occupied</span>';document.getElementById('pStatusV').textContent='Busy';document.getElementById('pPlate').textContent=s.plate;pr.style.display='flex';}
+  else{sb.innerHTML='<span class="pill free">● Available</span>';document.getElementById('pStatusV').textContent='Free';pr.style.display='none';}
   panel.classList.add('open');
 }
-document.getElementById('panelX').onclick=()=>{panel.classList.remove('open');if(selected){const s=selected;selected=null;drawSlot(s);}};
+document.getElementById('panelX').onclick=()=>{panel.classList.remove('open');const p=selected;selected=null;if(p)paintStatus(p);};
 document.getElementById('focusBtn').onclick=()=>{if(selected)flyTo(selected._pos);};
 
-/* availability */
 const availBtn=document.getElementById('availBtn');
-availBtn.onclick=()=>{
-  availabilityChecked=!availabilityChecked;
-  availBtn.textContent=availabilityChecked?'Hide availability':'Check availability';
-  availBtn.classList.toggle('checked',availabilityChecked);
-  slots.forEach(drawSlot);
-  buildCars();
-  updateStats();
-  toast(availabilityChecked?'Availability loaded · 50 bays occupied':'Availability hidden');
-  if(selected)selectSlot(selected);
-};
-function updateStats(){
-  if(availabilityChecked){
-    const busy=slots.filter(s=>s.busy).length;
-    document.getElementById('busyStat').textContent=busy;
-    document.getElementById('freeStat').textContent=slots.length-busy;
-  }else{document.getElementById('busyStat').textContent='—';document.getElementById('freeStat').textContent='—';}
-}
+availBtn.onclick=()=>{availabilityChecked=!availabilityChecked;availBtn.textContent=availabilityChecked?'Hide availability':'Check availability';availBtn.classList.toggle('checked',availabilityChecked);slots.forEach(paintStatus);buildCars();updateStats();toast(availabilityChecked?'Availability loaded · 50 bays occupied':'Availability hidden');if(selected)selectSlot(selected);};
+function updateStats(){if(availabilityChecked){const b=slots.filter(s=>s.busy).length;document.getElementById('busyStat').textContent=b;document.getElementById('freeStat').textContent=slots.length-b;}else{document.getElementById('busyStat').textContent='—';document.getElementById('freeStat').textContent='—';}}
 
-/* search */
 const searchEl=document.getElementById('search');
 searchEl.addEventListener('input',doSearch);
-function doSearch(){
-  const q=searchEl.value.trim().toUpperCase().replace(/\s+/g,'');
-  let matches=[];
-  slots.forEach(s=>{
-    const plate=(s.plate||'').toUpperCase().replace(/\s+/g,'');
-    const hit=s.id.includes(q)||(availabilityChecked&&plate&&plate.includes(q));
-    if(q&&hit){s.match=true;matches.push(s);}else s.match=false;
-    drawSlot(s);
-  });
+function doSearch(){const q=searchEl.value.trim().toUpperCase().replace(/\s+/g,'');let matches=[];
+  slots.forEach(s=>{const plate=(s.plate||'').toUpperCase().replace(/\s+/g,'');const hit=s.id.includes(q)||(availabilityChecked&&plate&&plate.includes(q));s.match=!!(q&&hit);if(s.match)matches.push(s);paintStatus(s);});
   if(q&&matches.length===0)toast('No match for "'+searchEl.value+'"');
-  if(matches.length>=1){flyTo(matches[0]._pos);if(matches.length===1)selectSlot(matches[0]);}
-}
+  if(matches.length>=1){flyTo(matches[0]._pos);if(matches.length===1)selectSlot(matches[0]);}}
 document.getElementById('clearBtn').onclick=()=>{searchEl.value='';doSearch();};
 
 /* camera moves */
 let anim=null;
-function flyTo(pos,dist=34,height=26){
-  const tgt=pos.clone();
-  const camPos=new THREE.Vector3(pos.x,height,pos.z+dist);
-  anim={t:0,fromT:controls.target.clone(),toT:tgt,fromC:camera.position.clone(),toC:camPos};
-}
-function easeTo(home){anim={t:0,fromT:controls.target.clone(),toT:home.tgt.clone(),fromC:camera.position.clone(),toC:home.pos.clone()};}
+const HOME={pos:new THREE.Vector3(cX,Math.max(lotW,lotH)*0.5,cZ+lotH*1.5+60),tgt:new THREE.Vector3(cX,0,cZ)};
+camera.position.copy(HOME.pos);controls.target.copy(HOME.tgt);
+function flyTo(pos,dist=30,height=22){anim={t:0,fromT:controls.target.clone(),toT:pos.clone(),fromC:camera.position.clone(),toC:new THREE.Vector3(pos.x,height,pos.z+dist)};}
+function easeTo(h){anim={t:0,fromT:controls.target.clone(),toT:h.tgt.clone(),fromC:camera.position.clone(),toC:h.pos.clone()};}
 document.getElementById('resetBtn').onclick=()=>easeTo(HOME);
-document.getElementById('topBtn').onclick=()=>easeTo({pos:new THREE.Vector3(0,260,1),tgt:new THREE.Vector3(0,0,0)});
+document.getElementById('topBtn').onclick=()=>easeTo({pos:new THREE.Vector3(cX,Math.max(lotW,lotH)*0.95,cZ+0.1),tgt:new THREE.Vector3(cX,0,cZ)});
 
-/* toast */
 let tt;function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),2200);}
-
-/* resize */
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
 
-/* loop */
 function tick(){
-  if(anim){
-    anim.t=Math.min(1,anim.t+0.035);
-    const e=1-Math.pow(1-anim.t,3);
-    controls.target.lerpVectors(anim.fromT,anim.toT,e);
-    camera.position.lerpVectors(anim.fromC,anim.toC,e);
-    if(anim.t>=1)anim=null;
-  }
-  updateHover();
-  controls.update();
-  renderer.render(scene,camera);
-  requestAnimationFrame(tick);
+  if(anim){anim.t=Math.min(1,anim.t+0.03);const e=1-Math.pow(1-anim.t,3);controls.target.lerpVectors(anim.fromT,anim.toT,e);camera.position.lerpVectors(anim.fromC,anim.toC,e);if(anim.t>=1)anim=null;}
+  updateHover();controls.update();renderer.render(scene,camera);requestAnimationFrame(tick);
 }
-updateStats();
+slots.forEach(paintStatus);updateStats();
 document.getElementById('loader').style.display='none';
 tick();
 </script>
