@@ -1677,18 +1677,6 @@ button{font-family:inherit;}
      levels, with wayfinding arrows, entry/exit markers and floor labels. ===== */
   const CPK={x0:695,y0:715,x1:2673,y1:898,img:'images/carpark_deck.png'};
   CPK.w=CPK.x1-CPK.x0; CPK.h=CPK.y1-CPK.y0;
-  function cpkChevrons(cx0,cx1,y,dir,gap,sz){
-    // a lane of white chevrons from cx0..cx1 at height y; dir=+1 right, -1 left
-    var out='',x=cx0+gap;
-    while(x<cx1-gap){
-      var a=x, b=x+sz*dir, t=y-sz*0.55, bot=y+sz*0.55;
-      out+='<path class="cpk-arrow lit" d="M'+a.toFixed(1)+' '+t.toFixed(1)+
-           ' L'+b.toFixed(1)+' '+y.toFixed(1)+' L'+a.toFixed(1)+' '+bot.toFixed(1)+
-           ' L'+(a+sz*0.34*dir).toFixed(1)+' '+y.toFixed(1)+' Z"/>';
-      x+=gap;
-    }
-    return out;
-  }
   function cpkName(fk){return fk==='BL'?'BASEMENT PARKING':fk==='G'?'GROUND PARKING':'LEVEL 1 PARKING';}
   function cpkSub(fk){return 'P · '+(fk==='BL'?'Level B':fk==='G'?'Level 0':'Level 1')+' · same layout as plan';}
   function newCpkLayer(z){
@@ -1697,24 +1685,8 @@ button{font-family:inherit;}
     L.setAttribute('class','ext cpk'); L.dataset.cz=z;
     stage3d.insertBefore(L,svg); LAYERS.push(L); return L;
   }
-  // a thin recessed slab behind/below the active deck — conveys the other levels
-  function buildCpkHint(fk,z){
-    var L=newCpkLayer(z);
-    var x0=CPK.x0,y0=CPK.y0,w=CPK.w,h=CPK.h,pad=20;
-    var dx=x0-pad,dy=y0-pad,dw=w+pad*2,dh=h+pad*2;
-    var H=['<g class="cpk-deck cpk-dim">'];
-    for(var s=3;s>=1;s--){var o=s*2.4;
-      H.push('<rect class="cpk-skirt" x="'+(dx+o).toFixed(1)+'" y="'+(dy+o).toFixed(1)+'" width="'+dw.toFixed(1)+'" height="'+dh.toFixed(1)+'" rx="10"/>');}
-    H.push('<rect class="cpk-floor" x="'+dx.toFixed(1)+'" y="'+dy.toFixed(1)+'" width="'+dw.toFixed(1)+'" height="'+dh.toFixed(1)+'" rx="10"/>');
-    H.push('<rect class="cpk-edge" x="'+dx.toFixed(1)+'" y="'+dy.toFixed(1)+'" width="'+dw.toFixed(1)+'" height="'+dh.toFixed(1)+'" rx="10"/>');
-    // slim level tab so the hidden levels are still identifiable
-    H.push('<rect class="cpk-lbl-bg" x="'+(dx+10)+'" y="'+(dy-44)+'" width="262" height="38" rx="9"/>');
-    H.push('<rect x="'+(dx+10)+'" y="'+(dy-44)+'" width="7" height="38" rx="3" fill="#3a465a"/>');
-    H.push('<text class="cpk-lbl-t" x="'+(dx+30)+'" y="'+(dy-19)+'" font-size="21">'+cpkName(fk)+'</text>');
-    H.push('</g>');
-    L.innerHTML=H.join('');
-  }
-  // the active level — full traced deck with lighting + wayfinding + label
+  // the active level only — a 3D deck slab floating above the mall, draped with
+  // the exact traced plan (white stall lines / roads / ramps) + a floor label.
   function buildCpkDeck(fk,z){
     var L=newCpkLayer(z);
     var x0=CPK.x0,y0=CPK.y0,w=CPK.w,h=CPK.h,pad=20;
@@ -1732,12 +1704,6 @@ button{font-family:inherit;}
     // the exact traced plan (white stall lines / roads / ramps)
     H.push('<image class="cpk-trace lit" href="'+CPK.img+'" x="'+x0+'" y="'+y0+'" width="'+w+'" height="'+h+'" preserveAspectRatio="none"/>');
     H.push('<rect class="cpk-edge lit" x="'+dx.toFixed(1)+'" y="'+dy.toFixed(1)+'" width="'+dw.toFixed(1)+'" height="'+dh.toFixed(1)+'" rx="10"/>');
-    // wayfinding: circulation arrows in the two real drive lanes (y≈808 / y≈875)
-    H.push(cpkChevrons(x0+60,CPK.x1-60,808,1,150,26));
-    H.push(cpkChevrons(x0+60,CPK.x1-60,875,-1,150,26));
-    // entry / exit markers on the perimeter access road
-    H.push(cpkMarker(x0+18,888,'#27c08a','ENTRY',1));
-    H.push(cpkMarker(CPK.x1-150,888,'#e0564f','EXIT',-1));
     // floor label badge (top-left of the deck)
     var bw=392,bh=78,bx=dx+10,by=dy-bh-14;
     H.push('<rect class="cpk-lbl-bg lit" x="'+bx+'" y="'+by+'" width="'+bw+'" height="'+bh+'" rx="12"/>');
@@ -1747,25 +1713,8 @@ button{font-family:inherit;}
     H.push('</g>');
     L.innerHTML=H.join('');
   }
-  function cpkMarker(x,y,col,txt,dir){
-    var tw=txt.length*15+34;
-    var tri=dir>0? 'M'+(x+tw)+' '+(y-15)+' L'+(x+tw+16)+' '+y+' L'+(x+tw)+' '+(y+15)+' Z'
-                 : 'M'+x+' '+(y-15)+' L'+(x-16)+' '+y+' L'+x+' '+(y+15)+' Z';
-    return '<g class="cpk-mk">'+
-      '<rect x="'+x+'" y="'+(y-15)+'" width="'+tw+'" height="30" rx="7" fill="'+col+'"/>'+
-      '<path d="'+tri+'" fill="'+col+'"/>'+
-      '<text class="cpk-tag-t" x="'+(x+tw/2)+'" y="'+(y+6)+'" font-size="18" text-anchor="middle">'+txt+'</text>'+
-      '</g>';
-  }
-  // Render the carpark as a multi-level structure floating above the mall:
-  // the two non-active levels as recessed slab hints (drawn first / lower), and
-  // the current floor's level as the full traced deck on top.
-  function buildCarpark(){
-    var order=['BL','G','F1'];
-    var zs=[64,104]; var i=0;
-    order.forEach(function(fk){ if(fk!==curFloor){ buildCpkHint(fk, zs[i++]); } });
-    buildCpkDeck(curFloor, 152);
-  }
+  // Only the current floor's parking deck floats above the mall (one level per tab).
+  function buildCarpark(){ buildCpkDeck(curFloor, 28); }
 
   /* ---- small facility icons printed on toilet / customer-service roofs ---- */
   function facilityIcons(){
@@ -1782,58 +1731,34 @@ button{font-family:inherit;}
     });
   }
 
-  /* ===== stylised 3D parking deck — drawn on every floor along the top edge ===== */
-  /* ===== Carpark band — dark deck, white empty stall lines, no cars.
-     Same on every floor (it is the carpark that sits on top of the building). ===== */
+  /* ===== Parking panel — the SAME real traced carpark plan used on the 3D map,
+     drawn flat (white linework on a dark deck) with broad clickable parking
+     zones for find-my-car / wayfinding. ===== */
   const parkSvg=document.getElementById('parkSvg');
-  const WL='#e3e9f1';
-  function buildParkingDeck(){
+  function buildParkingPanel(){
     if(parkBuilt) return;
     parkStalls=[]; const H=[];
-    const VW=2200, VH=660, mx=30, my=34, bw=VW-2*mx, bh=VH-2*my;
-    H.push('<rect x="0" y="0" width="'+VW+'" height="'+VH+'" fill="#121925"/>');
-    H.push('<rect x="'+mx+'" y="'+my+'" width="'+bw+'" height="'+bh+'" rx="10" fill="#1b2531" stroke="#3a465a" stroke-width="2"/>');
-    H.push('<text x="'+(mx+20)+'" y="'+(my+34)+'" font-family="Poppins,Arial" font-size="22" font-weight="700" fill="#7f93ab" letter-spacing="2">CARPARK</text>');
-    const pad=26, sidePad=26, nb=3, aisle=54, topOff=24;
-    const innerX=mx+sidePad, innerW=bw-2*sidePad;
-    const top=my+pad+topOff;
-    const usable=bh-2*pad-topOff-(nb-1)*aisle;
-    const rowH=usable/(nb*2);
-    const ncol=Math.round(innerW/46), sw=innerW/ncol, colEvery=Math.ceil(ncol/4);
-    let y=top;
-    for(let b=0;b<nb;b++){
-      const bandTop=y, bandBot=y+2*rowH, cl=y+rowH;
-      H.push('<line x1="'+innerX+'" y1="'+bandTop+'" x2="'+(innerX+innerW)+'" y2="'+bandTop+'" stroke="'+WL+'" stroke-width="1.6"/>');
-      H.push('<line x1="'+innerX+'" y1="'+bandBot+'" x2="'+(innerX+innerW)+'" y2="'+bandBot+'" stroke="'+WL+'" stroke-width="1.6"/>');
-      H.push('<line x1="'+innerX+'" y1="'+cl+'" x2="'+(innerX+innerW)+'" y2="'+cl+'" stroke="'+WL+'" stroke-width="1.6"/>');
-      for(let rr=0;rr<2;rr++){
-        const ry=bandTop+rr*rowH;
-        for(let c=0;c<ncol;c++){
-          const sx=innerX+c*sw;
-          const id='P-'+'ABCDEF'[b*2+rr]+(c+1);
-          parkStalls.push({id:id,x:sx+sw/2,y:ry+rowH/2});
-          const idx=parkStalls.length-1;
-          H.push('<line x1="'+sx.toFixed(1)+'" y1="'+ry.toFixed(1)+'" x2="'+sx.toFixed(1)+'" y2="'+(ry+rowH).toFixed(1)+'" stroke="'+WL+'" stroke-width="1"/>');
-          H.push('<rect class="stall" data-i="'+idx+'" x="'+sx.toFixed(1)+'" y="'+ry.toFixed(1)+'" width="'+sw.toFixed(1)+'" height="'+rowH.toFixed(1)+'" fill="transparent"/>');
-        }
-        H.push('<line x1="'+(innerX+innerW)+'" y1="'+ry+'" x2="'+(innerX+innerW)+'" y2="'+(ry+rowH)+'" stroke="'+WL+'" stroke-width="1"/>');
-      }
-      for(let c=0;c<=ncol;c+=colEvery){
-        const sx=innerX+c*sw;
-        H.push('<line x1="'+sx.toFixed(1)+'" y1="'+(bandTop-3)+'" x2="'+sx.toFixed(1)+'" y2="'+(bandBot+3)+'" stroke="'+WL+'" stroke-width="2.6"/>');
-      }
-      if(b<nb-1){ const ay=bandBot+aisle/2;
-        H.push('<line x1="'+innerX+'" y1="'+ay.toFixed(1)+'" x2="'+(innerX+innerW)+'" y2="'+ay.toFixed(1)+'" stroke="'+WL+'" stroke-width="1.2" stroke-dasharray="16 13" opacity="0.5"/>');
-      }
-      y=bandBot+aisle;
+    const VW=CPK.w, VH=CPK.h, mg=10;
+    parkSvg.setAttribute('viewBox','-'+mg+' -'+mg+' '+(VW+2*mg)+' '+(VH+2*mg));
+    H.push('<rect x="-'+mg+'" y="-'+mg+'" width="'+(VW+2*mg)+'" height="'+(VH+2*mg)+'" rx="6" fill="#141c27"/>');
+    H.push('<rect x="0" y="0" width="'+VW+'" height="'+VH+'" rx="4" fill="#1b2531" stroke="#34425a" stroke-width="2"/>');
+    // the exact traced plan (identical to the 3D deck texture)
+    H.push('<image href="'+CPK.img+'" x="0" y="0" width="'+VW+'" height="'+VH+'" preserveAspectRatio="none" style="opacity:.92"/>');
+    // broad clickable parking zones across the bay field (top band of the plan)
+    const nz=13, zw=VW/nz, zh=VH*0.62, letters='ABCDEFGHIJKLM';
+    for(let z=0;z<nz;z++){
+      const zx=z*zw, zid='Zone '+letters[z];
+      parkStalls.push({id:zid,x:zx+zw/2,y:zh/2});
+      const idx=parkStalls.length-1;
+      H.push('<rect class="stall" data-i="'+idx+'" x="'+zx.toFixed(1)+'" y="0" width="'+zw.toFixed(1)+'" height="'+zh.toFixed(1)+'" fill="transparent"/>');
+      H.push('<text x="'+(zx+zw/2).toFixed(1)+'" y="'+(zh+VH*0.18).toFixed(1)+'" text-anchor="middle" font-family="Sora,Arial" font-size="11" font-weight="700" fill="#7f93ab">'+letters[z]+'</text>');
     }
-    parkSvg.setAttribute('viewBox','0 0 '+VW+' '+VH);
     parkSvg.innerHTML=H.join('');
-    parkTotal=parkStalls.length;
+    parkTotal=nz*18;                              // ≈ 234 marked spaces across the deck
     parkByPlate={};
-    PLATE_LIST.forEach(function(p,k){ parkByPlate[p]=(k*37+11)%parkTotal; });
+    PLATE_LIST.forEach(function(p,k){ parkByPlate[p]=(k*3+1)%nz; });
     Array.prototype.forEach.call(parkSvg.querySelectorAll('.stall'),function(el){
-      el.addEventListener('click',function(){ highlightStall(+el.dataset.i,false); toast('Stall '+parkStalls[+el.dataset.i].id); });
+      el.addEventListener('click',function(){ highlightStall(+el.dataset.i,false); toast('Parking '+parkStalls[+el.dataset.i].id); });
     });
     parkBuilt=true; updateParkStats();
   }
@@ -1919,11 +1844,11 @@ button{font-family:inherit;}
     var minX=Math.min(cMinX,CPK.x0), maxX=Math.max(cMaxX,CPK.x1);
     var minY=Math.min(cMinY,CPK.y0), maxY=cMaxY;
     var bw=maxX-minX, bh=maxY-minY;
-    // extra headroom at top so the floated carpark structure stays in frame
-    var head=200;
+    // extra headroom at top so the floated carpark deck stays in frame
+    var head=130;
     baseVB={x:minX-pad,y:minY-pad-head,w:bw+pad*2,h:bh+pad*2+head};vb=Object.assign({},baseVB);baseVBready=true;applyVB();}
   function applyVB(){var s=vb.x+' '+vb.y+' '+vb.w+' '+vb.h;for(var i=0;i<LAYERS.length;i++)LAYERS[i].setAttribute('viewBox',s);
-    if(baseVB){var f=baseVB.w/vb.w;if(f>1.2)f=1.2;if(f<0.55)f=0.55;var step=EXT_H0/EXT_N*f;for(var j=0;j<LAYERS.length;j++){var k=LAYERS[j].dataset.k;if(k){LAYERS[j].style.transform='translateZ(-'+(k*step).toFixed(2)+'px)';}var cz=LAYERS[j].dataset.cz;if(cz){LAYERS[j].style.transform='translateZ(-'+(cz*f).toFixed(2)+'px)';}}}}
+    if(baseVB){var f=baseVB.w/vb.w;if(f>1.2)f=1.2;if(f<0.55)f=0.55;var step=EXT_H0/EXT_N*f;for(var j=0;j<LAYERS.length;j++){var k=LAYERS[j].dataset.k;if(k){LAYERS[j].style.transform='translateZ(-'+(k*step).toFixed(2)+'px)';}var cz=LAYERS[j].dataset.cz;if(cz){LAYERS[j].style.transform='translateZ('+(cz*f).toFixed(2)+'px)';}}}}
   const MINW=function(){return baseVB.w/6;},MAXW=function(){return baseVB.w/0.7;};
   const mapWrap=document.getElementById('mapWrapper');
   function zoomCenter(fz){const mn=MINW(),mx=MAXW();let nw=vb.w*fz;if(nw<mn)nw=mn;if(nw>mx)nw=mx;const k=nw/vb.w;const cx=vb.x+vb.w/2,cy=vb.y+vb.h/2;vb.w=nw;vb.h=vb.h*k;vb.x=cx-vb.w/2;vb.y=cy-vb.h/2;applyVB();}
@@ -2045,7 +1970,7 @@ button{font-family:inherit;}
   document.querySelectorAll('.floor-tab').forEach(function(tab){tab.addEventListener('click',function(){
     if(tab.classList.contains('active'))return;
     document.querySelectorAll('.floor-tab').forEach(function(t){t.classList.remove('active');});tab.classList.add('active');
-    if(currentView==='list')setView('map');
+    if(currentView!=='map')setView('map');
     loadFloor(tab.dataset.floor);
   });});
 
@@ -2106,7 +2031,7 @@ button{font-family:inherit;}
     searchInput.parentNode.style.display=isPark?'none':'';
     searchInput.placeholder=isList?'What do you want to find?':'Search unit, code or category';
     if(isList){deselect();renderList();}
-    if(isPark){deselect();buildParkingDeck();}
+    if(isPark){deselect();buildParkingPanel();}
     syncNav();}
   document.querySelectorAll('.vt-btn').forEach(function(b){b.addEventListener('click',function(){setView(b.dataset.view);});});
 
@@ -2115,12 +2040,12 @@ button{font-family:inherit;}
   function normPlate(s){return s.toUpperCase().replace(/[^A-Z0-9]/g,'');}
   function findPlate(){
     var raw=plateInput.value.trim(); if(!raw)return;
-    setView('parking');                       // also builds the deck + parkByPlate
+    setView('parking');                       // also builds the panel + parkByPlate
     var key=normPlate(raw), idx;
     for(var p in parkByPlate){ if(normPlate(p)===key){ idx=parkByPlate[p]; break; } }
     if(idx===undefined){ toast('Plate “'+raw+'” not found'); return; }
     highlightStall(idx,true);
-    toast('Vehicle located · Stall '+parkStalls[idx].id);
+    toast('Vehicle located · '+parkStalls[idx].id);
   }
   const plateInput=document.getElementById('plateInput'),plateBtn=document.getElementById('plateBtn');
   if(plateBtn)plateBtn.addEventListener('click',findPlate);
