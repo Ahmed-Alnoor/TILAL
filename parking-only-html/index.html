@@ -3,435 +3,445 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Tilal Mall — Ground Floor Parking Map</title>
+<title>Tilal Mall — 3D Ground Floor Parking</title>
 <style>
-:root{
-  --green:#22c55e;
-  --green-2:#16a34a;
-  --red:#ef4444;
-  --red-2:#dc2626;
-  --ink:#0b1f3a;
-  --text:#eaf2ff;
-  --muted:#a9c2e6;
-  --glass:rgba(8,22,48,.55);
-  --line:rgba(150,190,255,.18);
-}
-*{box-sizing:border-box;}
-html,body{height:100%;margin:0;}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;color:#eaf2ff;}
 body{
-  font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
-  color:var(--text);
-  /* blue gradient background */
   background:
-    radial-gradient(1200px 600px at 15% -10%, rgba(99,179,255,.35), transparent 60%),
-    radial-gradient(1000px 700px at 110% 10%, rgba(56,120,255,.30), transparent 55%),
+    radial-gradient(1200px 600px at 15% -10%, rgba(99,179,255,.40), transparent 60%),
+    radial-gradient(1000px 700px at 110% 10%, rgba(56,120,255,.34), transparent 55%),
     linear-gradient(160deg,#0a2a6b 0%, #0c3a8f 35%, #08409c 60%, #052a66 100%);
-  min-height:100vh;
 }
-a{color:inherit;}
+#scene{position:fixed;inset:0;display:block;cursor:grab;}
+#scene.grabbing{cursor:grabbing;}
 
-/* layout */
-.wrap{max-width:1700px;margin:0 auto;padding:18px 18px 60px;}
-header.app{
-  display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
-  padding:16px 20px;border-radius:20px;background:var(--glass);
-  border:1px solid var(--line);backdrop-filter:blur(14px);box-shadow:0 20px 50px rgba(0,0,0,.25);
-}
-.brand{display:flex;align-items:center;gap:14px;}
-.logo{
-  width:46px;height:46px;border-radius:14px;display:grid;place-items:center;font-weight:800;font-size:20px;
-  background:linear-gradient(135deg,#6db4ff,#2f6dff);box-shadow:inset 0 0 22px rgba(255,255,255,.25);
-}
-.brand h1{margin:0;font-size:20px;letter-spacing:.04em;}
-.brand p{margin:2px 0 0;font-size:12px;color:var(--muted);}
-
-.toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-.search-box{
-  display:flex;align-items:center;gap:8px;background:rgba(3,12,30,.5);
-  border:1px solid var(--line);border-radius:14px;padding:10px 14px;min-width:280px;
-}
-.search-box input{background:transparent;border:0;outline:0;color:var(--text);width:100%;font-size:14px;}
+/* top bar */
+.topbar{position:fixed;top:0;left:0;right:0;display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  padding:14px 18px;z-index:10;}
+.brand{display:flex;align-items:center;gap:12px;background:rgba(8,22,48,.55);border:1px solid rgba(150,190,255,.2);
+  backdrop-filter:blur(14px);border-radius:16px;padding:10px 16px;}
+.logo{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;font-weight:800;font-size:18px;
+  background:linear-gradient(135deg,#6db4ff,#2f6dff);box-shadow:inset 0 0 18px rgba(255,255,255,.25);}
+.brand h1{font-size:16px;letter-spacing:.04em;}
+.brand p{font-size:11px;color:#a9c2e6;margin-top:2px;}
+.spacer{flex:1;}
+.search-box{display:flex;align-items:center;gap:8px;background:rgba(8,22,48,.55);border:1px solid rgba(150,190,255,.2);
+  backdrop-filter:blur(14px);border-radius:14px;padding:10px 14px;min-width:270px;}
+.search-box input{background:transparent;border:0;outline:0;color:#eaf2ff;width:100%;font-size:14px;}
 .search-box input::placeholder{color:#88a4d0;}
-.btn{
-  border:1px solid var(--line);border-radius:14px;padding:11px 18px;font-size:14px;font-weight:700;
-  cursor:pointer;color:var(--text);background:rgba(255,255,255,.06);transition:.2s;white-space:nowrap;
-}
-.btn:hover{transform:translateY(-1px);background:rgba(255,255,255,.12);}
+.btn{border:1px solid rgba(150,190,255,.2);border-radius:14px;padding:11px 16px;font-size:13px;font-weight:700;
+  cursor:pointer;color:#eaf2ff;background:rgba(8,22,48,.55);backdrop-filter:blur(14px);transition:.2s;white-space:nowrap;}
+.btn:hover{transform:translateY(-1px);background:rgba(30,70,140,.7);}
 .btn.primary{background:linear-gradient(135deg,#22c55e,#15a34a);border-color:transparent;color:#04230f;}
 .btn.primary.checked{background:linear-gradient(135deg,#f59e0b,#d97706);color:#2b1500;}
-.btn.ghost{background:rgba(255,255,255,.04);}
 
-/* stats */
-.stats{display:flex;gap:14px;flex-wrap:wrap;margin:18px 0;}
-.stat{
-  flex:1;min-width:150px;background:var(--glass);border:1px solid var(--line);border-radius:16px;
-  padding:14px 18px;backdrop-filter:blur(10px);
-}
-.stat b{display:block;font-size:26px;}
-.stat span{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;}
-.stat.green b{color:#5af08a;}
-.stat.red b{color:#ff7a7a;}
+/* stats + legend */
+.hud{position:fixed;top:78px;left:18px;z-index:10;display:flex;flex-direction:column;gap:10px;}
+.stats{display:flex;gap:8px;}
+.stat{background:rgba(8,22,48,.55);border:1px solid rgba(150,190,255,.2);backdrop-filter:blur(14px);
+  border-radius:14px;padding:10px 14px;min-width:78px;}
+.stat b{display:block;font-size:20px;}
+.stat span{font-size:10px;color:#a9c2e6;text-transform:uppercase;letter-spacing:.1em;}
+.stat.green b{color:#5af08a;}.stat.red b{color:#ff7a7a;}
+.legend{background:rgba(8,22,48,.55);border:1px solid rgba(150,190,255,.2);backdrop-filter:blur(14px);
+  border-radius:14px;padding:10px 14px;font-size:12px;color:#c7d8f5;display:flex;flex-direction:column;gap:6px;}
+.legend i{width:12px;height:12px;border-radius:4px;display:inline-block;vertical-align:-2px;margin-right:6px;}
 
-.legend{display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin:6px 0 14px;font-size:13px;color:var(--muted);}
-.legend .dot{width:14px;height:14px;border-radius:5px;display:inline-block;vertical-align:-2px;margin-right:6px;}
+/* slot info panel */
+.panel{position:fixed;right:18px;top:78px;width:300px;z-index:10;background:rgba(8,22,48,.7);
+  border:1px solid rgba(150,190,255,.25);backdrop-filter:blur(16px);border-radius:18px;padding:20px;
+  box-shadow:0 24px 60px rgba(0,0,0,.4);transform:translateX(120%);transition:transform .35s;}
+.panel.open{transform:translateX(0);}
+.panel h2{font-size:34px;letter-spacing:.04em;}
+.panel .sub{color:#a9c2e6;font-size:13px;margin:2px 0 16px;}
+.pill{display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border-radius:999px;font-weight:800;font-size:14px;}
+.pill.free{background:rgba(34,197,94,.2);color:#7af0a0;border:1px solid rgba(34,197,94,.5);}
+.pill.busy{background:rgba(239,68,68,.2);color:#ff9a9a;border:1px solid rgba(239,68,68,.5);}
+.pill.unknown{background:rgba(148,163,184,.2);color:#cbd5e1;border:1px solid rgba(148,163,184,.4);}
+.kv{display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.08);font-size:14px;}
+.kv span:first-child{color:#a9c2e6;}.kv span:last-child{font-weight:700;}
+.panel .x{position:absolute;top:14px;right:16px;cursor:pointer;color:#a9c2e6;font-size:20px;}
+.panel .focus{margin-top:16px;width:100%;text-align:center;}
 
-/* the 3D parking floor */
-.floor-scroll{overflow:auto;border-radius:22px;border:1px solid var(--line);
-  background:linear-gradient(180deg,rgba(2,10,26,.4),rgba(2,10,26,.15));padding:30px;}
-.scene{perspective:2200px;width:max-content;margin:0 auto;}
-.floor{
-  transform-style:preserve-3d;
-  transform:rotateX(52deg) rotateZ(0deg);
-  transition:transform .5s ease;
-  /* asphalt ground */
-  background:
-    repeating-linear-gradient(90deg,rgba(255,255,255,.025) 0 2px,transparent 2px 60px),
-    linear-gradient(180deg,#3a4252,#2b313e);
-  border:3px solid #1c2230;border-radius:14px;
-  padding:26px;box-shadow:0 40px 80px rgba(0,0,0,.5);
-}
-.floor.flat{transform:rotateX(0deg);}
-.zones{display:flex;gap:26px;align-items:flex-start;}
-
-.zone{
-  background:rgba(10,16,28,.45);border:1px dashed rgba(150,190,255,.25);
-  border-radius:12px;padding:14px 12px 16px;
-}
-.zone-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;}
-.zone-tag{
-  font-weight:800;font-size:15px;letter-spacing:.06em;background:linear-gradient(135deg,#6db4ff,#2f6dff);
-  color:#04122e;border-radius:8px;padding:4px 10px;
-}
-.zone-count{font-size:11px;color:var(--muted);}
-.rows{display:flex;gap:18px;}
-.col{display:flex;flex-direction:column;gap:8px;}
-
-.slot{
-  width:46px;height:64px;border-radius:7px;cursor:pointer;position:relative;
-  display:grid;place-items:center;font-size:10px;font-weight:800;letter-spacing:.02em;
-  color:#0a1830;
-  background:linear-gradient(180deg,#e9eef7,#cdd7e8);
-  border:2px solid rgba(255,255,255,.5);
-  box-shadow:0 8px 0 rgba(0,0,0,.28), 0 14px 18px rgba(0,0,0,.35);
-  transform:translateZ(10px);
-  transition:transform .15s, box-shadow .15s, background .25s;
-}
-.slot:hover{transform:translateZ(26px) scale(1.06);box-shadow:0 16px 0 rgba(0,0,0,.3),0 22px 26px rgba(0,0,0,.45);z-index:5;}
-.slot .lbl{pointer-events:none;}
-.slot.free{background:linear-gradient(180deg,#4ade80,#22c55e);color:#05260f;border-color:rgba(255,255,255,.55);}
-.slot.busy{background:linear-gradient(180deg,#f87171,#ef4444);color:#2b0606;border-color:rgba(255,255,255,.4);}
-.slot.dim{opacity:.18;filter:grayscale(.4);}
-.slot.match{outline:3px solid #ffd54a;outline-offset:2px;animation:pulse 1s ease infinite;z-index:6;}
-.slot.selected{outline:3px solid #ffffff;outline-offset:2px;}
-@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,213,74,.7),0 14px 18px rgba(0,0,0,.4);}50%{box-shadow:0 0 0 10px rgba(255,213,74,0),0 14px 18px rgba(0,0,0,.4);}}
-
-/* drive lane label */
-.lane{align-self:center;color:#9fb6da;font-size:10px;writing-mode:vertical-rl;opacity:.6;letter-spacing:.2em;}
-
-/* modal */
-.overlay{position:fixed;inset:0;background:rgba(2,8,22,.6);backdrop-filter:blur(4px);
-  display:none;align-items:center;justify-content:center;z-index:50;padding:20px;}
-.overlay.open{display:flex;}
-.modal{
-  width:min(420px,92vw);background:linear-gradient(180deg,#0e2a5e,#0a1f47);
-  border:1px solid var(--line);border-radius:20px;padding:24px;box-shadow:0 30px 70px rgba(0,0,0,.5);
-}
-.modal h2{margin:0 0 4px;font-size:30px;letter-spacing:.04em;}
-.modal .sub{color:var(--muted);font-size:13px;margin-bottom:18px;}
-.status-pill{display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border-radius:999px;font-weight:800;font-size:14px;}
-.status-pill.free{background:rgba(34,197,94,.2);color:#7af0a0;border:1px solid rgba(34,197,94,.5);}
-.status-pill.busy{background:rgba(239,68,68,.2);color:#ff9a9a;border:1px solid rgba(239,68,68,.5);}
-.status-pill.unknown{background:rgba(148,163,184,.2);color:#cbd5e1;border:1px solid rgba(148,163,184,.4);}
-.kv{display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.08);font-size:14px;}
-.kv span:first-child{color:var(--muted);}
-.kv span:last-child{font-weight:700;}
-.modal .close{margin-top:20px;width:100%;text-align:center;}
-
-.hint{font-size:12px;color:var(--muted);margin-top:14px;text-align:center;}
-.toast{
-  position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(120%);
-  background:#0e2a5e;border:1px solid var(--line);padding:12px 22px;border-radius:14px;
-  font-size:14px;font-weight:600;box-shadow:0 20px 40px rgba(0,0,0,.4);transition:transform .35s;z-index:60;
-}
+/* help + toast */
+.help{position:fixed;left:18px;bottom:16px;z-index:10;font-size:12px;color:#bcd0f0;background:rgba(8,22,48,.5);
+  border:1px solid rgba(150,190,255,.18);border-radius:12px;padding:8px 14px;backdrop-filter:blur(10px);}
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(140%);background:#0e2a5e;
+  border:1px solid rgba(150,190,255,.25);padding:12px 22px;border-radius:14px;font-size:14px;font-weight:600;
+  box-shadow:0 20px 40px rgba(0,0,0,.4);transition:transform .35s;z-index:20;}
 .toast.show{transform:translateX(-50%) translateY(0);}
+.loader{position:fixed;inset:0;display:grid;place-items:center;z-index:30;font-size:15px;color:#cfe0ff;
+  background:rgba(5,18,45,.6);}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header class="app">
-    <div class="brand">
-      <div class="logo">P</div>
-      <div>
-        <h1>TILAL MALL · GROUND FLOOR PARKING</h1>
-        <p>Live slot map · 262 bays · zones A–J</p>
-      </div>
-    </div>
-    <div class="toolbar">
-      <div class="search-box">
-        <span>🔎</span>
-        <input id="search" type="text" placeholder="Search by plate number or slot (e.g. A03, DXB-...)" autocomplete="off"/>
-      </div>
-      <button class="btn ghost" id="clearBtn">Clear</button>
-      <button class="btn primary" id="availBtn">Check availability</button>
-      <button class="btn ghost" id="viewBtn">2D / 3D</button>
-    </div>
-  </header>
+<canvas id="scene"></canvas>
 
-  <section class="stats">
-    <div class="stat"><b id="totalStat">262</b><span>Total slots</span></div>
+<div class="topbar">
+  <div class="brand">
+    <div class="logo">P</div>
+    <div><h1>TILAL MALL · 3D GROUND PARKING</h1><p>262 bays · zones A–J · navigate freely</p></div>
+  </div>
+  <div class="spacer"></div>
+  <div class="search-box"><span>🔎</span>
+    <input id="search" type="text" placeholder="Search plate or slot (e.g. A03, DXB...)" autocomplete="off"/>
+  </div>
+  <button class="btn" id="clearBtn">Clear</button>
+  <button class="btn primary" id="availBtn">Check availability</button>
+  <button class="btn" id="resetBtn">Reset view</button>
+  <button class="btn" id="topBtn">Top view</button>
+</div>
+
+<div class="hud">
+  <div class="stats">
+    <div class="stat"><b id="totalStat">262</b><span>Total</span></div>
     <div class="stat green"><b id="freeStat">—</b><span>Free</span></div>
     <div class="stat red"><b id="busyStat">—</b><span>Busy</span></div>
-    <div class="stat"><b id="zoneStat">10</b><span>Zones (A–J)</span></div>
-  </section>
-
+  </div>
   <div class="legend">
-    <span><i class="dot" style="background:linear-gradient(180deg,#e9eef7,#cdd7e8)"></i>Unknown (run availability)</span>
-    <span><i class="dot" style="background:#22c55e"></i>Free</span>
-    <span><i class="dot" style="background:#ef4444"></i>Busy</span>
-    <span>· Tap any slot for details · Drag to scroll the floor</span>
-  </div>
-
-  <div class="floor-scroll">
-    <div class="scene">
-      <div class="floor" id="floor"></div>
-    </div>
+    <span><i style="background:#cdd7e8"></i>Unknown — run availability</span>
+    <span><i style="background:#22c55e"></i>Free &nbsp; <i style="background:#ef4444"></i>Busy</span>
   </div>
 </div>
 
-<!-- slot detail modal -->
-<div class="overlay" id="overlay">
-  <div class="modal">
-    <h2 id="mName">A01</h2>
-    <div class="sub" id="mZone">Zone A · Ground floor</div>
-    <div id="mStatus"></div>
-    <div style="margin-top:18px">
-      <div class="kv"><span>Slot ID</span><span id="mId">—</span></div>
-      <div class="kv"><span>Zone</span><span id="mZoneVal">—</span></div>
-      <div class="kv"><span>Status</span><span id="mStatusVal">—</span></div>
-      <div class="kv" id="mPlateRow"><span>Vehicle plate</span><span id="mPlate">—</span></div>
-    </div>
-    <button class="btn ghost close" id="modalClose">Close</button>
+<div class="panel" id="panel">
+  <div class="x" id="panelX">✕</div>
+  <h2 id="pName">A01</h2>
+  <div class="sub" id="pZone">Zone A · Ground floor</div>
+  <div id="pStatus"></div>
+  <div style="margin-top:14px">
+    <div class="kv"><span>Slot ID</span><span id="pId">—</span></div>
+    <div class="kv"><span>Zone</span><span id="pZoneV">—</span></div>
+    <div class="kv"><span>Status</span><span id="pStatusV">—</span></div>
+    <div class="kv" id="pPlateRow"><span>Vehicle plate</span><span id="pPlate">—</span></div>
   </div>
+  <button class="btn focus" id="focusBtn">Fly to this bay</button>
 </div>
 
+<div class="help">🖱️ Left-drag orbit · right-drag pan · scroll zoom · click a bay</div>
 <div class="toast" id="toast"></div>
+<div class="loader" id="loader">Loading 3D parking…</div>
 
-<script>
-/* ---- Parking definition: zones A–J with exact counts (total 262) ---- */
-const ZONES = [
-  {id:'A', count:14}, {id:'B', count:28}, {id:'C', count:24},
-  {id:'D', count:20}, {id:'E', count:32}, {id:'F', count:24},
-  {id:'G', count:28}, {id:'H', count:24}, {id:'I', count:16},
-  {id:'J', count:52},
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+
+/* ---------- data ---------- */
+const ZONES=[
+  {id:'A',count:14},{id:'B',count:28},{id:'C',count:24},{id:'D',count:20},{id:'E',count:32},
+  {id:'F',count:24},{id:'G',count:28},{id:'H',count:24},{id:'I',count:16},{id:'J',count:52}
 ];
+const slots=[];
+let availabilityChecked=false, selected=null;
+ZONES.forEach(z=>{for(let i=1;i<=z.count;i++)slots.push({id:z.id+String(i).padStart(2,'0'),zone:z.id,busy:false,plate:null,match:false});});
 
-const slots = [];            // {id, zone, busy:null/true/false, plate:null}
-let availabilityChecked = false;
-let selectedId = null;
+function randomPlate(){
+  const codes='ABCDEFGHIJKLMNOPQRST'.split('');
+  return 'DXB '+codes[Math.floor(Math.random()*codes.length)]+' '+Math.floor(1000+Math.random()*89000);
+}
+function assignBusy(){
+  slots.forEach(s=>{s.busy=false;s.plate=null;});
+  const idx=[...slots.keys()];
+  for(let i=idx.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[idx[i],idx[j]]=[idx[j],idx[i]];}
+  for(let k=0;k<50;k++){slots[idx[k]].busy=true;slots[idx[k]].plate=randomPlate();}
+}
+assignBusy();
 
-/* build slot data */
+/* ---------- three.js setup ---------- */
+const canvas=document.getElementById('scene');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+
+const scene=new THREE.Scene();
+scene.fog=new THREE.Fog(0x0a3a8a,180,520);
+
+const camera=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,0.1,2000);
+const HOME={pos:new THREE.Vector3(0,120,160),tgt:new THREE.Vector3(0,0,0)};
+camera.position.copy(HOME.pos);
+
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true;controls.dampingFactor=.08;
+controls.maxPolarAngle=Math.PI*0.49;controls.minDistance=12;controls.maxDistance=420;
+controls.target.copy(HOME.tgt);
+
+/* lights */
+scene.add(new THREE.HemisphereLight(0xbcd6ff,0x20304a,0.9));
+const sun=new THREE.DirectionalLight(0xffffff,1.1);
+sun.position.set(80,160,60);sun.castShadow=true;
+sun.shadow.mapSize.set(2048,2048);
+const d=260;Object.assign(sun.shadow.camera,{left:-d,right:d,top:d,bottom:-d,near:1,far:600});
+scene.add(sun);
+
+/* ---------- layout geometry ---------- */
+const SLOT_W=4, SLOT_L=8, GAP=0.5, COL_GAP=1, LANE=12, ZONE_GAP=14;
+const slotW=SLOT_W, slotL=SLOT_L;
+
+// compute total width to center
+function zoneWidth(){return SLOT_W*2+COL_GAP+LANE;}
+let totalW=0;
+ZONES.forEach((z,i)=>{totalW+=zoneWidth()+(i<ZONES.length-1?ZONE_GAP:0);});
+
+/* ground / asphalt */
+const groundW=totalW+60;
+const maxCount=Math.max(...ZONES.map(z=>z.count));
+const colLen=Math.ceil(maxCount/2)*(SLOT_L+GAP);
+const groundL=colLen+70;
+const ground=new THREE.Mesh(
+  new THREE.PlaneGeometry(groundW,groundL),
+  new THREE.MeshStandardMaterial({color:0x2c3340,roughness:.95})
+);
+ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
+
+/* outer kerb */
+const kerb=new THREE.Mesh(new THREE.BoxGeometry(groundW+4,1.4,groundL+4),
+  new THREE.MeshStandardMaterial({color:0x1a2030,roughness:1}));
+kerb.position.y=-0.7;scene.add(kerb);
+
+/* slot canvas texture helper */
+function makeSlotTexture(slot){
+  const c=document.createElement('canvas');c.width=128;c.height=256;
+  const ctx=c.getContext('2d');
+  slot._c=c;slot._ctx=ctx;
+  const tex=new THREE.CanvasTexture(c);
+  tex.anisotropy=4;
+  slot._tex=tex;
+  drawSlot(slot);
+  return tex;
+}
+function drawSlot(slot){
+  const ctx=slot._ctx;const W=128,H=256;
+  ctx.clearRect(0,0,W,H);
+  let top,bot,txt;
+  if(!availabilityChecked){top='#eef2f9';bot='#cdd7e8';txt='#0a1830';}
+  else if(slot.busy){top='#f87171';bot='#dc2626';txt='#2b0606';}
+  else{top='#4ade80';bot='#16a34a';txt='#05260f';}
+  const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,top);g.addColorStop(1,bot);
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  // border
+  ctx.lineWidth=10;ctx.strokeStyle=slot.match?'#ffd54a':(slot===selected?'#ffffff':'rgba(255,255,255,.65)');
+  ctx.strokeRect(5,5,W-10,H-10);
+  // id text
+  ctx.fillStyle=txt;ctx.font='bold 46px Inter,Arial';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.save();ctx.translate(W/2,H/2);ctx.rotate(-Math.PI/2);ctx.fillText(slot.id,0,0);ctx.restore();
+  if(slot._tex)slot._tex.needsUpdate=true;
+}
+
+/* zone label sprite */
+function makeLabel(text){
+  const c=document.createElement('canvas');c.width=256;c.height=128;
+  const ctx=c.getContext('2d');
+  ctx.fillStyle='rgba(47,109,255,.92)';roundRect(ctx,8,30,240,68,18);ctx.fill();
+  ctx.fillStyle='#eaf3ff';ctx.font='bold 70px Inter,Arial';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(text,128,66);
+  const tex=new THREE.CanvasTexture(c);
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,depthTest:false}));
+  sp.scale.set(14,7,1);
+  return sp;
+}
+function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+
+/* build slots in the scene */
+const slotMeshes=[];
+const slotGeo=new THREE.BoxGeometry(slotW,0.4,slotL);
+let xCursor=-totalW/2;
 ZONES.forEach(z=>{
-  for(let i=1;i<=z.count;i++){
-    const id = z.id + String(i).padStart(2,'0');
-    slots.push({id, zone:z.id, busy:null, plate:null});
-  }
+  const zoneSlots=slots.filter(s=>s.zone===z.id);
+  const half=Math.ceil(zoneSlots.length/2);
+  const colAx=xCursor+SLOT_W/2;
+  const colBx=xCursor+SLOT_W+COL_GAP+LANE+SLOT_W/2;
+  const colLenA=half*(SLOT_L+GAP);
+  const startZ=-colLenA/2;
+
+  zoneSlots.forEach((s,i)=>{
+    const inA=i<half;
+    const col=inA?i:i-half;
+    const x=inA?colAx:colBx;
+    const zc=startZ+col*(SLOT_L+GAP)+SLOT_L/2;
+    const tex=makeSlotTexture(s);
+    const mats=[
+      new THREE.MeshStandardMaterial({color:0x223,roughness:1}),
+      new THREE.MeshStandardMaterial({color:0x223,roughness:1}),
+      new THREE.MeshStandardMaterial({map:tex,roughness:.6}), // top
+      new THREE.MeshStandardMaterial({color:0x223,roughness:1}),
+      new THREE.MeshStandardMaterial({color:0x223,roughness:1}),
+      new THREE.MeshStandardMaterial({color:0x223,roughness:1}),
+    ];
+    const m=new THREE.Mesh(slotGeo,mats);
+    m.position.set(x,0.2,zc);
+    m.castShadow=true;m.receiveShadow=true;
+    m.userData.slot=s;
+    s._mesh=m;s._pos=new THREE.Vector3(x,0,zc);
+    scene.add(m);slotMeshes.push(m);
+  });
+
+  // zone label floating above middle
+  const lbl=makeLabel(z.id);
+  lbl.position.set((colAx+colBx)/2,10,startZ-9);
+  scene.add(lbl);
+
+  // lane stripe
+  const lane=new THREE.Mesh(new THREE.PlaneGeometry(LANE-1,colLenA+SLOT_L),
+    new THREE.MeshStandardMaterial({color:0x363d4c,roughness:1}));
+  lane.rotation.x=-Math.PI/2;lane.position.set((colAx+colBx)/2,0.02,0);scene.add(lane);
+
+  xCursor+=zoneWidth()+ZONE_GAP;
 });
 
-/* ---- random plate generator (Dubai-style) ---- */
-function randomPlate(){
-  const letters='ABCDEFGHJKLMNOPQRSTUVWXYZ';
-  const codes=['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T'];
-  const code=codes[Math.floor(Math.random()*codes.length)];
-  const num=Math.floor(1000+Math.random()*89000);
-  return 'DXB '+code+' '+num;
-}
-
-/* ---- assign 50 random busy slots (deterministic-ish each load) ---- */
-function assignBusy(){
-  // reset
-  slots.forEach(s=>{s.busy=false;s.plate=null;});
-  const idx=[...Array(slots.length).keys()];
-  // shuffle
-  for(let i=idx.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[idx[i],idx[j]]=[idx[j],idx[i]];}
-  const busyCount=50;
-  for(let k=0;k<busyCount;k++){
-    const s=slots[idx[k]];
-    s.busy=true;
-    s.plate=randomPlate();
-  }
-}
-assignBusy(); // computed up front, but hidden until "Check availability"
-
-/* ---- render the 3D floor ---- */
-const floorEl=document.getElementById('floor');
-function render(){
-  const zonesWrap=document.createElement('div');
-  zonesWrap.className='zones';
-  ZONES.forEach(z=>{
-    const zoneEl=document.createElement('div');
-    zoneEl.className='zone';
-    const zoneSlots=slots.filter(s=>s.zone===z.id);
-
-    const head=document.createElement('div');
-    head.className='zone-head';
-    head.innerHTML='<span class="zone-tag">'+z.id+'</span><span class="zone-count">'+z.count+' bays</span>';
-    zoneEl.appendChild(head);
-
-    // arrange into 2 facing columns (double-loaded aisle)
-    const rows=document.createElement('div');
-    rows.className='rows';
-    const colA=document.createElement('div'); colA.className='col';
-    const lane=document.createElement('div'); lane.className='lane'; lane.textContent='DRIVE LANE';
-    const colB=document.createElement('div'); colB.className='col';
-
-    const half=Math.ceil(zoneSlots.length/2);
-    zoneSlots.forEach((s,i)=>{
-      const el=makeSlot(s);
-      (i<half?colA:colB).appendChild(el);
-    });
-    rows.appendChild(colA); rows.appendChild(lane); rows.appendChild(colB);
-    zoneEl.appendChild(rows);
-    zonesWrap.appendChild(zoneEl);
+/* car boxes for occupied slots (added on availability) */
+const carGroup=new THREE.Group();scene.add(carGroup);
+function buildCars(){
+  carGroup.clear();
+  if(!availabilityChecked)return;
+  slots.filter(s=>s.busy).forEach(s=>{
+    const hue=Math.random();
+    const col=new THREE.Color().setHSL(hue,.5,.5);
+    const body=new THREE.Mesh(new THREE.BoxGeometry(slotW*0.7,1.6,slotL*0.78),
+      new THREE.MeshStandardMaterial({color:col,roughness:.4,metalness:.3}));
+    body.position.set(s._pos.x,1.1,s._pos.z);body.castShadow=true;
+    const cabin=new THREE.Mesh(new THREE.BoxGeometry(slotW*0.6,1,slotL*0.4),
+      new THREE.MeshStandardMaterial({color:0x111418,roughness:.2,metalness:.6}));
+    cabin.position.set(s._pos.x,2.1,s._pos.z);cabin.castShadow=true;carGroup.add(body);carGroup.add(cabin);
   });
-  floorEl.innerHTML='';
-  floorEl.appendChild(zonesWrap);
 }
 
-function makeSlot(s){
-  const el=document.createElement('div');
-  el.className='slot';
-  el.dataset.id=s.id;
-  el.innerHTML='<span class="lbl">'+s.id+'</span>';
-  applyStatus(el,s);
-  el.addEventListener('click',()=>openModal(s.id));
-  return el;
+/* ---------- interaction ---------- */
+const ray=new THREE.Raycaster();const mouse=new THREE.Vector2();
+let hovered=null;
+function setPointer(e){const r=canvas.getBoundingClientRect();mouse.x=((e.clientX-r.left)/r.width)*2-1;mouse.y=-((e.clientY-r.top)/r.height)*2+1;}
+
+let downX,downY,moved=false;
+canvas.addEventListener('pointerdown',e=>{downX=e.clientX;downY=e.clientY;moved=false;canvas.classList.add('grabbing');});
+canvas.addEventListener('pointerup',()=>canvas.classList.remove('grabbing'));
+canvas.addEventListener('pointermove',e=>{
+  if(downX!==undefined&&(Math.abs(e.clientX-downX)>4||Math.abs(e.clientY-downY)>4))moved=true;
+  setPointer(e);
+});
+canvas.addEventListener('click',e=>{
+  if(moved)return; // was a drag
+  setPointer(e);
+  ray.setFromCamera(mouse,camera);
+  const hit=ray.intersectObjects(slotMeshes,false)[0];
+  if(hit)selectSlot(hit.object.userData.slot);
+});
+
+/* hover highlight */
+function updateHover(){
+  ray.setFromCamera(mouse,camera);
+  const hit=ray.intersectObjects(slotMeshes,false)[0];
+  const m=hit?hit.object:null;
+  if(hovered&&hovered!==m)hovered.scale.set(1,1,1);
+  if(m){m.scale.set(1.06,1.6,1.06);canvas.style.cursor='pointer';}
+  else canvas.style.cursor='';
+  hovered=m;
 }
 
-function applyStatus(el,s){
-  el.classList.remove('free','busy');
-  if(availabilityChecked){
-    el.classList.add(s.busy?'busy':'free');
+/* ---------- UI ---------- */
+const panel=document.getElementById('panel');
+function selectSlot(s){
+  if(selected)drawSlot(selected);
+  selected=s;drawSlot(s);
+  document.getElementById('pName').textContent=s.id;
+  document.getElementById('pZone').textContent='Zone '+s.zone+' · Ground floor';
+  document.getElementById('pId').textContent=s.id;
+  document.getElementById('pZoneV').textContent='Zone '+s.zone;
+  const sb=document.getElementById('pStatus'),pr=document.getElementById('pPlateRow');
+  if(!availabilityChecked){
+    sb.innerHTML='<span class="pill unknown">● Status hidden</span>';
+    document.getElementById('pStatusV').textContent='Unknown';pr.style.display='none';
+  }else if(s.busy){
+    sb.innerHTML='<span class="pill busy">● Occupied</span>';
+    document.getElementById('pStatusV').textContent='Busy';
+    document.getElementById('pPlate').textContent=s.plate;pr.style.display='flex';
+  }else{
+    sb.innerHTML='<span class="pill free">● Available</span>';
+    document.getElementById('pStatusV').textContent='Free';pr.style.display='none';
   }
+  panel.classList.add('open');
 }
+document.getElementById('panelX').onclick=()=>{panel.classList.remove('open');if(selected){const s=selected;selected=null;drawSlot(s);}};
+document.getElementById('focusBtn').onclick=()=>{if(selected)flyTo(selected._pos);};
 
-function refreshStatuses(){
-  document.querySelectorAll('.slot').forEach(el=>{
-    const s=slots.find(x=>x.id===el.dataset.id);
-    applyStatus(el,s);
-  });
+/* availability */
+const availBtn=document.getElementById('availBtn');
+availBtn.onclick=()=>{
+  availabilityChecked=!availabilityChecked;
+  availBtn.textContent=availabilityChecked?'Hide availability':'Check availability';
+  availBtn.classList.toggle('checked',availabilityChecked);
+  slots.forEach(drawSlot);
+  buildCars();
   updateStats();
-}
-
+  toast(availabilityChecked?'Availability loaded · 50 bays occupied':'Availability hidden');
+  if(selected)selectSlot(selected);
+};
 function updateStats(){
   if(availabilityChecked){
     const busy=slots.filter(s=>s.busy).length;
     document.getElementById('busyStat').textContent=busy;
     document.getElementById('freeStat').textContent=slots.length-busy;
-  }else{
-    document.getElementById('busyStat').textContent='—';
-    document.getElementById('freeStat').textContent='—';
-  }
+  }else{document.getElementById('busyStat').textContent='—';document.getElementById('freeStat').textContent='—';}
 }
 
-/* ---- modal ---- */
-const overlay=document.getElementById('overlay');
-function openModal(id){
-  const s=slots.find(x=>x.id===id);
-  selectedId=id;
-  document.querySelectorAll('.slot').forEach(e=>e.classList.toggle('selected',e.dataset.id===id));
-  document.getElementById('mName').textContent=s.id;
-  document.getElementById('mZone').textContent='Zone '+s.zone+' · Ground floor';
-  document.getElementById('mId').textContent=s.id;
-  document.getElementById('mZoneVal').textContent='Zone '+s.zone;
-
-  const statusBox=document.getElementById('mStatus');
-  const plateRow=document.getElementById('mPlateRow');
-  if(!availabilityChecked){
-    statusBox.innerHTML='<span class="status-pill unknown">● Status hidden</span>';
-    document.getElementById('mStatusVal').textContent='Unknown';
-    document.getElementById('mPlate').textContent='—';
-    plateRow.style.display='none';
-    statusBox.innerHTML+='<div class="hint">Tap “Check availability” to reveal free / busy.</div>';
-  }else if(s.busy){
-    statusBox.innerHTML='<span class="status-pill busy">● Occupied</span>';
-    document.getElementById('mStatusVal').textContent='Busy';
-    document.getElementById('mPlate').textContent=s.plate;
-    plateRow.style.display='flex';
-  }else{
-    statusBox.innerHTML='<span class="status-pill free">● Available</span>';
-    document.getElementById('mStatusVal').textContent='Free';
-    document.getElementById('mPlate').textContent='—';
-    plateRow.style.display='none';
-  }
-  overlay.classList.add('open');
-}
-document.getElementById('modalClose').onclick=()=>overlay.classList.remove('open');
-overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.classList.remove('open');});
-
-/* ---- check availability button ---- */
-const availBtn=document.getElementById('availBtn');
-availBtn.addEventListener('click',()=>{
-  availabilityChecked=!availabilityChecked;
-  if(availabilityChecked){
-    availBtn.textContent='Hide availability';
-    availBtn.classList.add('checked');
-    toast('Availability loaded · 50 bays occupied');
-  }else{
-    availBtn.textContent='Check availability';
-    availBtn.classList.remove('checked');
-    toast('Availability hidden');
-  }
-  refreshStatuses();
-  if(overlay.classList.contains('open')&&selectedId)openModal(selectedId);
-});
-
-/* ---- search by plate or slot ---- */
+/* search */
 const searchEl=document.getElementById('search');
 searchEl.addEventListener('input',doSearch);
 function doSearch(){
   const q=searchEl.value.trim().toUpperCase().replace(/\s+/g,'');
-  document.querySelectorAll('.slot').forEach(el=>el.classList.remove('match','dim'));
-  if(!q)return;
   let matches=[];
   slots.forEach(s=>{
     const plate=(s.plate||'').toUpperCase().replace(/\s+/g,'');
-    const byId=s.id.includes(q);
-    const byPlate=availabilityChecked && plate && plate.includes(q);
-    if(byId||byPlate)matches.push(s.id);
+    const hit=s.id.includes(q)||(availabilityChecked&&plate&&plate.includes(q));
+    if(q&&hit){s.match=true;matches.push(s);}else s.match=false;
+    drawSlot(s);
   });
-  document.querySelectorAll('.slot').forEach(el=>{
-    if(matches.includes(el.dataset.id))el.classList.add('match');
-    else el.classList.add('dim');
-  });
-  if(matches.length===1){
-    const el=document.querySelector('.slot[data-id="'+matches[0]+'"]');
-    if(el)el.scrollIntoView({behavior:'smooth',block:'center',inline:'center'});
-  }
-  if(matches.length===0)toast('No match for "'+searchEl.value+'"');
+  if(q&&matches.length===0)toast('No match for "'+searchEl.value+'"');
+  if(matches.length>=1){flyTo(matches[0]._pos);if(matches.length===1)selectSlot(matches[0]);}
 }
 document.getElementById('clearBtn').onclick=()=>{searchEl.value='';doSearch();};
 
-/* ---- 2D/3D toggle ---- */
-document.getElementById('viewBtn').onclick=()=>floorEl.classList.toggle('flat');
-
-/* ---- drag to scroll ---- */
-const scroll=document.querySelector('.floor-scroll');
-let down=false,sx,sy,sl,st;
-scroll.addEventListener('mousedown',e=>{if(e.target.closest('.slot'))return;down=true;sx=e.pageX;sy=e.pageY;sl=scroll.scrollLeft;st=scroll.scrollTop;});
-window.addEventListener('mouseup',()=>down=false);
-scroll.addEventListener('mousemove',e=>{if(!down)return;scroll.scrollLeft=sl-(e.pageX-sx);scroll.scrollTop=st-(e.pageY-sy);});
-
-/* ---- toast ---- */
-let toastTimer;
-function toast(msg){
-  const t=document.getElementById('toast');
-  t.textContent=msg;t.classList.add('show');
-  clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),2200);
+/* camera moves */
+let anim=null;
+function flyTo(pos,dist=34,height=26){
+  const tgt=pos.clone();
+  const camPos=new THREE.Vector3(pos.x,height,pos.z+dist);
+  anim={t:0,fromT:controls.target.clone(),toT:tgt,fromC:camera.position.clone(),toC:camPos};
 }
+function easeTo(home){anim={t:0,fromT:controls.target.clone(),toT:home.tgt.clone(),fromC:camera.position.clone(),toC:home.pos.clone()};}
+document.getElementById('resetBtn').onclick=()=>easeTo(HOME);
+document.getElementById('topBtn').onclick=()=>easeTo({pos:new THREE.Vector3(0,260,1),tgt:new THREE.Vector3(0,0,0)});
 
-/* init */
-render();
+/* toast */
+let tt;function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),2200);}
+
+/* resize */
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+
+/* loop */
+function tick(){
+  if(anim){
+    anim.t=Math.min(1,anim.t+0.035);
+    const e=1-Math.pow(1-anim.t,3);
+    controls.target.lerpVectors(anim.fromT,anim.toT,e);
+    camera.position.lerpVectors(anim.fromC,anim.toC,e);
+    if(anim.t>=1)anim=null;
+  }
+  updateHover();
+  controls.update();
+  renderer.render(scene,camera);
+  requestAnimationFrame(tick);
+}
 updateStats();
+document.getElementById('loader').style.display='none';
+tick();
 </script>
 </body>
 </html>
