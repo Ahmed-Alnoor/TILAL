@@ -123,6 +123,26 @@ button{font-family:inherit;}
 .floor-svg .unit.hidden-cat{opacity:.05;pointer-events:none;}
 .floor-svg .unit.match{filter:brightness(1.1) saturate(1.08) drop-shadow(0 0 9px rgba(46,143,207,.75));}
 .floor-svg .facic{pointer-events:none;}
+/* ===== 3D carpark structure (floats above the mall, one slab per level) ===== */
+#stage3d>svg.cpk{pointer-events:none;}
+.cpk .cpk-deck{transition:opacity .3s ease;}
+.cpk .cpk-dim{opacity:.34;}
+.cpk-skirt{fill:#10161f;}
+.cpk-skirt.lit{fill:#19222e;}
+.cpk-floor{fill:#1b2531;}
+.cpk-floor.lit{fill:#232f3d;}
+.cpk-edge{fill:none;stroke:#3a465a;stroke-width:2.4;}
+.cpk-edge.lit{stroke:#5b87c0;}
+.cpk-trace{opacity:.62;}
+.cpk-trace.lit{opacity:.92;}
+.cpk-arrow{fill:#cde0f4;opacity:.0;}
+.cpk-arrow.lit{opacity:.85;}
+.cpk-lbl-bg{fill:#0d141d;stroke:#3a465a;stroke-width:1.6;}
+.cpk-lbl-bg.lit{stroke:#5b87c0;}
+.cpk-lbl-t{font-family:'Sora',Arial,sans-serif;font-weight:700;fill:#9fb4cc;letter-spacing:2px;}
+.cpk-lbl-t.lit{fill:#eaf2fb;}
+.cpk-lbl-s{font-family:'Manrope',Arial,sans-serif;fill:#6f8298;}
+.cpk-tag-t{font-family:'Sora',Arial,sans-serif;font-weight:700;fill:#fff;letter-spacing:1px;}
 #locMarker{pointer-events:none;}
 #locMarker .ring{fill:none;stroke:var(--b-mid);stroke-width:2.5;vector-effect:non-scaling-stroke;transform-box:fill-box;transform-origin:center;animation:pulse 1.8s ease-out infinite;}
 #locMarker .core{fill:var(--b-mid);stroke:#fff;stroke-width:1.5;vector-effect:non-scaling-stroke;}
@@ -1651,6 +1671,102 @@ button{font-family:inherit;}
       LAYERS.push(L);
     }
   }
+  /* ===== 3D carpark structure — the real plan traced from the architectural
+     sheet (images/carpark_deck.png = exact white linework) rendered as a dark
+     deck slab floating above the mall, stacked into Basement / Ground / Level 1
+     levels, with wayfinding arrows, entry/exit markers and floor labels. ===== */
+  const CPK={x0:695,y0:715,x1:2673,y1:898,img:'images/carpark_deck.png'};
+  CPK.w=CPK.x1-CPK.x0; CPK.h=CPK.y1-CPK.y0;
+  function cpkChevrons(cx0,cx1,y,dir,gap,sz){
+    // a lane of white chevrons from cx0..cx1 at height y; dir=+1 right, -1 left
+    var out='',x=cx0+gap;
+    while(x<cx1-gap){
+      var a=x, b=x+sz*dir, t=y-sz*0.55, bot=y+sz*0.55;
+      out+='<path class="cpk-arrow lit" d="M'+a.toFixed(1)+' '+t.toFixed(1)+
+           ' L'+b.toFixed(1)+' '+y.toFixed(1)+' L'+a.toFixed(1)+' '+bot.toFixed(1)+
+           ' L'+(a+sz*0.34*dir).toFixed(1)+' '+y.toFixed(1)+' Z"/>';
+      x+=gap;
+    }
+    return out;
+  }
+  function cpkName(fk){return fk==='BL'?'BASEMENT PARKING':fk==='G'?'GROUND PARKING':'LEVEL 1 PARKING';}
+  function cpkSub(fk){return 'P · '+(fk==='BL'?'Level B':fk==='G'?'Level 0':'Level 1')+' · same layout as plan';}
+  function newCpkLayer(z){
+    var L=document.createElementNS(NS3,'svg');
+    L.setAttribute('viewBox',svg.getAttribute('viewBox'));
+    L.setAttribute('class','ext cpk'); L.dataset.cz=z;
+    stage3d.insertBefore(L,svg); LAYERS.push(L); return L;
+  }
+  // a thin recessed slab behind/below the active deck — conveys the other levels
+  function buildCpkHint(fk,z){
+    var L=newCpkLayer(z);
+    var x0=CPK.x0,y0=CPK.y0,w=CPK.w,h=CPK.h,pad=20;
+    var dx=x0-pad,dy=y0-pad,dw=w+pad*2,dh=h+pad*2;
+    var H=['<g class="cpk-deck cpk-dim">'];
+    for(var s=3;s>=1;s--){var o=s*2.4;
+      H.push('<rect class="cpk-skirt" x="'+(dx+o).toFixed(1)+'" y="'+(dy+o).toFixed(1)+'" width="'+dw.toFixed(1)+'" height="'+dh.toFixed(1)+'" rx="10"/>');}
+    H.push('<rect class="cpk-floor" x="'+dx.toFixed(1)+'" y="'+dy.toFixed(1)+'" width="'+dw.toFixed(1)+'" height="'+dh.toFixed(1)+'" rx="10"/>');
+    H.push('<rect class="cpk-edge" x="'+dx.toFixed(1)+'" y="'+dy.toFixed(1)+'" width="'+dw.toFixed(1)+'" height="'+dh.toFixed(1)+'" rx="10"/>');
+    // slim level tab so the hidden levels are still identifiable
+    H.push('<rect class="cpk-lbl-bg" x="'+(dx+10)+'" y="'+(dy-44)+'" width="262" height="38" rx="9"/>');
+    H.push('<rect x="'+(dx+10)+'" y="'+(dy-44)+'" width="7" height="38" rx="3" fill="#3a465a"/>');
+    H.push('<text class="cpk-lbl-t" x="'+(dx+30)+'" y="'+(dy-19)+'" font-size="21">'+cpkName(fk)+'</text>');
+    H.push('</g>');
+    L.innerHTML=H.join('');
+  }
+  // the active level — full traced deck with lighting + wayfinding + label
+  function buildCpkDeck(fk,z){
+    var L=newCpkLayer(z);
+    var x0=CPK.x0,y0=CPK.y0,w=CPK.w,h=CPK.h,pad=20;
+    var dx=x0-pad,dy=y0-pad,dw=w+pad*2,dh=h+pad*2;
+    var H=['<g class="cpk-deck">'];
+    for(var s=6;s>=1;s--){var o=s*3.0;
+      H.push('<rect class="cpk-skirt lit" x="'+(dx+o).toFixed(1)+'" y="'+(dy+o).toFixed(1)+'" width="'+dw.toFixed(1)+'" height="'+dh.toFixed(1)+'" rx="10"/>');}
+    H.push('<rect class="cpk-floor lit" x="'+dx.toFixed(1)+'" y="'+dy.toFixed(1)+'" width="'+dw.toFixed(1)+'" height="'+dh.toFixed(1)+'" rx="10"/>');
+    var gid='cpkLight'+fk;
+    H.push('<defs><radialGradient id="'+gid+'" cx="50%" cy="50%" r="50%">'+
+           '<stop offset="0%" stop-color="#9fb6d4" stop-opacity="0.22"/>'+
+           '<stop offset="100%" stop-color="#9fb6d4" stop-opacity="0"/></radialGradient></defs>');
+    for(var p=0;p<7;p++){var lx=x0+(p+0.5)/7*w;
+      H.push('<ellipse cx="'+lx.toFixed(1)+'" cy="'+(y0+h*0.42).toFixed(1)+'" rx="'+(w/7*0.45).toFixed(1)+'" ry="'+(h*0.4).toFixed(1)+'" fill="url(#'+gid+')"/>');}
+    // the exact traced plan (white stall lines / roads / ramps)
+    H.push('<image class="cpk-trace lit" href="'+CPK.img+'" x="'+x0+'" y="'+y0+'" width="'+w+'" height="'+h+'" preserveAspectRatio="none"/>');
+    H.push('<rect class="cpk-edge lit" x="'+dx.toFixed(1)+'" y="'+dy.toFixed(1)+'" width="'+dw.toFixed(1)+'" height="'+dh.toFixed(1)+'" rx="10"/>');
+    // wayfinding: circulation arrows in the two real drive lanes (y≈808 / y≈875)
+    H.push(cpkChevrons(x0+60,CPK.x1-60,808,1,150,26));
+    H.push(cpkChevrons(x0+60,CPK.x1-60,875,-1,150,26));
+    // entry / exit markers on the perimeter access road
+    H.push(cpkMarker(x0+18,888,'#27c08a','ENTRY',1));
+    H.push(cpkMarker(CPK.x1-150,888,'#e0564f','EXIT',-1));
+    // floor label badge (top-left of the deck)
+    var bw=392,bh=78,bx=dx+10,by=dy-bh-14;
+    H.push('<rect class="cpk-lbl-bg lit" x="'+bx+'" y="'+by+'" width="'+bw+'" height="'+bh+'" rx="12"/>');
+    H.push('<rect x="'+bx+'" y="'+by+'" width="9" height="'+bh+'" rx="4" fill="#5b87c0"/>');
+    H.push('<text class="cpk-lbl-t lit" x="'+(bx+26)+'" y="'+(by+34)+'" font-size="27">'+cpkName(fk)+'</text>');
+    H.push('<text class="cpk-lbl-s" x="'+(bx+26)+'" y="'+(by+62)+'" font-size="19">'+cpkSub(fk)+'</text>');
+    H.push('</g>');
+    L.innerHTML=H.join('');
+  }
+  function cpkMarker(x,y,col,txt,dir){
+    var tw=txt.length*15+34;
+    var tri=dir>0? 'M'+(x+tw)+' '+(y-15)+' L'+(x+tw+16)+' '+y+' L'+(x+tw)+' '+(y+15)+' Z'
+                 : 'M'+x+' '+(y-15)+' L'+(x-16)+' '+y+' L'+x+' '+(y+15)+' Z';
+    return '<g class="cpk-mk">'+
+      '<rect x="'+x+'" y="'+(y-15)+'" width="'+tw+'" height="30" rx="7" fill="'+col+'"/>'+
+      '<path d="'+tri+'" fill="'+col+'"/>'+
+      '<text class="cpk-tag-t" x="'+(x+tw/2)+'" y="'+(y+6)+'" font-size="18" text-anchor="middle">'+txt+'</text>'+
+      '</g>';
+  }
+  // Render the carpark as a multi-level structure floating above the mall:
+  // the two non-active levels as recessed slab hints (drawn first / lower), and
+  // the current floor's level as the full traced deck on top.
+  function buildCarpark(){
+    var order=['BL','G','F1'];
+    var zs=[64,104]; var i=0;
+    order.forEach(function(fk){ if(fk!==curFloor){ buildCpkHint(fk, zs[i++]); } });
+    buildCpkDeck(curFloor, 152);
+  }
+
   /* ---- small facility icons printed on toilet / customer-service roofs ---- */
   function facilityIcons(){
     var S=14;
@@ -1787,6 +1903,7 @@ button{font-family:inherit;}
     });
     planW=cMaxX-cMinX;planH=cMaxY-cMinY;ctrX=(cMinX+cMaxX)/2;
     build3D();
+    buildCarpark();
     facilityIcons();
     present={};SHOPS.forEach(function(s){present[s.category]=(present[s.category]||0)+1;});
     leasingTotal=LEASING.reduce(function(n,c){return n+(present[c]||0);},0);
@@ -1799,10 +1916,14 @@ button{font-family:inherit;}
 
   let baseVBready=false;
   function computeBase(){var pad=Math.max(planW,planH)*0.06;
-    var bw=cMaxX-cMinX, bh=cMaxY-cMinY;
-    baseVB={x:cMinX-pad,y:cMinY-pad,w:bw+pad*2,h:bh+pad*2};vb=Object.assign({},baseVB);baseVBready=true;applyVB();}
+    var minX=Math.min(cMinX,CPK.x0), maxX=Math.max(cMaxX,CPK.x1);
+    var minY=Math.min(cMinY,CPK.y0), maxY=cMaxY;
+    var bw=maxX-minX, bh=maxY-minY;
+    // extra headroom at top so the floated carpark structure stays in frame
+    var head=200;
+    baseVB={x:minX-pad,y:minY-pad-head,w:bw+pad*2,h:bh+pad*2+head};vb=Object.assign({},baseVB);baseVBready=true;applyVB();}
   function applyVB(){var s=vb.x+' '+vb.y+' '+vb.w+' '+vb.h;for(var i=0;i<LAYERS.length;i++)LAYERS[i].setAttribute('viewBox',s);
-    if(baseVB){var f=baseVB.w/vb.w;if(f>1.2)f=1.2;if(f<0.55)f=0.55;var step=EXT_H0/EXT_N*f;for(var j=0;j<LAYERS.length;j++){var k=LAYERS[j].dataset.k;if(k)LAYERS[j].style.transform='translateZ(-'+(k*step).toFixed(2)+'px)';}}}
+    if(baseVB){var f=baseVB.w/vb.w;if(f>1.2)f=1.2;if(f<0.55)f=0.55;var step=EXT_H0/EXT_N*f;for(var j=0;j<LAYERS.length;j++){var k=LAYERS[j].dataset.k;if(k){LAYERS[j].style.transform='translateZ(-'+(k*step).toFixed(2)+'px)';}var cz=LAYERS[j].dataset.cz;if(cz){LAYERS[j].style.transform='translateZ(-'+(cz*f).toFixed(2)+'px)';}}}}
   const MINW=function(){return baseVB.w/6;},MAXW=function(){return baseVB.w/0.7;};
   const mapWrap=document.getElementById('mapWrapper');
   function zoomCenter(fz){const mn=MINW(),mx=MAXW();let nw=vb.w*fz;if(nw<mn)nw=mn;if(nw>mx)nw=mx;const k=nw/vb.w;const cx=vb.x+vb.w/2,cy=vb.y+vb.h/2;vb.w=nw;vb.h=vb.h*k;vb.x=cx-vb.w/2;vb.y=cy-vb.h/2;applyVB();}
