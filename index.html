@@ -1664,6 +1664,29 @@ button{font-family:inherit;}
     toilet:'<path d="M7 22v-6M17 22v-6"/><circle cx="7" cy="5" r="2"/><circle cx="17" cy="5" r="2"/><path d="M5 16h4l-2-7-2 7zM15 16h4l-2-7-2 7z"/>'
   };
   const CONTACT={phone:"+971 123 456 789",email:"hello@tilalgrandmall.ae",hours:"10:00 — 22:00"};
+  /* per-unit photo pools — each unit gets a varied, stable photo (de-duplicated) */
+  function _enc(n){return 'images/'+n.replace(/&/g,'%26').replace(/ /g,'%20');}
+  const IMGS={
+    "line-shop":["shop.webp","shop (2).webp","shop (3).webp","shop (4).webp","shop (5).webp","shop (6).webp","shopping.webp","shoops in first floor.webp"],
+    anchor:["family shooping.webp","shop (4).webp","shopping.webp"],
+    "mini-major":["shop (5).webp","shop (2).webp","family shooping.webp"],
+    fnb:["F&b.webp","F&B (3).webp","f&b (2).webp","external food resturant.webp","external first floor f&b.webp"],
+    "fnb-cafe":["CAFE.webp","CAFE (2).webp","external caffe.webp"],
+    "fnb-kiosk":["F&b KIOSK.webp","F&b KIOSK (2).webp"],
+    "fnb-seating":["F&B Seating (5).webp","F&b SEATING (4).webp","F&b seating (2).webp","F&b seating (3).webp"],
+    kiosk:["KIOSK.webp","KIOSK (2).webp","KIOSK (3).webp","KIOSK (4).webp","KIOSK (9).webp","kiosk (5).webp","kiosk (6).webp","kiosk (7).webp","kiosk (8).webp"],
+    "kiosk-seating":["F&b seating (3).webp","F&b seating (2).webp"],
+    "food-court":["food court.webp"],
+    "fc-seating":["food court.webp"],
+    "food-village":["food village.webp","food village (2).webp"],
+    hypermarket:["hyper market.webp"],
+    cinema:["cinema.webp"],
+    fec:["entertarnemnt.webp","edutarnemtn.webp"],
+    "customer-service":["medical.webp"]
+  };
+  function imageFor(s){var pool=IMGS[s.category];
+    if(pool&&pool.length){var h=0,id=s.id||'';for(var i=0;i<id.length;i++)h=(h*31+id.charCodeAt(i))>>>0;return _enc(pool[h%pool.length]);}
+    return CATS[s.category]&&CATS[s.category].img?CATS[s.category].img:'';}
   const svg=document.getElementById('floorSvg');
   const marker=document.getElementById('locMarker');
   const stage3d=svg.parentNode;
@@ -1983,7 +2006,8 @@ button{font-family:inherit;}
     document.getElementById('cardDesc').textContent=c.desc;
     const hero=document.getElementById('cardHero'),imgEl=document.getElementById('cardImg');
     const ph=hero.querySelector('.ph'); if(ph)ph.remove();
-    if(c.img){imgEl.style.display='';imgEl.src=c.img;hero.classList.remove('noimg');}
+    var heroImg=imageFor(s);
+    if(heroImg){imgEl.style.display='';imgEl.src=heroImg;hero.classList.remove('noimg');}
     else{imgEl.style.display='none';hero.classList.add('noimg');const d=document.createElement('div');d.className='ph';d.style.cssText='position:absolute;inset:0;display:grid;place-items:center;z-index:1;color:rgba(255,255,255,.9)';d.innerHTML='<svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M4 7h16v13H4z"/><path d="M9 7V4h6v3"/></svg>';hero.insertBefore(d,hero.firstChild);}
     var areaRow = s.m2 ? '<div class="row"><div class="ic">'+icon(IC_AREA)+'</div><div class="meta"><span class="k">Leasable Area</span><span class="v">'+Math.round(parseFloat(s.m2)).toLocaleString()+' m²'+(s.ft2?' · '+parseFloat(s.ft2).toLocaleString()+' ft²':'')+'</span></div></div>' : '';
     document.getElementById('cardLoc').innerHTML=
