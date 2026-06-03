@@ -113,7 +113,7 @@ button{font-family:inherit;}
 
 .canvas-wrap{flex:1;position:relative;min-width:0;overflow:hidden;background:radial-gradient(130% 120% at 50% 8%,var(--canvas-1) 0%,var(--canvas-2) 55%,var(--canvas-3) 100%);}
 .canvas-wrap::before{content:"";position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px);background-size:48px 48px;mask-image:radial-gradient(circle at 50% 46%,#000 35%,transparent 82%);-webkit-mask-image:radial-gradient(circle at 50% 46%,#000 35%,transparent 82%);}
-.canvas-wrap::after{content:"";position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 220px -40px rgba(0,0,0,.6);}
+.canvas-wrap::after{content:"";position:absolute;inset:0;pointer-events:none;}
 .map-wrapper{position:absolute;inset:0;overflow:hidden;z-index:1;}
 #stage{position:absolute;inset:0;perspective:2000px;perspective-origin:50% 50%;}
 #stage3d{position:absolute;inset:0;transform-style:preserve-3d;transform:rotateX(44deg) scale(1.08) translateY(3%);transform-origin:50% 50%;}
@@ -277,8 +277,8 @@ button{font-family:inherit;}
   .parking-view,.body.nav-hidden .parking-view{padding-left:0;}
 }
 /* selection / hover glow tuned for the light ground */
-.floor-svg .unit:hover{fill:#ffffff;filter:drop-shadow(0 3px 10px rgba(46,103,176,.45)) brightness(1.03);}
-.floor-svg .unit.selected{fill:#ffffff;filter:drop-shadow(0 4px 14px rgba(46,103,176,.55));}
+.floor-svg .unit:hover{fill:#ffffff;filter:brightness(1.06);}
+.floor-svg .unit.selected{fill:#ffffff;filter:brightness(1.08);}
 /* detail panel -> floating rounded card */
 .card{top:16px;right:16px;left:auto;height:auto;bottom:16px;width:384px;border-radius:20px;border-left:0;border:1px solid var(--line);box-shadow:var(--shadow);}
 .card .hero{border-radius:20px 20px 0 0;}
@@ -1730,7 +1730,7 @@ button{font-family:inherit;}
       '</defs>'+
       '<rect x="'+gx.toFixed(1)+'" y="'+gy.toFixed(1)+'" width="'+gw.toFixed(1)+'" height="'+gh.toFixed(1)+'" rx="'+rr.toFixed(1)+'" fill="url(#groundFill)" stroke="#3d4863" stroke-width="3"/>'+
       '<rect x="'+(gx+26).toFixed(1)+'" y="'+(gy+26).toFixed(1)+'" width="'+(gw-52).toFixed(1)+'" height="'+(gh-52).toFixed(1)+'" rx="'+(rr*0.82).toFixed(1)+'" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="2"/>'+
-      '<rect x="'+(cMinX-14).toFixed(1)+'" y="'+(cMinY+28).toFixed(1)+'" width="'+(planW+28).toFixed(1)+'" height="'+(planH+28).toFixed(1)+'" rx="48" fill="rgba(0,0,0,.45)" filter="url(#groundShadow)"/>';
+      '<rect x="'+(cMinX-14).toFixed(1)+'" y="'+(cMinY+28).toFixed(1)+'" width="'+(planW+28).toFixed(1)+'" height="'+(planH+28).toFixed(1)+'" rx="48" fill="none"/>'; /* shadow removed */
     stage3d.insertBefore(G, stage3d.firstChild);
     LAYERS.push(G);
   }
