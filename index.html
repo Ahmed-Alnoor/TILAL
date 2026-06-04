@@ -2085,6 +2085,9 @@ button{font-family:inherit;}
   const IC_CLOCK='<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>';
   function selectShop(s){
     if(selected===s){deselect();return;}
+    /* Only one floating panel at a time: if the Directions panel is open, close
+       it before showing this shop's card so the two never overlap. */
+    if(typeof routing!=='undefined'&&routing.panelOpen){closeRoutePanel();}
     if(selected)selected.el.classList.remove('selected');
     selected=s; s.el.classList.add('selected');
     const c=CATS[s.category],loc=locationOf(s);
@@ -2375,22 +2378,29 @@ button{font-family:inherit;}
     for(x=0;x<cols;x++){for(y=0;y<rows;y++){var w=0;for(k=-r;k<=r;k++){var yy=y+k;if(yy>=0&&yy<rows&&tmp[yy*cols+x]){w=1;break;}}out[y*cols+x]=w;}}
     return out;
   }
-  function rSnap(m,x,y){
+  function rSnap(m,x,y,field){
+    field=field||m.main;
     var gx=Math.floor((x-m.ox)/m.CELL),gy=Math.floor((y-m.oy)/m.CELL);
     if(gx<0)gx=0;if(gy<0)gy=0;if(gx>=m.cols)gx=m.cols-1;if(gy>=m.rows)gy=m.rows-1;
-    if(m.main[gy*m.cols+gx])return [gx,gy];
-    for(var r=1;r<300;r++){for(var dx=-r;dx<=r;dx++)for(var dy=-r;dy<=r;dy++){if(Math.max(Math.abs(dx),Math.abs(dy))!==r)continue;var nx=gx+dx,ny=gy+dy;if(nx<0||ny<0||nx>=m.cols||ny>=m.rows)continue;if(m.main[ny*m.cols+nx])return [nx,ny];}}
+    if(field[gy*m.cols+gx])return [gx,gy];
+    for(var r=1;r<300;r++){for(var dx=-r;dx<=r;dx++)for(var dy=-r;dy<=r;dy++){if(Math.max(Math.abs(dx),Math.abs(dy))!==r)continue;var nx=gx+dx,ny=gy+dy;if(nx<0||ny<0||nx>=m.cols||ny>=m.rows)continue;if(field[ny*m.cols+nx])return [nx,ny];}}
     return null;
   }
-  function rAStar(m,a,b){
-    var w=m.walkable,cols=m.cols,rows=m.rows,dist=m.dist,maxD=m.maxD||1;
+  function rAStar(m,a,b,field){
+    var w=field||m.walkable,cols=m.cols,rows=m.rows,dist=m.dist,maxD=m.maxD||1;
     var N=cols*rows,g=new Float64Array(N),came=new Int32Array(N),closed=new Uint8Array(N),i;
     for(i=0;i<N;i++){g[i]=Infinity;came[i]=-1;}
     function id(x,y){return y*cols+x;}
     var sI=id(a[0],a[1]),gI=id(b[0],b[1]);if(!w[sI]||!w[gI])return null;
-    /* clearance reference: how wide a corridor we treat as "fully central". */
-    var ref=Math.min(maxD,7),LAMBDA=2.2;
-    function bias(idx){var c=dist[idx];if(c>=ref)return 0;return LAMBDA*(ref-c)/ref;}
+    /* Public-walkway preference. The customer concourse (the blue line) is WIDE;
+       back-of-house service corridors and emergency-exit runs are NARROW. We
+       don't hard-block the narrow cells (that fragments the network and can
+       leave a shop unreachable) — instead we make them expensive, with a steep
+       (quadratic) penalty as clearance drops. A* therefore rides the wide public
+       walkways and only dips into a narrow cell right at a shop entrance, never
+       taking a service road or fire-exit corridor as a through-route. */
+    var ref=Math.min(maxD,9),LAMBDA=9;
+    function bias(idx){var c=dist[idx];if(c>=ref)return 0;var t=(ref-c)/ref;return LAMBDA*t*t;}
     function h(x,y){var dx=Math.abs(x-b[0]),dy=Math.abs(y-b[1]);return (dx+dy)+(RSQ2-2)*Math.min(dx,dy);}
     var open=new RHeap();g[sI]=0;open.push({i:sI,x:a[0],y:a[1],f:h(a[0],a[1])});
     var D=[[1,0,1],[-1,0,1],[0,1,1],[0,-1,1],[1,1,RSQ2],[1,-1,RSQ2],[-1,1,RSQ2],[-1,-1,RSQ2]];
@@ -2416,17 +2426,22 @@ button{font-family:inherit;}
     var line=rChaikin([[ax,ay],[mx,my],[bx,by]],2);
     line.entryA=[ax,ay];line.entryB=[bx,by];return line;
   }
-  function routeOnFloor(floor,ax,ay,bx,by){
-    var m=buildMask(floor);if(!m)return rDirect(ax,ay,bx,by);
-    var A=rSnap(m,ax,ay),B=rSnap(m,bx,by);if(!A||!B)return rDirect(ax,ay,bx,by);
-    var cells=rAStar(m,A,B);if(!cells)return rDirect(ax,ay,bx,by);
-    /* The route lives ONLY on the corridor network. We start and end on the
-       corridor node directly outside the shop entrance (the snapped cell) and
-       never draw a straight stub into the unit interior or across its walls. */
+  /* Route on a given walkable field (the snapped cell outside the shop entrance
+     is the start/end — we never draw a stub into the unit or across its walls). */
+  function rNetRoute(m,ax,ay,bx,by,field){
+    if(!field)return null;
+    var A=rSnap(m,ax,ay,field),B=rSnap(m,bx,by,field);if(!A||!B)return null;
+    var cells=rAStar(m,A,B,field);if(!cells)return null;
     var pts=cells.map(function(c){return [m.ox+(c[0]+0.5)*m.CELL,m.oy+(c[1]+0.5)*m.CELL];});
     var line=rChaikin(rDP(pts,m.CELL*1.3),2);
     line.entryA=[m.ox+(A[0]+0.5)*m.CELL,m.oy+(A[1]+0.5)*m.CELL];
     line.entryB=[m.ox+(B[0]+0.5)*m.CELL,m.oy+(B[1]+0.5)*m.CELL];
+    return line;
+  }
+  function routeOnFloor(floor,ax,ay,bx,by){
+    var m=buildMask(floor);if(!m)return rDirect(ax,ay,bx,by);
+    var line=rNetRoute(m,ax,ay,bx,by,m.walkable);
+    if(!line)return rDirect(ax,ay,bx,by);
     return line;
   }
   function rCentroid(floor,id){
@@ -2469,7 +2484,14 @@ button{font-family:inherit;}
     svg.insertBefore(g,marker);routing.layer=g;
     var len=line.getTotalLength();line.style.strokeDasharray=len;line.style.strokeDashoffset=len;casing.style.strokeDasharray=len;casing.style.strokeDashoffset=len;
     var t0=performance.now(),dur=Math.min(1500,500+len*0.05);
-    function step(t){var k=Math.min(1,(t-t0)/dur);var e=k<.5?4*k*k*k:1-Math.pow(-2*k+2,3)/2;line.style.strokeDashoffset=len*(1-e);casing.style.strokeDashoffset=len*(1-e);if(k<1)routing.drawRAF=requestAnimationFrame(step);else rStartDot(line,len);}
+    function step(t){var k=Math.min(1,(t-t0)/dur);var e=k<.5?4*k*k*k:1-Math.pow(-2*k+2,3)/2;line.style.strokeDashoffset=len*(1-e);casing.style.strokeDashoffset=len*(1-e);
+      if(k<1){routing.drawRAF=requestAnimationFrame(step);}
+      else{/* With vector-effect:non-scaling-stroke the dash pattern is measured in
+              screen pixels, so a fixed dasharray clips the line when you zoom in.
+              Clear it once the reveal is done so the whole route always renders. */
+        line.style.strokeDasharray='none';line.style.strokeDashoffset='0';
+        casing.style.strokeDasharray='none';casing.style.strokeDashoffset='0';
+        rStartDot(line,len);}}
     routing.drawRAF=requestAnimationFrame(step);
     frameRoute(seg.pts);
   }
