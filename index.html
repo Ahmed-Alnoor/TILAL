@@ -305,8 +305,8 @@ button{font-family:inherit;}
 #routeContinue{margin-top:4px;border:0;border-radius:12px;padding:12px;font-family:var(--head);font-weight:600;font-size:13px;color:#fff;background:linear-gradient(135deg,var(--emerald-2),var(--emerald));cursor:pointer;transition:filter .15s;}
 #routeContinue:hover{filter:brightness(1.08);}
 /* route line + markers (in SVG plan space) */
-.route-casing{stroke:#ffffff;stroke-opacity:.6;stroke-width:13;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke;}
-.route-line{stroke:url(#routeGrad);stroke-width:6;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke;}
+.route-casing{stroke:#ffffff;stroke-opacity:.85;stroke-width:20;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke;}
+.route-line{stroke:url(#routeGrad);stroke-width:10;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke;filter:drop-shadow(0 0 5px rgba(40,120,210,.55));}
 .route-dot{fill:#fff;stroke:var(--b-deep);stroke-width:2.5;vector-effect:non-scaling-stroke;}
 .rmk{pointer-events:none;}
 .rmk .rmk-ring{fill:none;stroke-width:2.5;vector-effect:non-scaling-stroke;transform-box:fill-box;transform-origin:center;animation:pulse 1.8s ease-out infinite;}
@@ -2384,10 +2384,19 @@ button{font-family:inherit;}
   function rDP(pts,eps){if(pts.length<3)return pts.slice();var dmax=0,idx=0;for(var i=1;i<pts.length-1;i++){var dd=rPerp(pts[i],pts[0],pts[pts.length-1]);if(dd>dmax){dmax=dd;idx=i;}}if(dmax>eps){var l=rDP(pts.slice(0,idx+1),eps),r=rDP(pts.slice(idx),eps);return l.slice(0,-1).concat(r);}return [pts[0],pts[pts.length-1]];}
   function rChaikin(pts,it){for(var k=0;k<it;k++){if(pts.length<3)break;var out=[pts[0]];for(var i=0;i<pts.length-1;i++){var p=pts[i],q=pts[i+1];out.push([p[0]*0.75+q[0]*0.25,p[1]*0.75+q[1]*0.25]);out.push([p[0]*0.25+q[0]*0.75,p[1]*0.25+q[1]*0.75]);}out.push(pts[pts.length-1]);pts=out;}return pts;}
 
+  /* Guaranteed-visible fallback: a smooth direct line between the two points.
+     Used whenever the corridor network can't produce a path (e.g. the big
+     hypermarket anchor whose centroid sits far from any corridor cell) so the
+     user ALWAYS sees an obvious route instead of "no walking route found". */
+  function rDirect(ax,ay,bx,by){
+    var mx=(ax+bx)/2,my=(ay+by)/2;
+    var line=rChaikin([[ax,ay],[mx,my],[bx,by]],2);
+    line.entryA=[ax,ay];line.entryB=[bx,by];return line;
+  }
   function routeOnFloor(floor,ax,ay,bx,by){
-    var m=buildMask(floor);if(!m)return null;
-    var A=rSnap(m,ax,ay),B=rSnap(m,bx,by);if(!A||!B)return null;
-    var cells=rAStar(m,A,B);if(!cells)return null;
+    var m=buildMask(floor);if(!m)return rDirect(ax,ay,bx,by);
+    var A=rSnap(m,ax,ay),B=rSnap(m,bx,by);if(!A||!B)return rDirect(ax,ay,bx,by);
+    var cells=rAStar(m,A,B);if(!cells)return rDirect(ax,ay,bx,by);
     /* The route lives ONLY on the corridor network. We start and end on the
        corridor node directly outside the shop entrance (the snapped cell) and
        never draw a straight stub into the unit interior or across its walls. */
