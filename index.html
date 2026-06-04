@@ -2300,20 +2300,43 @@ button{font-family:inherit;}
   function buildMask(floor){
     if(MASKS[floor])return MASKS[floor];
     var nodes=FLOOR_NODES[floor]||[];
-    var minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9,roads=[];
+    /* The corridors are NOT drawn shapes — they are the negative space between
+       the shop units. So we rasterize EVERY unit as a solid obstacle, recover
+       the building footprint by morphological closing (which fills the corridor
+       gaps), then walkable = footprint minus the units = the real walkways. */
+    var minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9,shapes=[];
     nodes.forEach(function(n){var d=n.getAttribute('d');if(!d)return;
-      if(n.dataset.cat!=='circulation')return; /* roads = circulation corridors only */
       var ring=rParseRing(d);
       for(var i=0;i<ring.length;i++){var p=ring[i];if(p[0]<minX)minX=p[0];if(p[1]<minY)minY=p[1];if(p[0]>maxX)maxX=p[0];if(p[1]>maxY)maxY=p[1];}
-      roads.push(d);});
+      shapes.push(d);});
     if(maxX<minX)return null;
-    var pad=80;minX-=pad;minY-=pad;maxX+=pad;maxY+=pad;
-    var CELL=6;var cols=Math.ceil((maxX-minX)/CELL),rows=Math.ceil((maxY-minY)/CELL);
+    var pad=90;minX-=pad;minY-=pad;maxX+=pad;maxY+=pad;
+    var CELL=3;var cols=Math.ceil((maxX-minX)/CELL),rows=Math.ceil((maxY-minY)/CELL);
     var cv=document.createElement('canvas');cv.width=cols;cv.height=rows;var ctx=cv.getContext('2d');
     ctx.setTransform(1/CELL,0,0,1/CELL,-minX/CELL,-minY/CELL);ctx.fillStyle='#fff';
-    roads.forEach(function(d){try{ctx.fill(new Path2D(d));}catch(e){}});
-    var img=ctx.getImageData(0,0,cols,rows).data;var N=cols*rows;var walk=new Uint8Array(N);
-    for(var i=0;i<N;i++)walk[i]=img[i*4]>40?1:0;
+    shapes.forEach(function(d){try{ctx.fill(new Path2D(d));}catch(e){}}); /* nonzero fill: solid units, holes filled */
+    var img=ctx.getImageData(0,0,cols,rows).data;var N=cols*rows;var solid=new Uint8Array(N);
+    for(var si=0;si<N;si++)solid[si]=img[si*4]>40?1:0;
+    /* footprint = closing(solid): dilate then erode by RC so corridor gaps (up
+       to ~2*RC*CELL units wide) merge into one solid building outline. */
+    var RC=Math.round(70/CELL);
+    var dil=rDilate(solid,cols,rows,RC);
+    var inv=new Uint8Array(N);for(var a=0;a<N;a++)inv[a]=dil[a]?0:1;
+    var invd=rDilate(inv,cols,rows,RC);
+    var foot=new Uint8Array(N);for(var b=0;b<N;b++)foot[b]=invd[b]?0:1;
+    /* fill enclosed holes: flood the background inward from the border; any
+       background cell never reached is an interior void -> part of footprint. */
+    var seen=new Uint8Array(N),stk=new Int32Array(N),sp=0,hx,hy;
+    for(hx=0;hx<cols;hx++){var c0=hx,c1=(rows-1)*cols+hx;if(!foot[c0]&&!seen[c0]){seen[c0]=1;stk[sp++]=c0;}if(!foot[c1]&&!seen[c1]){seen[c1]=1;stk[sp++]=c1;}}
+    for(hy=0;hy<rows;hy++){var l0=hy*cols,r0=hy*cols+cols-1;if(!foot[l0]&&!seen[l0]){seen[l0]=1;stk[sp++]=l0;}if(!foot[r0]&&!seen[r0]){seen[r0]=1;stk[sp++]=r0;}}
+    while(sp){var fc=stk[--sp],fx=fc%cols,fy=(fc/cols)|0;
+      if(fx+1<cols&&!foot[fc+1]&&!seen[fc+1]){seen[fc+1]=1;stk[sp++]=fc+1;}
+      if(fx-1>=0&&!foot[fc-1]&&!seen[fc-1]){seen[fc-1]=1;stk[sp++]=fc-1;}
+      if(fy+1<rows&&!foot[fc+cols]&&!seen[fc+cols]){seen[fc+cols]=1;stk[sp++]=fc+cols;}
+      if(fy-1>=0&&!foot[fc-cols]&&!seen[fc-cols]){seen[fc-cols]=1;stk[sp++]=fc-cols;}}
+    for(var h=0;h<N;h++)if(!foot[h]&&!seen[h])foot[h]=1;
+    /* walkable corridor network = inside footprint, off the units */
+    var walk=new Uint8Array(N);for(var w0=0;w0<N;w0++)walk[w0]=(foot[w0]&&!solid[w0])?1:0;
     /* keep only the largest connected road component (drop disconnected slivers) */
     var q=new Int32Array(N),comp=new Int32Array(N);for(var c0=0;c0<N;c0++)comp[c0]=-1;
     var bigC=-1,bigSz=0,ncc=0;
