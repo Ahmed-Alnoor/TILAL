@@ -2327,7 +2327,24 @@ button{font-family:inherit;}
     var main=new Uint8Array(N);for(var mi=0;mi<N;mi++)main[mi]=(comp[mi]===bigC)?1:0;
     /* route on the connected road network only */
     for(var wi=0;wi<N;wi++)if(!main[wi])walk[wi]=0;
-    var m={cols:cols,rows:rows,CELL:CELL,ox:minX,oy:minY,walkable:walk,main:main};MASKS[floor]=m;return m;
+    /* clearance (distance-to-wall) field -> lets the router hug the corridor
+       centerline (the blue spine) instead of taking diagonal shortcuts that
+       graze the store walls. Two-pass chamfer distance transform. */
+    var dist=new Float32Array(N),D1=1,D2=RSQ2,BIG=1e9,maxD=0;
+    for(var di=0;di<N;di++)dist[di]=main[di]?BIG:0;
+    for(var fy=0;fy<rows;fy++)for(var fx=0;fx<cols;fx++){var fi=fy*cols+fx;if(!main[fi])continue;var v=dist[fi];
+      if(fx>0)v=Math.min(v,dist[fi-1]+D1);
+      if(fy>0)v=Math.min(v,dist[fi-cols]+D1);
+      if(fx>0&&fy>0)v=Math.min(v,dist[fi-cols-1]+D2);
+      if(fx<cols-1&&fy>0)v=Math.min(v,dist[fi-cols+1]+D2);
+      dist[fi]=v;}
+    for(var by=rows-1;by>=0;by--)for(var bx=cols-1;bx>=0;bx--){var bi=by*cols+bx;if(!main[bi])continue;var v2=dist[bi];
+      if(bx<cols-1)v2=Math.min(v2,dist[bi+1]+D1);
+      if(by<rows-1)v2=Math.min(v2,dist[bi+cols]+D1);
+      if(bx<cols-1&&by<rows-1)v2=Math.min(v2,dist[bi+cols+1]+D2);
+      if(bx>0&&by<rows-1)v2=Math.min(v2,dist[bi+cols-1]+D2);
+      dist[bi]=v2;if(v2>maxD&&v2<BIG)maxD=v2;}
+    var m={cols:cols,rows:rows,CELL:CELL,ox:minX,oy:minY,walkable:walk,main:main,dist:dist,maxD:maxD};MASKS[floor]=m;return m;
   }
   function rDilate(src,cols,rows,r){
     var tmp=new Uint8Array(cols*rows),out=new Uint8Array(cols*rows),x,y,k;
@@ -2342,11 +2359,15 @@ button{font-family:inherit;}
     for(var r=1;r<300;r++){for(var dx=-r;dx<=r;dx++)for(var dy=-r;dy<=r;dy++){if(Math.max(Math.abs(dx),Math.abs(dy))!==r)continue;var nx=gx+dx,ny=gy+dy;if(nx<0||ny<0||nx>=m.cols||ny>=m.rows)continue;if(m.main[ny*m.cols+nx])return [nx,ny];}}
     return null;
   }
-  function rAStar(w,cols,rows,a,b){
+  function rAStar(m,a,b){
+    var w=m.walkable,cols=m.cols,rows=m.rows,dist=m.dist,maxD=m.maxD||1;
     var N=cols*rows,g=new Float64Array(N),came=new Int32Array(N),closed=new Uint8Array(N),i;
     for(i=0;i<N;i++){g[i]=Infinity;came[i]=-1;}
     function id(x,y){return y*cols+x;}
     var sI=id(a[0],a[1]),gI=id(b[0],b[1]);if(!w[sI]||!w[gI])return null;
+    /* clearance reference: how wide a corridor we treat as "fully central". */
+    var ref=Math.min(maxD,7),LAMBDA=2.2;
+    function bias(idx){var c=dist[idx];if(c>=ref)return 0;return LAMBDA*(ref-c)/ref;}
     function h(x,y){var dx=Math.abs(x-b[0]),dy=Math.abs(y-b[1]);return (dx+dy)+(RSQ2-2)*Math.min(dx,dy);}
     var open=new RHeap();g[sI]=0;open.push({i:sI,x:a[0],y:a[1],f:h(a[0],a[1])});
     var D=[[1,0,1],[-1,0,1],[0,1,1],[0,-1,1],[1,1,RSQ2],[1,-1,RSQ2],[-1,1,RSQ2],[-1,-1,RSQ2]];
@@ -2355,7 +2376,7 @@ button{font-family:inherit;}
       if(cur.i===gI){var path=[],c=gI;while(c!==-1){path.push([c%cols,(c/cols)|0]);c=came[c];}return path.reverse();}
       for(var d=0;d<8;d++){var nx=cur.x+D[d][0],ny=cur.y+D[d][1];if(nx<0||ny<0||nx>=cols||ny>=rows)continue;var nI=id(nx,ny);if(!w[nI]||closed[nI])continue;
         if(D[d][2]>1&&(!w[id(cur.x+D[d][0],cur.y)]||!w[id(cur.x,cur.y+D[d][1])]))continue;
-        var ng=g[cur.i]+D[d][2];if(ng<g[nI]){g[nI]=ng;came[nI]=cur.i;open.push({i:nI,x:nx,y:ny,f:ng+h(nx,ny)});}}
+        var ng=g[cur.i]+D[d][2]*(1+bias(nI));if(ng<g[nI]){g[nI]=ng;came[nI]=cur.i;open.push({i:nI,x:nx,y:ny,f:ng+h(nx,ny)});}}
     }
     return null;
   }
@@ -2366,10 +2387,15 @@ button{font-family:inherit;}
   function routeOnFloor(floor,ax,ay,bx,by){
     var m=buildMask(floor);if(!m)return null;
     var A=rSnap(m,ax,ay),B=rSnap(m,bx,by);if(!A||!B)return null;
-    var cells=rAStar(m.walkable,m.cols,m.rows,A,B);if(!cells)return null;
+    var cells=rAStar(m,A,B);if(!cells)return null;
+    /* The route lives ONLY on the corridor network. We start and end on the
+       corridor node directly outside the shop entrance (the snapped cell) and
+       never draw a straight stub into the unit interior or across its walls. */
     var pts=cells.map(function(c){return [m.ox+(c[0]+0.5)*m.CELL,m.oy+(c[1]+0.5)*m.CELL];});
-    pts.unshift([ax,ay]);pts.push([bx,by]);
-    return rChaikin(rDP(pts,m.CELL*1.3),2);
+    var line=rChaikin(rDP(pts,m.CELL*1.3),2);
+    line.entryA=[m.ox+(A[0]+0.5)*m.CELL,m.oy+(A[1]+0.5)*m.CELL];
+    line.entryB=[m.ox+(B[0]+0.5)*m.CELL,m.oy+(B[1]+0.5)*m.CELL];
+    return line;
   }
   function rCentroid(floor,id){
     if(floor===curFloor){var s=SHOPS.find(function(x){return x.id===id;});if(s)return [s.cx,s.cy];}
@@ -2382,14 +2408,14 @@ button{font-family:inherit;}
   function computeRoute(origin,dest){
     var oc=rCentroid(origin.floor,origin.id),dc=rCentroid(dest.floor,dest.id);if(!oc||!dc)return null;
     if(origin.floor===dest.floor){var pts=routeOnFloor(origin.floor,oc[0],oc[1],dc[0],dc[1]);if(!pts)return null;
-      return {cross:false,oc:oc,dc:dc,segments:[{floor:origin.floor,pts:pts,kind:'full'}]};}
+      return {cross:false,oc:pts.entryA,dc:pts.entryB,segments:[{floor:origin.floor,pts:pts,kind:'full'}]};}
     var Lo=ESCALATORS[origin.floor]||[],bestE=null,bs=1e18;
     Lo.forEach(function(e){var sc=Math.hypot(e[0]-oc[0],e[1]-oc[1])+Math.hypot(e[0]-dc[0],e[1]-dc[1]);if(sc<bs){bs=sc;bestE=e;}});
     if(!bestE)return null;var Ed=rNearEsc(dest.floor,bestE[0],bestE[1]);if(!Ed)return null;
     var s1=routeOnFloor(origin.floor,oc[0],oc[1],bestE[0],bestE[1]);
     var s2=routeOnFloor(dest.floor,Ed[0],Ed[1],dc[0],dc[1]);
     if(!s1||!s2)return null;
-    return {cross:true,oc:oc,dc:dc,esc:bestE,segments:[{floor:origin.floor,pts:s1,kind:'toEsc',esc:bestE},{floor:dest.floor,pts:s2,kind:'fromEsc',esc:Ed}]};
+    return {cross:true,oc:s1.entryA,dc:s2.entryB,esc:s1.entryB,segments:[{floor:origin.floor,pts:s1,kind:'toEsc',esc:s1.entryB},{floor:dest.floor,pts:s2,kind:'fromEsc',esc:s2.entryA}]};
   }
 
   /* ---- rendering ---- */
