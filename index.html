@@ -2293,36 +2293,29 @@ button{font-family:inherit;}
   RHeap.prototype.pop=function(){var a=this.a,top=a[0],last=a.pop();if(a.length){a[0]=last;var i=0,n=a.length;for(;;){var l=2*i+1,r=l+1,m=i;if(l<n&&a[l].f<a[m].f)m=l;if(r<n&&a[r].f<a[m].f)m=r;if(m===i)break;var t=a[m];a[m]=a[i];a[i]=t;i=m;}}return top;};
   RHeap.prototype.size=function(){return this.a.length;};
 
-  /* ---- per-floor walkable mask via offscreen canvas ---- */
+  /* ---- per-floor walkable mask via offscreen canvas ----
+     Roads only: the route is confined to the circulation corridors (the road
+     plan), so the shortest path always follows the real walkways and never
+     cuts through shops or emergency-only routes. */
   function buildMask(floor){
     if(MASKS[floor])return MASKS[floor];
     var nodes=FLOOR_NODES[floor]||[];
-    var minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9,paths=[];
-    nodes.forEach(function(n){var d=n.getAttribute('d');if(!d)return;var ring=rParseRing(d);
+    var minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9,roads=[];
+    nodes.forEach(function(n){var d=n.getAttribute('d');if(!d)return;
+      if(n.dataset.cat!=='circulation')return; /* roads = circulation corridors only */
+      var ring=rParseRing(d);
       for(var i=0;i<ring.length;i++){var p=ring[i];if(p[0]<minX)minX=p[0];if(p[1]<minY)minY=p[1];if(p[0]>maxX)maxX=p[0];if(p[1]>maxY)maxY=p[1];}
-      paths.push({d:d,block:n.dataset.cat!=='circulation'});});
+      roads.push(d);});
     if(maxX<minX)return null;
     var pad=80;minX-=pad;minY-=pad;maxX+=pad;maxY+=pad;
     var CELL=6;var cols=Math.ceil((maxX-minX)/CELL),rows=Math.ceil((maxY-minY)/CELL);
     var cv=document.createElement('canvas');cv.width=cols;cv.height=rows;var ctx=cv.getContext('2d');
     ctx.setTransform(1/CELL,0,0,1/CELL,-minX/CELL,-minY/CELL);ctx.fillStyle='#fff';
-    paths.forEach(function(p){if(p.block){try{ctx.fill(new Path2D(p.d));}catch(e){}}});
-    var img=ctx.getImageData(0,0,cols,rows).data;var N=cols*rows;var block=new Uint8Array(N);
-    for(var i=0;i<N;i++)block[i]=img[i*4]>40?1:0;
-    /* seal narrow entrances, flood the exterior, walkable = interior void minus shop blocks */
-    var sealed=rDilate(block,cols,rows,7);
-    var outside=new Uint8Array(N),q=new Int32Array(N),qh=0,qt=0;
-    function seed(ix){if(!sealed[ix]&&!outside[ix]){outside[ix]=1;q[qt++]=ix;}}
-    for(var x=0;x<cols;x++){seed(x);seed((rows-1)*cols+x);}
-    for(var y=0;y<rows;y++){seed(y*cols);seed(y*cols+cols-1);}
-    while(qh<qt){var ci=q[qh++],cx=ci%cols,cy=(ci/cols)|0;
-      if(cx+1<cols&&!sealed[ci+1]&&!outside[ci+1]){outside[ci+1]=1;q[qt++]=ci+1;}
-      if(cx-1>=0&&!sealed[ci-1]&&!outside[ci-1]){outside[ci-1]=1;q[qt++]=ci-1;}
-      if(cy+1<rows&&!sealed[ci+cols]&&!outside[ci+cols]){outside[ci+cols]=1;q[qt++]=ci+cols;}
-      if(cy-1>=0&&!sealed[ci-cols]&&!outside[ci-cols]){outside[ci-cols]=1;q[qt++]=ci-cols;}}
-    var walk=new Uint8Array(N);for(var j=0;j<N;j++)walk[j]=(!block[j]&&!outside[j])?1:0;
-    /* keep only the largest connected walkable component (drop sealed-off pockets) */
-    var comp=new Int32Array(N);for(var c0=0;c0<N;c0++)comp[c0]=-1;
+    roads.forEach(function(d){try{ctx.fill(new Path2D(d));}catch(e){}});
+    var img=ctx.getImageData(0,0,cols,rows).data;var N=cols*rows;var walk=new Uint8Array(N);
+    for(var i=0;i<N;i++)walk[i]=img[i*4]>40?1:0;
+    /* keep only the largest connected road component (drop disconnected slivers) */
+    var q=new Int32Array(N),comp=new Int32Array(N);for(var c0=0;c0<N;c0++)comp[c0]=-1;
     var bigC=-1,bigSz=0,ncc=0;
     for(var s0=0;s0<N;s0++){if(walk[s0]&&comp[s0]<0){var sh=0,st=0;q[st++]=s0;comp[s0]=ncc;var sz=0;
         while(sh<st){var cc=q[sh++],ax=cc%cols,ay=(cc/cols)|0;sz++;
@@ -2332,6 +2325,8 @@ button{font-family:inherit;}
           if(ay-1>=0&&walk[cc-cols]&&comp[cc-cols]<0){comp[cc-cols]=ncc;q[st++]=cc-cols;}}
         if(sz>bigSz){bigSz=sz;bigC=ncc;}ncc++;}}
     var main=new Uint8Array(N);for(var mi=0;mi<N;mi++)main[mi]=(comp[mi]===bigC)?1:0;
+    /* route on the connected road network only */
+    for(var wi=0;wi<N;wi++)if(!main[wi])walk[wi]=0;
     var m={cols:cols,rows:rows,CELL:CELL,ox:minX,oy:minY,walkable:walk,main:main};MASKS[floor]=m;return m;
   }
   function rDilate(src,cols,rows,r){
