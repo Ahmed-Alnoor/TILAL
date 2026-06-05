@@ -14,7 +14,10 @@ from collections import Counter
 PDFS = {'GF':'TM-ARC-ML-DR-AR-GF-7020.pdf',
         'F1':'TM-ARC-ML-DR-AR-1F-7030.pdf',
         'BL':'TM-ARC-ML-DR-AR-BL-7010.pdf'}
-CODE_RE = re.compile(r'^(?:GF|FF|BL|KS|FV|FC)-\d{1,4}(?:-S)?$')
+# Leasing codes: clean upper-floor codes (GF-001, FF-112) plus the basement's
+# prefixed form (SV-BL-120, C01-BL-01, OF-BL-07 ...) which is what the BL plan
+# actually prints. The optional leading group captures the prefix.
+CODE_RE = re.compile(r'^(?:[A-Z]{1,4}\d{0,2}-)?(?:GF|FF|BL|KS|FV|FC)-\d{1,4}(?:-S)?$')
 AREA_RE = re.compile(r'(\d+(?:\.\d+)?)\s*m²\s*(\d+(?:\.\d+)?)\s*ft²')
 
 def classify(name):
@@ -44,7 +47,15 @@ def classify(name):
     if any(k in s for k in ('BOH','FOH','BACK OF HOUSE','LOADING','JANITOR','CLEANER','WASTE','REFUSE')): return 'boh'
     if any(k in s for k in ('CORRIDOR','LOBBY','CIRCULATION','ESCALATOR',' ESC','STAIR','BRIDGE','PEDESTRIAN','CORE','TRAVEL','RAMP','ATRIUM','CONCOURSE')): return 'circulation'
     return None
-PREFIX_CAT={'KS':'kiosk','FV':'food-village','FC':'fc-seating'}
+PREFIX_CAT={'KS':'kiosk','FV':'food-village','FC':'fc-seating',
+            # basement prefixes (SV=service, OF=office, TS=tenant store,
+            # CB/MP/FT/FP/MT/SS/EL=building services, LB=lobby, SR/CT=service)
+            'SV':'tenant-store','OF':'management-suite','TS':'tenant-store',
+            'CB':'mep','MP':'mep','FT':'mep','FP':'mep','MT':'mep','EL':'mep',
+            'SS':'mep','LB':'circulation','SR':'boh','CT':'boh'}
+def prefix_of(code):
+    seg=code.split('-')[0]
+    return re.sub(r'\d+$','',seg)   # 'SS03' -> 'SS', 'C01' -> 'C'
 
 def labels_of(pdf):
     p=fitz.open(pdf)[0]
@@ -56,7 +67,7 @@ def labels_of(pdf):
     out=[]
     for cx,cy,t in blocks:
         if not CODE_RE.match(t): continue
-        pre=t.split('-')[0]; name=None; m2=ft2=None; best=1e9
+        pre=prefix_of(t); name=None; m2=ft2=None; best=1e9
         for x,y,bt in blocks:
             if abs(x-cx)>17 or abs(y-cy)>17: continue
             am=AREA_RE.search(bt)
@@ -73,13 +84,19 @@ NUM=re.compile(r'-?\d+(?:\.\d+)?')
 def ring(d):
     seg=d.split('Z')[0]; n=NUM.findall(seg)
     return [(float(n[i]),float(n[i+1])) for i in range(0,len(n)-1,2)]
+def shoelace(r):
+    s=0.0
+    for i in range(len(r)):
+        x1,y1=r[i]; x2,y2=r[(i+1)%len(r)]
+        s+=x1*y2-x2*y1
+    return abs(s)/2.0
 def polys_of(region):
     out=[]
     for m in re.finditer(r'<path class="unit" data-id="([^"]+)" data-cat="([^"]+)"[^>]*\sd="([^"]+)"',region):
         r=ring(m.group(3))
         if len(r)<3: continue
         xs=[p[0] for p in r]; ys=[p[1] for p in r]
-        out.append(dict(id=m.group(1),cat=m.group(2),ring=r,
+        out.append(dict(id=m.group(1),cat=m.group(2),ring=r,area=shoelace(r),
                         bb=(min(xs),min(ys),max(xs),max(ys)),
                         c=(sum(xs)/len(xs),sum(ys)/len(ys))))
     return out
@@ -159,23 +176,48 @@ def fit_transform(labels,polys):
         T=fit_sim([(l['x'],l['y']) for l,_ in inl],[h['c'] for _,h in inl])
     return T
 
-def assign(labels,polys,T):
-    # final: containment preferred, then nearest centroid
-    res={}
+def est_scale(labels,polys,T):
+    """m² per SVG-unit², from labels confidently contained in a single polygon."""
+    rs=[]
     for l in labels:
+        if not l['m2']: continue
         mp=apply_aff(T,(l['x'],l['y']))
-        cand=[p for p in polys if p['bb'][0]-3<=mp[0]<=p['bb'][2]+3 and p['bb'][1]-3<=mp[1]<=p['bb'][3]+3 and pip(mp,p['ring'])]
-        if cand:
-            hit=min(cand,key=lambda p:(p['c'][0]-mp[0])**2+(p['c'][1]-mp[1])**2)
-            contained=True
-        else:
-            hit=min(polys,key=lambda p:(p['c'][0]-mp[0])**2+(p['c'][1]-mp[1])**2)
-            contained=False
-        dd=(hit['c'][0]-mp[0])**2+(hit['c'][1]-mp[1])**2
-        if not contained: continue          # containment-only = high precision
-        key=(0,dd)
-        prev=res.get(hit['id'])
-        if prev is None or key<prev[1]: res[hit['id']]=(l,key)
+        cand=[p for p in polys if pip(mp,p['ring']) and p['area']>1]
+        if len(cand)==1:
+            rs.append(l['m2']/cand[0]['area'])
+    rs.sort()
+    return rs[len(rs)//2] if rs else None
+
+def assign(labels,polys,T,near_thr=60.0):
+    """Area-aware global matching. For every plausible (label, polygon) pair we
+    score by distance AND agreement between the label's stated m² and the
+    polygon's geometric area, then greedily assign best pairs first (each label
+    and polygon used once). This stops a stray small label from claiming a big
+    anchor polygon just because it falls inside it, and lets the real anchor
+    label (sitting a few px outside its irregular edge) win on area+proximity."""
+    k=est_scale(labels,polys,T)
+    pairs=[]
+    for li,l in enumerate(labels):
+        mp=apply_aff(T,(l['x'],l['y']))
+        for p in polys:
+            d=math.hypot(p['c'][0]-mp[0],p['c'][1]-mp[1])
+            contained=(p['bb'][0]-3<=mp[0]<=p['bb'][2]+3 and p['bb'][1]-3<=mp[1]<=p['bb'][3]+3
+                       and pip(mp,p['ring']))
+            if not contained and d>near_thr: continue
+            aerr=0.0
+            if k and l['m2'] and p['area']>1:
+                pred=k*p['area']
+                aerr=abs(pred-l['m2'])/max(l['m2'],pred)   # 0=perfect .. ~1=way off
+            # a non-contained (nearest-fallback) match whose area is wildly off is
+            # most likely wrong -- skip it (a missing code beats a wrong code).
+            if not contained and aerr>0.6: continue
+            score=(0.0 if contained else 0.5)+d/120.0+1.3*aerr
+            pairs.append((score,li,p['id'],l))
+    pairs.sort(key=lambda x:x[0])
+    res={}; used_l=set()
+    for score,li,pid,l in pairs:
+        if li in used_l or pid in res: continue
+        used_l.add(li); res[pid]=(l,(score,))
     return res
 
 html=open('index.html').read()
@@ -196,10 +238,29 @@ for fl,pdf in PDFS.items():
     for uid,(l,_) in res.items():
         if not l['cat']: continue
         fm[uid]={'id':l['code'],'cat':l['cat'],'m2':l['m2'],'ft2':l['ft2'],'name':l['name']}
+    # De-duplicate codes: a few codes appear twice in a PDF (real unit label +
+    # a stray leader annotation). Keep the larger leasing unit (by m²) -- anchors
+    # / majors are what leasing locates by code; drop & log the smaller.
+    bycode={}
+    for uid,v in fm.items():
+        bycode.setdefault(v['id'],[]).append(uid)
+    dropped=[]
+    for code,uids in bycode.items():
+        if len(uids)<2: continue
+        keep=max(uids,key=lambda u:(fm[u]['m2'] or 0))
+        for u in uids:
+            if u!=keep:
+                dropped.append({'floor':fl,'code':code,'dropped_uid':u,
+                                'kept_uid':keep,'dropped_name':fm[u]['name']})
+                del fm[u]
     out[fl]=fm
     rep[fl]={'labels':len(L),'polys':len(polys),'assigned':len(fm),
+             'dup_dropped':dropped,
              'cats':dict(Counter(v['cat'] for v in fm.values()))}
 json.dump(out,open('/tmp/relabel.json','w'))
+# committed, human-readable summary for review (the full mapping lives in
+# /tmp/relabel.json and is reproducible by re-running this script).
+json.dump(rep,open('tools/relabel_report.json','w'),indent=1,ensure_ascii=False)
 print(json.dumps(rep,indent=2))
 for uid in ('G0162','F10340','F10244','F10401','F10450'):
     for fl in out:
