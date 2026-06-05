@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"/>
 <title>Tilal Grand Mall — Interactive Directory</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=Manrope:wght@300;400;500;600;700&display=swap');
@@ -361,6 +361,52 @@ button{font-family:inherit;}
 .lv-head .back{border-radius:11px;}
 .plate-box{border-radius:16px;}
 @media (max-width:860px){.card{top:auto;bottom:14px;left:14px;right:14px;width:auto;max-height:78vh;}}
+
+/* ============================ MOBILE / TOUCH ============================ */
+/* Larger, thumb-friendly controls on any touch device. */
+@media (pointer:coarse){
+  .zoom-ctl button{width:52px;height:52px;font-size:23px;}
+  .zoom-ctl{gap:12px;}
+  .nav-toggle{min-width:46px;min-height:46px;}
+  .floor-tab{padding:11px 15px;}
+  .chip{padding:9px 13px;}
+}
+@media (max-width:860px){
+  /* respect notches / home indicators */
+  .topbar{top:calc(12px + env(safe-area-inset-top));}
+  .zoom-ctl{bottom:calc(104px + env(safe-area-inset-bottom));right:calc(14px + env(safe-area-inset-right));top:auto;}
+  .floor-tag{bottom:calc(30px + env(safe-area-inset-bottom));}
+
+  /* Sidebar (view-toggle + search + filters) becomes a bottom sheet. It peeks
+     by default -- showing the grab handle, Map/List/Parking and the search box
+     -- so the map stays visible; drag/tap the handle to expand for filters. */
+  .sidebar{--peek:150px;top:auto;left:0;right:0;bottom:0;width:100%;max-width:100%;height:80vh;max-height:80vh;
+    border-radius:22px 22px 0 0;border-left:1px solid var(--line);padding:8px 16px 16px;
+    padding-bottom:calc(16px + env(safe-area-inset-bottom));
+    box-shadow:0 -18px 50px -24px rgba(8,22,46,.5);z-index:40;
+    transform:translateY(calc(100% - var(--peek)));
+    transition:transform .42s cubic-bezier(.22,1,.36,1);}
+  .sidebar::before{content:"";display:block;flex:none;width:42px;height:5px;border-radius:3px;
+    background:rgba(31,39,51,.22);margin:2px auto 10px;}
+  .sidebar.expanded{transform:translateY(0);}
+  .body.nav-hidden .sidebar{transform:translateY(calc(100% + 4px));pointer-events:none;}
+
+  /* Shop detail card slides up as a bottom sheet with a grab handle. */
+  .card{top:auto;bottom:0;left:0;right:0;width:100%;max-width:100%;max-height:88vh;border-radius:22px 22px 0 0;
+    transform:translateY(calc(100% + 8px));transition:transform .42s cubic-bezier(.22,1,.36,1),opacity .3s ease;
+    padding-bottom:env(safe-area-inset-bottom);}
+  .card.open{transform:translateY(0);}
+  .card .hero{border-radius:22px 22px 0 0;height:152px;}
+  .card::before{content:"";position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:4;
+    width:44px;height:5px;border-radius:3px;background:rgba(255,255,255,.9);box-shadow:0 1px 3px rgba(0,0,0,.3);}
+}
+
+/* one-time gesture hint */
+.gesture-hint{position:fixed;left:50%;bottom:calc(150px + env(safe-area-inset-bottom));transform:translateX(-50%);
+  z-index:60;background:rgba(20,38,66,.92);color:#fff;font-size:13px;line-height:1.5;padding:11px 16px;border-radius:13px;
+  box-shadow:0 12px 30px -10px rgba(8,22,46,.6);max-width:min(90vw,340px);text-align:center;
+  opacity:0;pointer-events:none;transition:opacity .35s ease;}
+.gesture-hint.show{opacity:1;}
 </style>
 </head>
 <body>
@@ -2048,22 +2094,51 @@ button{font-family:inherit;}
     function step(t){let k=Math.min(1,(t-t0)/dur);k=k<.5?4*k*k*k:1-Math.pow(-2*k+2,3)/2;
       vb={x:from.x+(target.x-from.x)*k,y:from.y+(target.y-from.y)*k,w:from.w+(target.w-from.w)*k,h:from.h+(target.h-from.h)*k};applyVB();if(k<1)requestAnimationFrame(step);}requestAnimationFrame(step);}
 
-  svg.addEventListener('wheel',function(e){e.preventDefault();zoomCenter(e.deltaY<0?0.86:1.16);},{passive:false});
-  let pdown=null,didPan=false;
-  svg.addEventListener('pointerdown',function(e){pdown={x:e.clientX,y:e.clientY,vbx:vb.x,vby:vb.y};didPan=false;});
-  svg.addEventListener('pointermove',function(e){
-    if(pdown){const dx=e.clientX-pdown.x,dy=e.clientY-pdown.y;if(!didPan&&Math.hypot(dx,dy)>5){didPan=true;svg.classList.add('panning');}
-      if(didPan){const r=mapWrap.getBoundingClientRect();vb.x=pdown.vbx-dx*(vb.w/r.width);vb.y=pdown.vby-dy*(vb.h/r.height);applyVB();}}
-  });
-  function endPan(){pdown=null;svg.classList.remove('panning');}
-  svg.addEventListener('pointerup',function(e){var tap=pdown&&!didPan;endPan();if(tap){var el=document.elementFromPoint(e.clientX,e.clientY);if(el&&el.classList&&el.classList.contains('unit')){var s=SHOPS.find(function(x){return x.el===el;});if(s)selectShop(s);}}});
-  svg.addEventListener('pointercancel',endPan);
+  /* zoom keeping a screen point fixed (cursor for wheel, finger-midpoint for
+     pinch) -- the key "feels right" behaviour on touch + trackpad. */
+  function zoomAt(fz,sx,sy){const mn=MINW(),mx=MAXW();let nw=vb.w*fz;if(nw<mn)nw=mn;if(nw>mx)nw=mx;const k=nw/vb.w;
+    const r=mapWrap.getBoundingClientRect();const fx=(sx-r.left)/r.width,fy=(sy-r.top)/r.height;
+    const ax=vb.x+fx*vb.w,ay=vb.y+fy*vb.h;vb.w=nw;vb.h=vb.h*k;vb.x=ax-fx*vb.w;vb.y=ay-fy*vb.h;applyVB();}
+  let inertia=0;
+  function stopInertia(){if(inertia){cancelAnimationFrame(inertia);inertia=0;}}
+  svg.addEventListener('wheel',function(e){e.preventDefault();stopInertia();zoomAt(e.deltaY<0?0.86:1.16,e.clientX,e.clientY);},{passive:false});
+
   const ptrs=new Map();let pinch=0;
-  svg.addEventListener('pointerdown',function(e){ptrs.set(e.pointerId,e);});
-  svg.addEventListener('pointermove',function(e){if(!ptrs.has(e.pointerId))return;ptrs.set(e.pointerId,e);
-    if(ptrs.size===2){const p=[...ptrs.values()];const d=Math.hypot(p[0].clientX-p[1].clientX,p[0].clientY-p[1].clientY);if(pinch){zoomCenter(pinch/d);}pinch=d;didPan=true;}});
-  function clrPtr(e){ptrs.delete(e.pointerId);if(ptrs.size<2)pinch=0;}
-  svg.addEventListener('pointerup',clrPtr); svg.addEventListener('pointercancel',clrPtr);
+  let pdown=null,didPan=false,vel={x:0,y:0},lastMove=null;
+  let lastTapT=0,lastTapX=0,lastTapY=0;
+  svg.addEventListener('pointerdown',function(e){
+    ptrs.set(e.pointerId,e);stopInertia();
+    if(ptrs.size===1){pdown={x:e.clientX,y:e.clientY,vbx:vb.x,vby:vb.y};didPan=false;vel={x:0,y:0};lastMove={x:e.clientX,y:e.clientY,t:performance.now()};}
+    else{pdown=null;svg.classList.remove('panning');}   /* 2nd finger -> pinch, stop pan */
+  });
+  svg.addEventListener('pointermove',function(e){
+    if(!ptrs.has(e.pointerId))return;ptrs.set(e.pointerId,e);
+    if(ptrs.size>=2){const p=[...ptrs.values()];const d=Math.hypot(p[0].clientX-p[1].clientX,p[0].clientY-p[1].clientY);
+      const mx=(p[0].clientX+p[1].clientX)/2,my=(p[0].clientY+p[1].clientY)/2;if(pinch&&d>0)zoomAt(pinch/d,mx,my);pinch=d;didPan=true;return;}
+    if(pdown){const dx=e.clientX-pdown.x,dy=e.clientY-pdown.y;if(!didPan&&Math.hypot(dx,dy)>5){didPan=true;svg.classList.add('panning');}
+      if(didPan){const r=mapWrap.getBoundingClientRect();vb.x=pdown.vbx-dx*(vb.w/r.width);vb.y=pdown.vby-dy*(vb.h/r.height);applyVB();
+        const now=performance.now(),dt=Math.max(1,now-lastMove.t);vel={x:(e.clientX-lastMove.x)/dt,y:(e.clientY-lastMove.y)/dt};lastMove={x:e.clientX,y:e.clientY,t:now};}}
+  });
+  function startInertia(){const r=mapWrap.getBoundingClientRect();let vx=-vel.x*(vb.w/r.width),vy=-vel.y*(vb.h/r.height);
+    if(Math.hypot(vel.x,vel.y)<0.05)return;let last=performance.now();
+    function fr(t){const dt=t-last;last=t;vb.x+=vx*dt;vb.y+=vy*dt;applyVB();const decay=Math.pow(0.94,dt/16);vx*=decay;vy*=decay;
+      if(Math.abs(vx)+Math.abs(vy)>0.0008*vb.w)inertia=requestAnimationFrame(fr);else inertia=0;}
+    inertia=requestAnimationFrame(fr);}
+  svg.addEventListener('pointerup',function(e){
+    var wasTap=pdown&&!didPan&&ptrs.size<=1, wasDrag=pdown&&didPan&&ptrs.size<=1, touch=e.pointerType==='touch';
+    ptrs.delete(e.pointerId);if(ptrs.size<2)pinch=0;
+    if(ptrs.size===0){if(wasDrag)startInertia();pdown=null;svg.classList.remove('panning');}
+    else if(ptrs.size===1){const rem=[...ptrs.values()][0];pdown={x:rem.clientX,y:rem.clientY,vbx:vb.x,vby:vb.y};didPan=true;}
+    if(wasTap){
+      var el=document.elementFromPoint(e.clientX,e.clientY);
+      var unit=el&&el.classList&&el.classList.contains('unit');
+      var now=performance.now();
+      if(touch&&!unit&&now-lastTapT<300&&Math.hypot(e.clientX-lastTapX,e.clientY-lastTapY)<40){stopInertia();zoomAt(0.55,e.clientX,e.clientY);lastTapT=0;return;}
+      lastTapT=now;lastTapX=e.clientX;lastTapY=e.clientY;
+      if(unit){var s=SHOPS.find(function(x){return x.el===el;});if(s)selectShop(s);}
+    }
+  });
+  svg.addEventListener('pointercancel',function(e){ptrs.delete(e.pointerId);if(ptrs.size<2)pinch=0;if(ptrs.size===0){pdown=null;svg.classList.remove('panning');}});
   svg.addEventListener('dblclick',function(e){e.preventDefault();resetView();});
   document.getElementById('zoomIn').addEventListener('click',function(){zoomCenter(0.78);});
   document.getElementById('zoomOut').addEventListener('click',function(){zoomCenter(1.28);});
@@ -2073,6 +2148,54 @@ button{font-family:inherit;}
     else{(document.documentElement.requestFullscreen||document.documentElement.webkitRequestFullscreen).call(document.documentElement);}
   });
   document.getElementById('navToggle').addEventListener('click',function(){document.querySelector('.body').classList.toggle('nav-hidden');});
+
+  /* --- mobile niceties ------------------------------------------------- */
+  const isMobile=window.matchMedia('(max-width:860px)').matches;
+
+  /* The sidebar is a peeking bottom sheet on mobile: tap its grab-handle zone
+     to expand/collapse; focusing search expands; interacting with the map or
+     picking a category collapses it back to the peek. */
+  (function(){
+    if(!isMobile)return;
+    var sb=document.getElementById('sidebar');if(!sb)return;
+    var mq=window.matchMedia('(max-width:860px)');
+    function expand(){if(mq.matches)sb.classList.add('expanded');}
+    function collapse(){sb.classList.remove('expanded');}
+    sb.addEventListener('pointerdown',function(e){
+      if(!mq.matches)return;
+      if(e.clientY-sb.getBoundingClientRect().top<32){e.preventDefault();sb.classList.toggle('expanded');}
+    });
+    var si=document.getElementById('searchInput');
+    if(si)si.addEventListener('focus',expand);
+    if(svg)svg.addEventListener('pointerdown',collapse);
+    sb.addEventListener('click',function(e){if(e.target.closest('.chip,.vt-btn,.cat-nav button'))collapse();});
+  })();
+
+  /* swipe the shop card down to dismiss (grab via its hero / handle area) */
+  (function(){
+    var cardEl=document.getElementById('card');if(!cardEl)return;
+    var sy=0,dyc=0,drag=false;
+    cardEl.addEventListener('pointerdown',function(e){
+      if(!window.matchMedia('(max-width:860px)').matches)return;
+      var hero=e.target.closest('.hero');if(!hero&&e.clientY>cardEl.getBoundingClientRect().top+56)return;
+      drag=true;sy=e.clientY;dyc=0;cardEl.style.transition='none';
+    });
+    cardEl.addEventListener('pointermove',function(e){if(!drag)return;dyc=Math.max(0,e.clientY-sy);cardEl.style.transform='translateY('+dyc+'px)';});
+    function end(){if(!drag)return;drag=false;cardEl.style.transition='';cardEl.style.transform='';
+      if(dyc>90&&typeof deselect==='function')deselect();}
+    cardEl.addEventListener('pointerup',end);cardEl.addEventListener('pointercancel',end);
+  })();
+
+  /* one-time gesture hint on first touch interaction */
+  (function(){
+    if(!isMobile)return;
+    try{if(localStorage.getItem('tilalHint'))return;}catch(_){}
+    var h=document.createElement('div');h.className='gesture-hint';
+    h.textContent='Drag to pan · pinch to zoom · double-tap to zoom in';
+    document.body.appendChild(h);requestAnimationFrame(function(){h.classList.add('show');});
+    setTimeout(function(){h.classList.remove('show');setTimeout(function(){h.remove();},400);},4200);
+    try{localStorage.setItem('tilalHint','1');}catch(_){}
+  })();
 
   const card=document.getElementById('card'),cardBack=document.getElementById('cardBack');let selected=null;
   function icon(p){return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">'+p+'</svg>';}
