@@ -314,7 +314,10 @@ button{font-family:inherit;}
 .rmk.origin .rmk-ring{stroke:var(--green);}.rmk.origin .rmk-core{fill:var(--green);}
 .rmk.dest .rmk-ring{stroke:var(--b-mid);}.rmk.dest .rmk-core{fill:var(--b-deep);}
 .rmk.esc .rmk-ring{stroke:#ef9f1b;}.rmk.esc .rmk-core{fill:#ef9f1b;}
-@media (max-width:860px){.route-panel{top:auto;bottom:14px;left:14px;right:14px;width:auto;max-height:74vh;}}
+@media (max-width:860px){.route-panel{top:auto;bottom:0;left:0;right:0;width:auto;max-width:100%;border-radius:22px 22px 0 0;padding:14px 16px;padding-bottom:calc(14px + env(safe-area-inset-bottom));max-height:46vh;transform:translateY(calc(100% + 8px));box-shadow:0 -18px 50px -24px rgba(8,22,46,.5);}
+  /* the step list scrolls inside the sheet so it never eats the whole map */
+  .route-panel #routeSummary{overflow-y:auto;-webkit-overflow-scrolling:touch;}
+  .route-panel .rs-steps{max-height:30vh;overflow-y:auto;}}
 /* ===== Modern refinements — soft corners, cleaner glass controls ===== */
 /* headerless: floating top control cluster */
 .topbar{position:absolute;top:16px;left:50%;transform:translateX(-50%);z-index:26;display:flex;align-items:center;gap:12px;}
@@ -374,7 +377,10 @@ button{font-family:inherit;}
 @media (max-width:860px){
   /* respect notches / home indicators */
   .topbar{top:calc(12px + env(safe-area-inset-top));}
-  .zoom-ctl{bottom:calc(104px + env(safe-area-inset-bottom));right:calc(14px + env(safe-area-inset-right));top:auto;}
+  /* Zoom / reset live at the TOP-right on phones: the bottom edge is taken by
+     the sidebar, detail card and directions sheets, which previously hid these
+     controls. Top-right keeps them tappable in every state. */
+  .zoom-ctl{top:calc(72px + env(safe-area-inset-top));right:calc(12px + env(safe-area-inset-right));bottom:auto;z-index:30;}
   .floor-tag{bottom:calc(30px + env(safe-area-inset-bottom));}
 
   /* Sidebar (view-toggle + search + filters) becomes a bottom sheet. It peeks
@@ -1837,7 +1843,7 @@ button{font-family:inherit;}
   let SHOPS=[],LAYERS=[svg];
   let cMinX,cMinY,cMaxX,cMaxY,planW,planH,ctrX;
   let present={},activeCats=new Set(),catChips={},leasingTotal=0;
-  let baseVB,vb,curFloor='G';
+  let baseVB,vb,curFloor='G',atHome=true;
   let parkStalls=[],parkAvail=0,parkTotal=0,parkBuilt=false,parkByPlate={},parkSelEl=null;
 
   /* Each floor is a set of <path class="unit"> nodes. Ground is already baked
@@ -2076,9 +2082,20 @@ button{font-family:inherit;}
     const area=ry<0.34?"Upper Concourse":ry<0.64?"Central Galleria":"Outer Promenade";return{wing:wing,area:area};}
 
   let baseVBready=false;
-  function computeBase(){var pad=Math.max(planW,planH)*0.05;   /* tight frame; slice fills the screen */
-    var bw=cMaxX-cMinX, bh=cMaxY-cMinY;
-    baseVB={x:cMinX-pad,y:cMinY-pad,w:bw+pad*2,h:bh+pad*2};vb=Object.assign({},baseVB);baseVBready=true;applyVB();}
+  /* Fit the whole plan inside the viewport. Because the layers use
+     preserveAspectRatio "slice", a viewBox whose aspect ratio matches the
+     container is shown WITHOUT cropping -- so the entire map is visible on
+     load, on any screen / orientation. */
+  function computeBase(){
+    var pad=Math.max(planW,planH)*0.06;          /* breathing room around the plan */
+    var bw=(cMaxX-cMinX)+pad*2, bh=(cMaxY-cMinY)+pad*2;
+    var cx=(cMinX+cMaxX)/2, cy=(cMinY+cMaxY)/2;
+    var r=mapWrap?mapWrap.getBoundingClientRect():null;
+    var ar=(r&&r.width>0&&r.height>0)?r.width/r.height:(bw/bh);
+    var vbw=bw, vbh=bh;
+    if(bw/bh>ar){ vbh=bw/ar; } else { vbw=bh*ar; }   /* grow the short side to match the screen */
+    baseVB={x:cx-vbw/2,y:cy-vbh/2,w:vbw,h:vbh};
+    vb=Object.assign({},baseVB);baseVBready=true;atHome=true;applyVB();}
   var _vbRAF=0,_lastW=-1;
   function applyVB(){if(_vbRAF)return;_vbRAF=requestAnimationFrame(_applyVBnow);}
   function _applyVBnow(){_vbRAF=0;
@@ -2086,17 +2103,17 @@ button{font-family:inherit;}
     if(baseVB&&vb.w!==_lastW){_lastW=vb.w;var f=baseVB.w/vb.w;if(f>1.2)f=1.2;if(f<0.55)f=0.55;var step=EXT_H0/EXT_N*f;for(var j=0;j<LAYERS.length;j++){var k=LAYERS[j].dataset.k;if(k)LAYERS[j].style.transform='translateZ(-'+(k*step).toFixed(2)+'px)';}}}
   const MINW=function(){return baseVB.w/6;},MAXW=function(){return baseVB.w/0.4;};
   const mapWrap=document.getElementById('mapWrapper');
-  function zoomCenter(fz){const mn=MINW(),mx=MAXW();let nw=vb.w*fz;if(nw<mn)nw=mn;if(nw>mx)nw=mx;const k=nw/vb.w;const cx=vb.x+vb.w/2,cy=vb.y+vb.h/2;vb.w=nw;vb.h=vb.h*k;vb.x=cx-vb.w/2;vb.y=cy-vb.h/2;applyVB();}
-  function resetView(){animateVB(Object.assign({},baseVB));}
-  function focusOn(s){const bb=s.el.getBBox();const m=Math.max(bb.width,bb.height)*1.9+150;let nv={x:bb.x+bb.width/2-m,y:bb.y+bb.height/2-m,w:m*2,h:m*2};if(nv.w<MINW()){var fz=MINW()/nv.w;nv.w=MINW();nv.h*=fz;}animateVB(nv);}
-  function focusXY(x,y,r){r=r||260;let nv={x:x-r,y:y-r,w:r*2,h:r*2};if(nv.w<MINW()){nv.w=MINW();nv.h=MINW();nv.x=x-nv.w/2;nv.y=y-nv.h/2;}animateVB(nv);}
+  function zoomCenter(fz){atHome=false;const mn=MINW(),mx=MAXW();let nw=vb.w*fz;if(nw<mn)nw=mn;if(nw>mx)nw=mx;const k=nw/vb.w;const cx=vb.x+vb.w/2,cy=vb.y+vb.h/2;vb.w=nw;vb.h=vb.h*k;vb.x=cx-vb.w/2;vb.y=cy-vb.h/2;applyVB();}
+  function resetView(){atHome=true;animateVB(Object.assign({},baseVB));}
+  function focusOn(s){atHome=false;const bb=s.el.getBBox();const m=Math.max(bb.width,bb.height)*1.9+150;let nv={x:bb.x+bb.width/2-m,y:bb.y+bb.height/2-m,w:m*2,h:m*2};if(nv.w<MINW()){var fz=MINW()/nv.w;nv.w=MINW();nv.h*=fz;}animateVB(nv);}
+  function focusXY(x,y,r){atHome=false;r=r||260;let nv={x:x-r,y:y-r,w:r*2,h:r*2};if(nv.w<MINW()){nv.w=MINW();nv.h=MINW();nv.x=x-nv.w/2;nv.y=y-nv.h/2;}animateVB(nv);}
   function animateVB(target){const from=Object.assign({},vb);const t0=performance.now(),dur=540;
     function step(t){let k=Math.min(1,(t-t0)/dur);k=k<.5?4*k*k*k:1-Math.pow(-2*k+2,3)/2;
       vb={x:from.x+(target.x-from.x)*k,y:from.y+(target.y-from.y)*k,w:from.w+(target.w-from.w)*k,h:from.h+(target.h-from.h)*k};applyVB();if(k<1)requestAnimationFrame(step);}requestAnimationFrame(step);}
 
   /* zoom keeping a screen point fixed (cursor for wheel, finger-midpoint for
      pinch) -- the key "feels right" behaviour on touch + trackpad. */
-  function zoomAt(fz,sx,sy){const mn=MINW(),mx=MAXW();let nw=vb.w*fz;if(nw<mn)nw=mn;if(nw>mx)nw=mx;const k=nw/vb.w;
+  function zoomAt(fz,sx,sy){atHome=false;const mn=MINW(),mx=MAXW();let nw=vb.w*fz;if(nw<mn)nw=mn;if(nw>mx)nw=mx;const k=nw/vb.w;
     const r=mapWrap.getBoundingClientRect();const fx=(sx-r.left)/r.width,fy=(sy-r.top)/r.height;
     const ax=vb.x+fx*vb.w,ay=vb.y+fy*vb.h;vb.w=nw;vb.h=vb.h*k;vb.x=ax-fx*vb.w;vb.y=ay-fy*vb.h;applyVB();}
   let inertia=0;
@@ -2115,7 +2132,7 @@ button{font-family:inherit;}
     if(!ptrs.has(e.pointerId))return;ptrs.set(e.pointerId,e);
     if(ptrs.size>=2){const p=[...ptrs.values()];const d=Math.hypot(p[0].clientX-p[1].clientX,p[0].clientY-p[1].clientY);
       const mx=(p[0].clientX+p[1].clientX)/2,my=(p[0].clientY+p[1].clientY)/2;if(pinch&&d>0)zoomAt(pinch/d,mx,my);pinch=d;didPan=true;return;}
-    if(pdown){const dx=e.clientX-pdown.x,dy=e.clientY-pdown.y;if(!didPan&&Math.hypot(dx,dy)>5){didPan=true;svg.classList.add('panning');}
+    if(pdown){const dx=e.clientX-pdown.x,dy=e.clientY-pdown.y;if(!didPan&&Math.hypot(dx,dy)>5){didPan=true;atHome=false;svg.classList.add('panning');}
       if(didPan){const r=mapWrap.getBoundingClientRect();vb.x=pdown.vbx-dx*(vb.w/r.width);vb.y=pdown.vby-dy*(vb.h/r.height);applyVB();
         const now=performance.now(),dt=Math.max(1,now-lastMove.t);vel={x:(e.clientX-lastMove.x)/dt,y:(e.clientY-lastMove.y)/dt};lastMove={x:e.clientX,y:e.clientY,t:now};}}
   });
@@ -2148,6 +2165,21 @@ button{font-family:inherit;}
     else{(document.documentElement.requestFullscreen||document.documentElement.webkitRequestFullscreen).call(document.documentElement);}
   });
   document.getElementById('navToggle').addEventListener('click',function(){document.querySelector('.body').classList.toggle('nav-hidden');});
+
+  /* Re-fit on resize / rotation so the full map stays visible. If the user has
+     zoomed/panned away from home we only refresh the base frame (keeping their
+     view centred); at home we snap back to the freshly-fitted whole-map view. */
+  let _rsT=0;
+  function onResize(){
+    if(!baseVBready)return;
+    var hadHome=atHome, cx=vb.x+vb.w/2, cy=vb.y+vb.h/2, ratio=vb.w/baseVB.w;
+    computeBase();                                  /* recomputes baseVB to new aspect */
+    if(hadHome){ vb=Object.assign({},baseVB); }
+    else{ vb.w=baseVB.w*ratio; vb.h=baseVB.h*ratio; vb.x=cx-vb.w/2; vb.y=cy-vb.h/2; atHome=false; }
+    applyVB();
+  }
+  window.addEventListener('resize',function(){clearTimeout(_rsT);_rsT=setTimeout(onResize,160);});
+  window.addEventListener('orientationchange',function(){clearTimeout(_rsT);_rsT=setTimeout(onResize,260);});
 
   /* --- mobile niceties ------------------------------------------------- */
   const isMobile=window.matchMedia('(max-width:860px)').matches;
@@ -2591,7 +2623,12 @@ button{font-family:inherit;}
   /* ---- rendering ---- */
   function rPath(pts){var d='M'+pts[0][0].toFixed(1)+' '+pts[0][1].toFixed(1);for(var i=1;i<pts.length;i++)d+=' L'+pts[i][0].toFixed(1)+' '+pts[i][1].toFixed(1);return d;}
   function rMarker(x,y,cls){var g=document.createElementNS(RNS,'g');g.setAttribute('class','rmk '+cls);g.setAttribute('transform','translate('+x+' '+y+')');g.innerHTML='<circle class="rmk-ring" cx="0" cy="0" r="22"></circle><circle class="rmk-core" cx="0" cy="0" r="9"></circle>';return g;}
-  function frameRoute(pts){var a=1e9,b=1e9,c=-1e9,e=-1e9;pts.forEach(function(p){if(p[0]<a)a=p[0];if(p[1]<b)b=p[1];if(p[0]>c)c=p[0];if(p[1]>e)e=p[1];});var w=c-a,h=e-b,pad=Math.max(w,h)*0.28+160;var nv={x:a-pad,y:b-pad,w:w+pad*2,h:h+pad*2};if(nv.w<MINW()){var f=MINW()/nv.w;nv.w=MINW();nv.h*=f;}animateVB(nv);}
+  function frameRoute(pts){atHome=false;var a=1e9,b=1e9,c=-1e9,e=-1e9;pts.forEach(function(p){if(p[0]<a)a=p[0];if(p[1]<b)b=p[1];if(p[0]>c)c=p[0];if(p[1]>e)e=p[1];});var w=c-a,h=e-b,pad=Math.max(w,h)*0.28+160;var nv={x:a-pad,y:b-pad,w:w+pad*2,h:h+pad*2};if(nv.w<MINW()){var f=MINW()/nv.w;nv.w=MINW();nv.h*=f;}
+    /* On mobile the directions sheet covers the lower ~46vh of the screen, so
+       grow the framed area downward: the route then sits in the visible top
+       half instead of being hidden behind the panel. */
+    if(window.matchMedia('(max-width:860px)').matches){nv.h*=1.9;}
+    animateVB(nv);}
   function drawSegment(seg,R){
     var old=svg.querySelector('#routeLayer');if(old)old.remove();
     cancelAnimationFrame(routing.dotRAF);cancelAnimationFrame(routing.drawRAF);
