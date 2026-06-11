@@ -1896,42 +1896,84 @@ button{font-family:inherit;}
   const EXT_N=5, EXT_H0=13;   // wall layers, and base extrusion height (px) at the fit view
 
   /* ===== real-world basemap (OpenStreetMap) =====================================
-     The mall plan is georeferenced onto live OSM street tiles. The plan's centre
-     is pinned to GEO.lat/GEO.lng; tweak mallWidthM (real footprint width, metres)
-     and rotDeg to line the building up with the streets in your reference. */
-  const GEO={ lat:25.267011, lng:55.582412, mallWidthM:340, rotDeg:0, tileZ:18, tileR:3 };
+     The mall plan is georeferenced onto live OSM street tiles.
+       lat/lng      anchor — the plan centre is pinned here
+       mallWidthM   real footprint width of the building in metres (sets scale)
+       rotDeg       rotates the MAP under the building (deg, + = map clockwise),
+                    so the building lines up with its real plot
+       offsetEm/Nm  nudge the building east / north on the map, in metres
+     Tiles are loaded at a zoom level matched to the current map zoom (up to
+     z19) and refreshed as you zoom/pan, so streets stay sharp close-up. */
+  const GEO={ lat:25.267011, lng:55.582412, mallWidthM:340, rotDeg:63, offsetEm:0, offsetNm:0, minZ:15, maxZ:19 };
   function _lon2tile(l,z){return (l+180)/360*Math.pow(2,z);}
   function _lat2tile(a,z){var r=a*Math.PI/180;return (1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*Math.pow(2,z);}
   function _tile2lon(x,z){return x/Math.pow(2,z)*360-180;}
   function _tile2lat(y,z){var n=Math.PI-2*Math.PI*y/Math.pow(2,z);return 180/Math.PI*Math.atan(0.5*(Math.exp(n)-Math.exp(-n)));}
-  function _geoToPlan(lat,lng,cx0,cy0,mpu){          /* equirectangular — exact enough at mall scale */
-    var E=(lng-GEO.lng)*111320*Math.cos(GEO.lat*Math.PI/180), N=(lat-GEO.lat)*110540;
-    return [cx0+E/mpu, cy0-N/mpu];
-  }
+  function bmCenter(){return [(cMinX+cMaxX)/2,(cMinY+cMaxY)/2];}
+  function bmMpu(){return GEO.mallWidthM/Math.max(planW,1);}   /* metres per plan unit */
+  /* equirectangular geo<->plan — exact enough at mall scale */
+  function _geoToPlan(lat,lng){var c=bmCenter(),mpu=bmMpu();
+    var E=(lng-GEO.lng)*111320*Math.cos(GEO.lat*Math.PI/180)-GEO.offsetEm, N=(lat-GEO.lat)*110540-GEO.offsetNm;
+    return [c[0]+E/mpu, c[1]-N/mpu];}
+  function _planToGeo(x,y){var c=bmCenter(),mpu=bmMpu();
+    var E=(x-c[0])*mpu+GEO.offsetEm, N=-(y-c[1])*mpu+GEO.offsetNm;
+    return [GEO.lat+N/110540, GEO.lng+E/(111320*Math.cos(GEO.lat*Math.PI/180))];}
+  let bmGroup=null,bmTiles={},bmT=0;
   function buildBasemap(){
-    var step=EXT_H0/EXT_N, gk=EXT_N+10;                // deepest layer — the ground the mall sits on
-    var cx0=(cMinX+cMaxX)/2, cy0=(cMinY+cMaxY)/2;
-    var mpu=GEO.mallWidthM/Math.max(planW,1);          // metres per plan unit
+    var step=EXT_H0/EXT_N, gk=EXT_N+10, c=bmCenter();   // deepest layer — the ground the mall sits on
     var G=document.createElementNS(NS3,'svg');
     G.setAttribute('viewBox',svg.getAttribute('viewBox'));
     G.setAttribute('class','ext ground basemap'); G.setAttribute('preserveAspectRatio','xMidYMid slice');
     G.dataset.k=gk; G.style.transform='translateZ(-'+(gk*step)+'px)';
-    var z=GEO.tileZ, R=GEO.tileR;
-    var ctX=Math.floor(_lon2tile(GEO.lng,z)), ctY=Math.floor(_lat2tile(GEO.lat,z));
-    var html='<rect x="-200000" y="-200000" width="400000" height="400000" fill="#e9eef2"/>'+
-             '<g transform="rotate('+GEO.rotDeg+' '+cx0.toFixed(1)+' '+cy0.toFixed(1)+')">';
-    for(var tx=ctX-R;tx<=ctX+R;tx++){
-      for(var ty=ctY-R;ty<=ctY+R;ty++){
-        var nw=_geoToPlan(_tile2lat(ty,z),_tile2lon(tx,z),cx0,cy0,mpu);
-        var se=_geoToPlan(_tile2lat(ty+1,z),_tile2lon(tx+1,z),cx0,cy0,mpu);
-        var url='https://tile.openstreetmap.org/'+z+'/'+tx+'/'+ty+'.png';
-        html+='<image href="'+url+'" x="'+nw[0].toFixed(1)+'" y="'+nw[1].toFixed(1)+'" width="'+((se[0]-nw[0])+0.8).toFixed(1)+'" height="'+((se[1]-nw[1])+0.8).toFixed(1)+'" preserveAspectRatio="none"/>';
-      }
-    }
-    html+='</g>';
-    G.innerHTML=html;
+    var bg=document.createElementNS(NS3,'rect');
+    bg.setAttribute('x','-200000');bg.setAttribute('y','-200000');bg.setAttribute('width','400000');bg.setAttribute('height','400000');bg.setAttribute('fill','#e9eef2');
+    G.appendChild(bg);
+    bmGroup=document.createElementNS(NS3,'g');
+    bmGroup.setAttribute('transform','rotate('+GEO.rotDeg+' '+c[0].toFixed(1)+' '+c[1].toFixed(1)+')');
+    G.appendChild(bmGroup);
+    bmTiles={};
     stage3d.insertBefore(G, stage3d.firstChild);
     LAYERS.push(G);
+    bmUpdate();
+  }
+  function bmUpdate(){
+    if(!bmGroup||!vb)return;
+    var c=bmCenter(),mpu=bmMpu(),cosL=Math.cos(GEO.lat*Math.PI/180);
+    var r=mapWrap.getBoundingClientRect();if(!r.width)return;
+    /* pick the OSM zoom whose native resolution matches the screen now */
+    var mPerPx=mpu*vb.w/r.width/(window.devicePixelRatio>1.4?1.6:1);
+    var z=Math.round(Math.log(40075016.686*cosL/(256*mPerPx))/Math.LN2);
+    if(z>GEO.maxZ)z=GEO.maxZ; if(z<GEO.minZ)z=GEO.minZ;
+    /* viewport bbox in tile-group local coords (un-rotate corners about centre) */
+    var rad=-GEO.rotDeg*Math.PI/180, cr=Math.cos(rad),sr=Math.sin(rad);
+    var minx=1e18,miny=1e18,maxx=-1e18,maxy=-1e18;
+    [[vb.x,vb.y],[vb.x+vb.w,vb.y],[vb.x,vb.y+vb.h],[vb.x+vb.w,vb.y+vb.h]].forEach(function(p){
+      var dx=p[0]-c[0],dy=p[1]-c[1];var x=c[0]+dx*cr-dy*sr,y=c[1]+dx*sr+dy*cr;
+      if(x<minx)minx=x;if(x>maxx)maxx=x;if(y<miny)miny=y;if(y>maxy)maxy=y;});
+    var pad=(maxx-minx)*0.15;minx-=pad;maxx+=pad;miny-=pad;maxy+=pad;
+    function range(zz){var nw=_planToGeo(minx,miny),se=_planToGeo(maxx,maxy);
+      return {x0:Math.floor(_lon2tile(nw[1],zz)),x1:Math.floor(_lon2tile(se[1],zz)),
+              y0:Math.floor(_lat2tile(nw[0],zz)),y1:Math.floor(_lat2tile(se[0],zz))};}
+    var rg=range(z);
+    while((rg.x1-rg.x0+1)*(rg.y1-rg.y0+1)>170&&z>GEO.minZ){z--;rg=range(z);}   /* cap tile count */
+    var need={};
+    for(var tx=rg.x0;tx<=rg.x1;tx++){
+      for(var ty=rg.y0;ty<=rg.y1;ty++){
+        if(tx<0||ty<0||tx>=Math.pow(2,z)||ty>=Math.pow(2,z))continue;
+        var key=z+'/'+tx+'/'+ty;need[key]=1;
+        if(bmTiles[key])continue;
+        var nw=_geoToPlan(_tile2lat(ty,z),_tile2lon(tx,z)),se=_geoToPlan(_tile2lat(ty+1,z),_tile2lon(tx+1,z));
+        var im=document.createElementNS(NS3,'image');
+        im.setAttribute('href','https://tile.openstreetmap.org/'+z+'/'+tx+'/'+ty+'.png');
+        im.setAttribute('x',nw[0].toFixed(1));im.setAttribute('y',nw[1].toFixed(1));
+        im.setAttribute('width',((se[0]-nw[0])+0.8).toFixed(1));im.setAttribute('height',((se[1]-nw[1])+0.8).toFixed(1));
+        im.setAttribute('preserveAspectRatio','none');
+        bmTiles[key]=im;bmGroup.appendChild(im);
+      }
+    }
+    /* retire tiles we no longer need a beat later, so new ones load on top first */
+    var stale=Object.keys(bmTiles).filter(function(k){return !need[k];});
+    if(stale.length)setTimeout(function(){stale.forEach(function(k){if(bmTiles[k]&&!need[k]){bmTiles[k].remove();delete bmTiles[k];}});},450);
   }
   function shade(hex,amt){
     if(hex.charAt(0)!=='#'){return hex;}
@@ -2200,7 +2242,8 @@ button{font-family:inherit;}
   function applyVB(){if(_vbRAF)return;_vbRAF=requestAnimationFrame(_applyVBnow);}
   function _applyVBnow(){_vbRAF=0;
     var s=vb.x+' '+vb.y+' '+vb.w+' '+vb.h;for(var i=0;i<LAYERS.length;i++)LAYERS[i].setAttribute('viewBox',s);
-    if(baseVB&&vb.w!==_lastW){_lastW=vb.w;var f=baseVB.w/vb.w;if(f>1.2)f=1.2;if(f<0.55)f=0.55;var step=EXT_H0/EXT_N*f;for(var j=0;j<LAYERS.length;j++){var k=LAYERS[j].dataset.k;if(k)LAYERS[j].style.transform='translateZ(-'+(k*step).toFixed(2)+'px)';}}}
+    if(baseVB&&vb.w!==_lastW){_lastW=vb.w;var f=baseVB.w/vb.w;if(f>1.2)f=1.2;if(f<0.55)f=0.55;var step=EXT_H0/EXT_N*f;for(var j=0;j<LAYERS.length;j++){var k=LAYERS[j].dataset.k;if(k)LAYERS[j].style.transform='translateZ(-'+(k*step).toFixed(2)+'px)';}}
+    clearTimeout(bmT);bmT=setTimeout(bmUpdate,160);   /* refresh street tiles for the new view */}
   const MINW=function(){return baseVB.w/6;},MAXW=function(){return baseVB.w/0.4;};
   const mapWrap=document.getElementById('mapWrapper');
   function zoomCenter(fz){atHome=false;const mn=MINW(),mx=MAXW();let nw=vb.w*fz;if(nw<mn)nw=mn;if(nw>mx)nw=mx;const k=nw/vb.w;const cx=vb.x+vb.w/2,cy=vb.y+vb.h/2;vb.w=nw;vb.h=vb.h*k;vb.x=cx-vb.w/2;vb.y=cy-vb.h/2;applyVB();}
