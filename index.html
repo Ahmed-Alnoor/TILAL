@@ -2263,31 +2263,37 @@ button{font-family:inherit;}
     if(bw/bh>ar){ vbh=bw/ar; } else { vbw=bh*ar; }   /* grow the short side to match the screen */
     baseVB={x:cx-vbw/2,y:cy-vbh/2,w:vbw,h:vbh};
     vb=Object.assign({},baseVB);baseVBready=true;atHome=true;applyVB();
-    /* measure & correct after paint — a few passes so it converges once fonts,
-       the 3D transform and tiles have all settled */
-    [60,260,650,1200].forEach(function(t){setTimeout(recenterStage,t);});}
-  /* The floating sidebar hides the left of the window on desktop. Rather than
-     computing where the mall "should" be (3D perspective distorts that), we
-     MEASURE the rendered building's on-screen bounds and slide the whole stage
-     so it sits dead-centre in the visible area. Self-correcting and exact. */
+    recenterLoop();}
+  /* The floating sidebar hides the left of the window on desktop. We MEASURE the
+     building's real rendered pixels and slide the 3D content right until it sits
+     dead-centre in the visible area — then re-measure and repeat every frame
+     until the left/right gaps are equal. Immune to the perspective distortion
+     because it works off the actual on-screen result, not a calculation. */
+  const BASE3D='rotateX(34deg) scale(1.34) translateY(2%)';
   let mapShiftPx=0;
+  function applyShift(){var s3=document.getElementById('stage3d');if(s3)s3.style.transform='translateX('+mapShiftPx.toFixed(1)+'px) '+BASE3D;}
   function recenterStage(){
-    if(!atHome)return;
-    var st=document.getElementById('stage');if(!st)return;
-    var units=svg.querySelectorAll('.unit');if(!units.length)return;
+    if(!atHome)return -1;
+    var units=svg.querySelectorAll('.unit');if(!units.length)return -1;
     var L=1e9,R=-1e9;
     for(var i=0;i<units.length;i++){var rc=units[i].getBoundingClientRect();
       if(rc.width===0&&rc.height===0)continue;
       if(rc.left<L)L=rc.left;if(rc.right>R)R=rc.right;}
-    if(R<=L)return;
+    if(R<=L)return -1;
     var sbR=0;
     if(!window.matchMedia('(max-width:860px)').matches){
       var b=document.querySelector('.body'),sb=document.getElementById('sidebar');
       if(sb&&b&&!b.classList.contains('nav-hidden')){var sr=sb.getBoundingClientRect();if(sr.right>40&&sr.right<innerWidth*0.6)sbR=sr.right;}
     }
-    var target=(sbR+window.innerWidth)/2, cur=(L+R)/2;
-    mapShiftPx+=target-cur;
-    st.style.transform=Math.abs(mapShiftPx)>0.5?('translateX('+mapShiftPx.toFixed(1)+'px)'):'';
+    var target=(sbR+window.innerWidth)/2, cur=(L+R)/2, delta=target-cur;
+    mapShiftPx+=delta;applyShift();
+    return Math.abs(delta);
+  }
+  let _rcRAF=0;
+  function recenterLoop(){
+    cancelAnimationFrame(_rcRAF);var t0=performance.now();
+    (function tick(){if(!atHome)return;var d=recenterStage();
+      if((d<0||d>1)&&performance.now()-t0<2600)_rcRAF=requestAnimationFrame(tick);})();
   }
   var _vbRAF=0,_lastW=-1;
   function applyVB(){if(_vbRAF)return;_vbRAF=requestAnimationFrame(_applyVBnow);}
@@ -2366,7 +2372,7 @@ button{font-family:inherit;}
     else{(document.documentElement.requestFullscreen||document.documentElement.webkitRequestFullscreen).call(document.documentElement);}
   });
   document.getElementById('navToggle').addEventListener('click',function(){document.querySelector('.body').classList.toggle('nav-hidden');
-    setTimeout(function(){if(atHome)onResize();recenterStage();},470);   /* re-centre once the sidebar slide finishes */});
+    setTimeout(function(){if(atHome)onResize();recenterLoop();},470);   /* re-centre once the sidebar slide finishes */});
 
   /* Re-fit on resize / rotation so the full map stays visible. If the user has
      zoomed/panned away from home we only refresh the base frame (keeping their
