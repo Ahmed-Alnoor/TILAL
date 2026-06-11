@@ -2254,14 +2254,19 @@ button{font-family:inherit;}
     var vbw=bw, vbh=bh;
     if(bw/bh>ar){ vbh=bw/ar; } else { vbw=bh*ar; }   /* grow the short side to match the screen */
     baseVB={x:cx-vbw/2,y:cy-vbh/2,w:vbw,h:vbh};
-    /* the floating sidebar covers the left edge on desktop: shift the view so
-       the mall sits centred in the VISIBLE area, not the full window */
-    if(r&&r.width>0&&!window.matchMedia('(max-width:860px)').matches){
-      var sb=document.getElementById('sidebar');
-      if(sb){var sr=sb.getBoundingClientRect();
-        if(sr.width>0&&sr.right>40&&sr.right<r.width*0.6)baseVB.x-=(sr.right/2)*(vbw/r.width);}
+    vb=Object.assign({},baseVB);baseVBready=true;atHome=true;applyMapShift();applyVB();}
+  /* The floating sidebar hides the left of the window on desktop, so nudge the
+     whole 3D stage right by half the sidebar width => the mall ends up centred
+     in the VISIBLE area. Pixel-exact (applied outside the perspective). */
+  let mapShiftPx=0;
+  function applyMapShift(){
+    var px=0;
+    if(!window.matchMedia('(max-width:860px)').matches){
+      var b=document.querySelector('.body'),sb=document.getElementById('sidebar');
+      if(sb&&b&&!b.classList.contains('nav-hidden')){var sr=sb.getBoundingClientRect();if(sr.right>40&&sr.right<innerWidth*0.6)px=sr.right/2;}
     }
-    vb=Object.assign({},baseVB);baseVBready=true;atHome=true;applyVB();}
+    mapShiftPx=px;var st=document.getElementById('stage');if(st)st.style.transform=px?('translateX('+px.toFixed(0)+'px)'):'';
+  }
   var _vbRAF=0,_lastW=-1;
   function applyVB(){if(_vbRAF)return;_vbRAF=requestAnimationFrame(_applyVBnow);}
   function _applyVBnow(){_vbRAF=0;
@@ -2286,7 +2291,7 @@ button{font-family:inherit;}
   /* zoom keeping a screen point fixed (cursor for wheel, finger-midpoint for
      pinch) -- the key "feels right" behaviour on touch + trackpad. */
   function zoomAt(fz,sx,sy){atHome=false;const mn=MINW(),mx=MAXW();let nw=vb.w*fz;if(nw<mn)nw=mn;if(nw>mx)nw=mx;const k=nw/vb.w;
-    const r=mapWrap.getBoundingClientRect();const fx=(sx-r.left)/r.width,fy=(sy-r.top)/r.height;
+    const r=mapWrap.getBoundingClientRect();const fx=(sx-r.left-mapShiftPx)/r.width,fy=(sy-r.top)/r.height;
     const ax=vb.x+fx*vb.w,ay=vb.y+fy*vb.h;vb.w=nw;vb.h=vb.h*k;vb.x=ax-fx*vb.w;vb.y=ay-fy*vb.h;applyVB();}
   let inertia=0;
   function stopInertia(){if(inertia){cancelAnimationFrame(inertia);inertia=0;}}
@@ -2339,7 +2344,7 @@ button{font-family:inherit;}
     else{(document.documentElement.requestFullscreen||document.documentElement.webkitRequestFullscreen).call(document.documentElement);}
   });
   document.getElementById('navToggle').addEventListener('click',function(){document.querySelector('.body').classList.toggle('nav-hidden');
-    setTimeout(function(){if(atHome)onResize();},460);   /* re-centre once the sidebar slide finishes */});
+    setTimeout(function(){applyMapShift();if(atHome)onResize();},460);   /* re-centre once the sidebar slide finishes */});
 
   /* Re-fit on resize / rotation so the full map stays visible. If the user has
      zoomed/panned away from home we only refresh the base frame (keeping their
