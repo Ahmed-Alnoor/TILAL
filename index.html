@@ -1904,7 +1904,9 @@ button{font-family:inherit;}
        offsetEm/Nm  nudge the building east / north on the map, in metres
      Tiles are loaded at a zoom level matched to the current map zoom (up to
      z19) and refreshed as you zoom/pan, so streets stay sharp close-up. */
-  const GEO={ lat:25.267011, lng:55.582412, mallWidthM:340, rotDeg:63, offsetEm:0, offsetNm:0, minZ:15, maxZ:19 };
+  const GEO={ lat:25.267011, lng:55.582412, mallWidthM:340, rotDeg:63, offsetEm:0, offsetNm:0, minZ:11, maxZ:19 };
+  try{var _gs=localStorage.getItem('tilalGeo');if(_gs)Object.assign(GEO,JSON.parse(_gs));}catch(e){}
+  function geoSave(){try{localStorage.setItem('tilalGeo',JSON.stringify({mallWidthM:GEO.mallWidthM,rotDeg:GEO.rotDeg,offsetEm:GEO.offsetEm,offsetNm:GEO.offsetNm}));}catch(e){}}
   function _lon2tile(l,z){return (l+180)/360*Math.pow(2,z);}
   function _lat2tile(a,z){var r=a*Math.PI/180;return (1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*Math.pow(2,z);}
   function _tile2lon(x,z){return x/Math.pow(2,z)*360-180;}
@@ -1940,9 +1942,10 @@ button{font-family:inherit;}
     if(!bmGroup||!vb)return;
     var c=bmCenter(),mpu=bmMpu(),cosL=Math.cos(GEO.lat*Math.PI/180);
     var r=mapWrap.getBoundingClientRect();if(!r.width)return;
-    /* pick the OSM zoom whose native resolution matches the screen now */
-    var mPerPx=mpu*vb.w/r.width/(window.devicePixelRatio>1.4?1.6:1);
-    var z=Math.round(Math.log(40075016.686*cosL/(256*mPerPx))/Math.LN2);
+    /* pick the OSM zoom whose native resolution matches the screen now, then
+       load ONE level deeper so tiles are down-sampled (crisp), not up-scaled */
+    var mPerPx=mpu*vb.w/r.width/(window.devicePixelRatio||1);
+    var z=Math.ceil(Math.log(40075016.686*cosL/(256*mPerPx))/Math.LN2)+1;
     if(z>GEO.maxZ)z=GEO.maxZ; if(z<GEO.minZ)z=GEO.minZ;
     /* viewport bbox in tile-group local coords (un-rotate corners about centre) */
     var rad=-GEO.rotDeg*Math.PI/180, cr=Math.cos(rad),sr=Math.sin(rad);
@@ -1974,6 +1977,13 @@ button{font-family:inherit;}
     /* retire tiles we no longer need a beat later, so new ones load on top first */
     var stale=Object.keys(bmTiles).filter(function(k){return !need[k];});
     if(stale.length)setTimeout(function(){stale.forEach(function(k){if(bmTiles[k]&&!need[k]){bmTiles[k].remove();delete bmTiles[k];}});},450);
+  }
+  /* recompute the whole basemap after a scale / offset / rotation change */
+  function bmRefresh(){
+    if(!bmGroup)return;var c=bmCenter();
+    bmGroup.setAttribute('transform','rotate('+GEO.rotDeg+' '+c[0].toFixed(1)+' '+c[1].toFixed(1)+')');
+    while(bmGroup.firstChild)bmGroup.removeChild(bmGroup.firstChild);
+    bmTiles={};bmUpdate();
   }
   function shade(hex,amt){
     if(hex.charAt(0)!=='#'){return hex;}
@@ -2244,7 +2254,7 @@ button{font-family:inherit;}
     var s=vb.x+' '+vb.y+' '+vb.w+' '+vb.h;for(var i=0;i<LAYERS.length;i++)LAYERS[i].setAttribute('viewBox',s);
     if(baseVB&&vb.w!==_lastW){_lastW=vb.w;var f=baseVB.w/vb.w;if(f>1.2)f=1.2;if(f<0.55)f=0.55;var step=EXT_H0/EXT_N*f;for(var j=0;j<LAYERS.length;j++){var k=LAYERS[j].dataset.k;if(k)LAYERS[j].style.transform='translateZ(-'+(k*step).toFixed(2)+'px)';}}
     clearTimeout(bmT);bmT=setTimeout(bmUpdate,160);   /* refresh street tiles for the new view */}
-  const MINW=function(){return baseVB.w/6;},MAXW=function(){return baseVB.w/0.4;};
+  const MINW=function(){return baseVB.w/6;},MAXW=function(){return baseVB.w*42;};   /* zoom out far enough to see the whole city */
   const mapWrap=document.getElementById('mapWrapper');
   function zoomCenter(fz){atHome=false;const mn=MINW(),mx=MAXW();let nw=vb.w*fz;if(nw<mn)nw=mn;if(nw>mx)nw=mx;const k=nw/vb.w;const cx=vb.x+vb.w/2,cy=vb.y+vb.h/2;vb.w=nw;vb.h=vb.h*k;vb.x=cx-vb.w/2;vb.y=cy-vb.h/2;applyVB();}
   function resetView(){atHome=true;animateVB(Object.assign({},baseVB));}
@@ -2907,6 +2917,41 @@ button{font-family:inherit;}
   document.getElementById('navClose').addEventListener('click',function(){clearRoute();});
   document.getElementById('navReopen').addEventListener('click',function(){if(routing.active)navShow();});
   getScale();
+
+  /* ===== map alignment mode =====================================================
+     Press `  (backtick)  — or open with ?align=1 — to drag the building onto its
+     real plot. [ ] rotate · - = scale · arrows move · 0 reset. Values persist. */
+  (function setupAlign(){
+    var on=false,hud=null;
+    function makeHud(){hud=document.createElement('div');hud.id='alignHud';
+      hud.style.cssText='position:fixed;left:12px;bottom:12px;z-index:200;background:rgba(8,18,34,.92);color:#fff;font:12px/1.6 ui-monospace,Menlo,monospace;padding:11px 13px;border-radius:11px;box-shadow:0 10px 28px rgba(0,0,0,.45);';
+      document.body.appendChild(hud);}
+    function render(){if(hud)hud.innerHTML='<b>ALIGN MODE</b> &nbsp;(` to exit)<br>'+
+      'rotate&nbsp;<b>'+GEO.rotDeg.toFixed(1)+'&deg;</b> &nbsp; width&nbsp;<b>'+Math.round(GEO.mallWidthM)+'m</b><br>'+
+      'east&nbsp;<b>'+GEO.offsetEm.toFixed(0)+'m</b> &nbsp; north&nbsp;<b>'+GEO.offsetNm.toFixed(0)+'m</b><br>'+
+      '<span style="opacity:.7">[ ] rotate &middot; - = scale &middot; arrows move<br>shift = bigger step &middot; 0 reset</span>';}
+    function toggle(v){on=(v===undefined)?!on:v;if(on){if(!hud)makeHud();render();}else if(hud){hud.remove();hud=null;}}
+    window.addEventListener('keydown',function(e){
+      var tag=(e.target.tagName||'').toLowerCase();if(tag==='input'||tag==='textarea')return;
+      if(e.key==='`'||e.key==='~'){e.preventDefault();toggle();return;}
+      if(!on)return;
+      var mv=e.shiftKey?15:3, rs=e.shiftKey?5:1, ss=e.shiftKey?20:5, h=true;
+      switch(e.key){
+        case '[':GEO.rotDeg-=rs;break;
+        case ']':GEO.rotDeg+=rs;break;
+        case '-':case '_':GEO.mallWidthM=Math.max(30,GEO.mallWidthM-ss);break;
+        case '=':case '+':GEO.mallWidthM+=ss;break;
+        case 'ArrowLeft':GEO.offsetEm-=mv;break;
+        case 'ArrowRight':GEO.offsetEm+=mv;break;
+        case 'ArrowUp':GEO.offsetNm+=mv;break;
+        case 'ArrowDown':GEO.offsetNm-=mv;break;
+        case '0':GEO.rotDeg=0;GEO.mallWidthM=340;GEO.offsetEm=0;GEO.offsetNm=0;break;
+        default:h=false;
+      }
+      if(h){e.preventDefault();geoSave();bmRefresh();render();}
+    });
+    if(/[?&]align=1/.test(location.search))toggle(true);
+  })();
 
   /* ===== boot ===== */
   loadFloor('G');
