@@ -1904,9 +1904,9 @@ button{font-family:inherit;}
        offsetEm/Nm  nudge the building east / north on the map, in metres
      Tiles are loaded at a zoom level matched to the current map zoom (up to
      z19) and refreshed as you zoom/pan, so streets stay sharp close-up. */
-  const GEO={ lat:25.267011, lng:55.582412, mallWidthM:340, rotDeg:63, offsetEm:0, offsetNm:0, minZ:11, maxZ:19 };
-  try{var _gs=localStorage.getItem('tilalGeo');if(_gs)Object.assign(GEO,JSON.parse(_gs));}catch(e){}
-  function geoSave(){try{localStorage.setItem('tilalGeo',JSON.stringify({mallWidthM:GEO.mallWidthM,rotDeg:GEO.rotDeg,offsetEm:GEO.offsetEm,offsetNm:GEO.offsetNm}));}catch(e){}}
+  const GEO={ lat:25.266391, lng:55.583298, mallWidthM:540, rotDeg:63, offsetEm:0, offsetNm:0, minZ:11, maxZ:19 };
+  try{var _gs=localStorage.getItem('tilalGeo2');if(_gs)Object.assign(GEO,JSON.parse(_gs));}catch(e){}
+  function geoSave(){try{localStorage.setItem('tilalGeo2',JSON.stringify({mallWidthM:GEO.mallWidthM,rotDeg:GEO.rotDeg,offsetEm:GEO.offsetEm,offsetNm:GEO.offsetNm}));}catch(e){}}
   function _lon2tile(l,z){return (l+180)/360*Math.pow(2,z);}
   function _lat2tile(a,z){var r=a*Math.PI/180;return (1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*Math.pow(2,z);}
   function _tile2lon(x,z){return x/Math.pow(2,z)*360-180;}
@@ -2945,7 +2945,7 @@ button{font-family:inherit;}
         case 'ArrowRight':GEO.offsetEm+=mv;break;
         case 'ArrowUp':GEO.offsetNm+=mv;break;
         case 'ArrowDown':GEO.offsetNm-=mv;break;
-        case '0':GEO.rotDeg=0;GEO.mallWidthM=340;GEO.offsetEm=0;GEO.offsetNm=0;break;
+        case '0':GEO.rotDeg=63;GEO.mallWidthM=540;GEO.offsetEm=0;GEO.offsetNm=0;break;
         default:h=false;
       }
       if(h){e.preventDefault();geoSave();bmRefresh();render();}
