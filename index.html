@@ -116,6 +116,8 @@ button{font-family:inherit;}
 .canvas-wrap::before{content:"";position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px);background-size:48px 48px;mask-image:radial-gradient(circle at 50% 46%,#000 35%,transparent 82%);-webkit-mask-image:radial-gradient(circle at 50% 46%,#000 35%,transparent 82%);}
 .canvas-wrap::after{content:"";position:absolute;inset:0;pointer-events:none;}
 .map-wrapper{position:absolute;inset:0;overflow:hidden;z-index:1;}
+.osm-credit{position:absolute;right:12px;bottom:5px;z-index:9;font-size:10px;color:rgba(255,255,255,.6);text-decoration:none;background:rgba(8,18,34,.45);padding:2px 7px;border-radius:6px;backdrop-filter:blur(4px);}
+.osm-credit:hover{color:#fff;}
 #stage{position:absolute;inset:0;perspective:2600px;perspective-origin:50% 54%;}
 #stage3d{position:absolute;inset:0;transform-style:preserve-3d;transform:rotateX(34deg) scale(1.34) translateY(2%);transform-origin:50% 50%;}
 #stage3d>svg{position:absolute;inset:0;width:100%;height:100%;}
@@ -824,6 +826,7 @@ button{font-family:inherit;}
       </div>
       <div class="floor-tag">Floor · <b id="floorTagName">Ground</b></div>
       <div class="compass"><i></i><span>N</span></div>
+      <a class="osm-credit" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap</a>
     </main>
   </div>
 </div>
@@ -1891,6 +1894,45 @@ button{font-family:inherit;}
   const stage3d=svg.parentNode;
   const NS3='http://www.w3.org/2000/svg';
   const EXT_N=5, EXT_H0=13;   // wall layers, and base extrusion height (px) at the fit view
+
+  /* ===== real-world basemap (OpenStreetMap) =====================================
+     The mall plan is georeferenced onto live OSM street tiles. The plan's centre
+     is pinned to GEO.lat/GEO.lng; tweak mallWidthM (real footprint width, metres)
+     and rotDeg to line the building up with the streets in your reference. */
+  const GEO={ lat:25.267011, lng:55.582412, mallWidthM:340, rotDeg:0, tileZ:18, tileR:3 };
+  function _lon2tile(l,z){return (l+180)/360*Math.pow(2,z);}
+  function _lat2tile(a,z){var r=a*Math.PI/180;return (1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*Math.pow(2,z);}
+  function _tile2lon(x,z){return x/Math.pow(2,z)*360-180;}
+  function _tile2lat(y,z){var n=Math.PI-2*Math.PI*y/Math.pow(2,z);return 180/Math.PI*Math.atan(0.5*(Math.exp(n)-Math.exp(-n)));}
+  function _geoToPlan(lat,lng,cx0,cy0,mpu){          /* equirectangular — exact enough at mall scale */
+    var E=(lng-GEO.lng)*111320*Math.cos(GEO.lat*Math.PI/180), N=(lat-GEO.lat)*110540;
+    return [cx0+E/mpu, cy0-N/mpu];
+  }
+  function buildBasemap(){
+    var step=EXT_H0/EXT_N, gk=EXT_N+10;                // deepest layer — the ground the mall sits on
+    var cx0=(cMinX+cMaxX)/2, cy0=(cMinY+cMaxY)/2;
+    var mpu=GEO.mallWidthM/Math.max(planW,1);          // metres per plan unit
+    var G=document.createElementNS(NS3,'svg');
+    G.setAttribute('viewBox',svg.getAttribute('viewBox'));
+    G.setAttribute('class','ext ground basemap'); G.setAttribute('preserveAspectRatio','xMidYMid slice');
+    G.dataset.k=gk; G.style.transform='translateZ(-'+(gk*step)+'px)';
+    var z=GEO.tileZ, R=GEO.tileR;
+    var ctX=Math.floor(_lon2tile(GEO.lng,z)), ctY=Math.floor(_lat2tile(GEO.lat,z));
+    var html='<rect x="-200000" y="-200000" width="400000" height="400000" fill="#e9eef2"/>'+
+             '<g transform="rotate('+GEO.rotDeg+' '+cx0.toFixed(1)+' '+cy0.toFixed(1)+')">';
+    for(var tx=ctX-R;tx<=ctX+R;tx++){
+      for(var ty=ctY-R;ty<=ctY+R;ty++){
+        var nw=_geoToPlan(_tile2lat(ty,z),_tile2lon(tx,z),cx0,cy0,mpu);
+        var se=_geoToPlan(_tile2lat(ty+1,z),_tile2lon(tx+1,z),cx0,cy0,mpu);
+        var url='https://tile.openstreetmap.org/'+z+'/'+tx+'/'+ty+'.png';
+        html+='<image href="'+url+'" x="'+nw[0].toFixed(1)+'" y="'+nw[1].toFixed(1)+'" width="'+((se[0]-nw[0])+0.8).toFixed(1)+'" height="'+((se[1]-nw[1])+0.8).toFixed(1)+'" preserveAspectRatio="none"/>';
+      }
+    }
+    html+='</g>';
+    G.innerHTML=html;
+    stage3d.insertBefore(G, stage3d.firstChild);
+    LAYERS.push(G);
+  }
   function shade(hex,amt){
     if(hex.charAt(0)!=='#'){return hex;}
     hex=hex.replace('#','');var r=parseInt(hex.substr(0,2),16),g=parseInt(hex.substr(2,2),16),b=parseInt(hex.substr(4,2),16);
@@ -1948,7 +1990,7 @@ button{font-family:inherit;}
       stage3d.insertBefore(L, svg);
       LAYERS.push(L);
     }
-    buildGround();
+    buildBasemap();
   }
   /* ---- gray ground / site podium so the mall sits on something ---- */
   function buildGround(){
