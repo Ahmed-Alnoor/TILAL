@@ -122,6 +122,10 @@ button{font-family:inherit;}
 #stage3d{position:absolute;inset:0;transform-style:preserve-3d;transform:rotateX(34deg) scale(1.34) translateY(2%);transform-origin:50% 50%;}
 #stage3d>svg{position:absolute;inset:0;width:100%;height:100%;}
 #stage3d>svg.ext{pointer-events:none;visibility:visible;}
+/* The basemap sits deepest in the 3D stack, so its edges would slide into view
+   when tilted/zoomed. Bleed it 35% beyond the viewport on every side (the
+   viewBox is expanded to match in code, keeping it registered). */
+#stage3d>svg.basemap{inset:-18%;width:136%;height:136%;}
 .floor-svg{width:100%;height:100%;display:block;touch-action:none;cursor:grab;visibility:hidden;}
 .floor-svg.ready{visibility:visible;}
 .floor-svg.panning{cursor:grabbing;}
@@ -1926,7 +1930,7 @@ button{font-family:inherit;}
     var G=document.createElementNS(NS3,'svg');
     G.setAttribute('viewBox',svg.getAttribute('viewBox'));
     G.setAttribute('class','ext ground basemap'); G.setAttribute('preserveAspectRatio','xMidYMid slice');
-    G.dataset.k=gk; G.style.transform='translateZ(-'+(gk*step)+'px)';
+    G.dataset.k=gk; G.dataset.bleed='0.18'; G.style.transform='translateZ(-'+(gk*step)+'px)';
     var bg=document.createElementNS(NS3,'rect');
     bg.setAttribute('x','-200000');bg.setAttribute('y','-200000');bg.setAttribute('width','400000');bg.setAttribute('height','400000');bg.setAttribute('fill','#e9eef2');
     G.appendChild(bg);
@@ -1953,7 +1957,10 @@ button{font-family:inherit;}
     [[vb.x,vb.y],[vb.x+vb.w,vb.y],[vb.x,vb.y+vb.h],[vb.x+vb.w,vb.y+vb.h]].forEach(function(p){
       var dx=p[0]-c[0],dy=p[1]-c[1];var x=c[0]+dx*cr-dy*sr,y=c[1]+dx*sr+dy*cr;
       if(x<minx)minx=x;if(x>maxx)maxx=x;if(y<miny)miny=y;if(y>maxy)maxy=y;});
-    var pad=(maxx-minx)*0.15;minx-=pad;maxx+=pad;miny-=pad;maxy+=pad;
+    /* cover the off-screen bleed: modest at the sides/bottom, generous at the
+       top where the tilted layer recedes into view */
+    var padX=(maxx-minx)*0.14,padB=(maxy-miny)*0.14,padT=(maxy-miny)*0.28;
+    minx-=padX;maxx+=padX;miny-=padT;maxy+=padB;
     function range(zz){var nw=_planToGeo(minx,miny),se=_planToGeo(maxx,maxy);
       return {x0:Math.floor(_lon2tile(nw[1],zz)),x1:Math.floor(_lon2tile(se[1],zz)),
               y0:Math.floor(_lat2tile(nw[0],zz)),y1:Math.floor(_lat2tile(se[0],zz))};}
@@ -2247,11 +2254,23 @@ button{font-family:inherit;}
     var vbw=bw, vbh=bh;
     if(bw/bh>ar){ vbh=bw/ar; } else { vbw=bh*ar; }   /* grow the short side to match the screen */
     baseVB={x:cx-vbw/2,y:cy-vbh/2,w:vbw,h:vbh};
+    /* the floating sidebar covers the left edge on desktop: shift the view so
+       the mall sits centred in the VISIBLE area, not the full window */
+    if(r&&r.width>0&&!window.matchMedia('(max-width:860px)').matches){
+      var sb=document.getElementById('sidebar');
+      if(sb){var sr=sb.getBoundingClientRect();
+        if(sr.width>0&&sr.right>40&&sr.right<r.width*0.6)baseVB.x-=(sr.right/2)*(vbw/r.width);}
+    }
     vb=Object.assign({},baseVB);baseVBready=true;atHome=true;applyVB();}
   var _vbRAF=0,_lastW=-1;
   function applyVB(){if(_vbRAF)return;_vbRAF=requestAnimationFrame(_applyVBnow);}
   function _applyVBnow(){_vbRAF=0;
-    var s=vb.x+' '+vb.y+' '+vb.w+' '+vb.h;for(var i=0;i<LAYERS.length;i++)LAYERS[i].setAttribute('viewBox',s);
+    var s=vb.x+' '+vb.y+' '+vb.w+' '+vb.h;
+    for(var i=0;i<LAYERS.length;i++){
+      var B=parseFloat(LAYERS[i].dataset.bleed||0);
+      if(B){LAYERS[i].setAttribute('viewBox',(vb.x-vb.w*B)+' '+(vb.y-vb.h*B)+' '+(vb.w*(1+2*B))+' '+(vb.h*(1+2*B)));}
+      else LAYERS[i].setAttribute('viewBox',s);
+    }
     if(baseVB&&vb.w!==_lastW){_lastW=vb.w;var f=baseVB.w/vb.w;if(f>1.2)f=1.2;if(f<0.55)f=0.55;var step=EXT_H0/EXT_N*f;for(var j=0;j<LAYERS.length;j++){var k=LAYERS[j].dataset.k;if(k)LAYERS[j].style.transform='translateZ(-'+(k*step).toFixed(2)+'px)';}}
     clearTimeout(bmT);bmT=setTimeout(bmUpdate,160);   /* refresh street tiles for the new view */}
   const MINW=function(){return baseVB.w/6;},MAXW=function(){return baseVB.w*42;};   /* zoom out far enough to see the whole city */
@@ -2319,7 +2338,8 @@ button{font-family:inherit;}
     if(document.fullscreenElement){document.exitFullscreen();}
     else{(document.documentElement.requestFullscreen||document.documentElement.webkitRequestFullscreen).call(document.documentElement);}
   });
-  document.getElementById('navToggle').addEventListener('click',function(){document.querySelector('.body').classList.toggle('nav-hidden');});
+  document.getElementById('navToggle').addEventListener('click',function(){document.querySelector('.body').classList.toggle('nav-hidden');
+    setTimeout(function(){if(atHome)onResize();},460);   /* re-centre once the sidebar slide finishes */});
 
   /* Re-fit on resize / rotation so the full map stays visible. If the user has
      zoomed/panned away from home we only refresh the base frame (keeping their
