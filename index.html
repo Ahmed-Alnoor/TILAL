@@ -2470,8 +2470,7 @@ button{font-family:inherit;}
     if(document.fullscreenElement){document.exitFullscreen();}
     else{(document.documentElement.requestFullscreen||document.documentElement.webkitRequestFullscreen).call(document.documentElement);}
   });
-  document.getElementById('navToggle').addEventListener('click',function(){document.querySelector('.body').classList.toggle('nav-hidden');
-    setTimeout(function(){if(atHome)onResize();setStageShift();},470);   /* re-centre once the sidebar slide finishes */});
+  document.getElementById('navToggle').addEventListener('click',function(){document.querySelector('.body').classList.toggle('nav-hidden');});   /* keep the map where it is -- don't shift when the menu hides */
 
   /* Re-fit on resize / rotation so the full map stays visible. If the user has
      zoomed/panned away from home we only refresh the base frame (keeping their
