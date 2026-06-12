@@ -238,6 +238,8 @@ button{font-family:inherit;}
 .card .rows{display:flex;flex-direction:column;margin-bottom:16px;}
 .card .row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--hair);}
 .card .row:last-child{border-bottom:0;}
+a.row{text-decoration:none;color:inherit;-webkit-tap-highlight-color:transparent;}
+a.row.tap:active{opacity:.6;}
 .card .row .ic{width:34px;height:34px;flex:none;display:grid;place-items:center;background:var(--soft);color:var(--b-mid);}
 .card .row .ic svg{width:16px;height:16px;}
 .card .row .meta{display:flex;flex-direction:column;gap:2px;min-width:0;}
@@ -497,15 +499,40 @@ button{font-family:inherit;}
   .sidebar.expanded{transform:translateY(0);}
   .body.nav-hidden .sidebar{transform:translateY(calc(100% + 4px));pointer-events:none;}
 
-  /* Shop detail card slides up as a bottom sheet with a grab handle. */
-  .card{top:auto;bottom:0;left:0;right:0;width:100%;max-width:100%;max-height:88vh;border-radius:22px 22px 0 0;
+  /* Shop detail card = compact place card (Apple/Google-Maps style): small,
+     so the MAP STAYS VISIBLE above it. Header shows name + category; the
+     primary actions (Directions / Locate / Share) sit right under the title and
+     are always reachable; the verbose Location + Contact detail scrolls below.
+     Drag the handle / scroll to reveal the rest — the card never buries the map. */
+  .card{top:auto;bottom:0;left:0;right:0;width:100%;max-width:100%;max-height:62vh;border-radius:22px 22px 0 0;
     transform:translateY(calc(100% + 8px));transition:transform .42s cubic-bezier(.22,1,.36,1),opacity .3s ease;
     padding-bottom:env(safe-area-inset-bottom);}
   .card.open{transform:translateY(0);}
-  .card .hero{border-radius:22px 22px 0 0;height:152px;}
+  .card .hero{border-radius:22px 22px 0 0;height:108px;}
+  .card .hero .htext h2{font-size:19px;}
+  .card .hero .htext .tag{font-size:10.5px;margin-top:2px;}
+  .card .codechip{top:12px;right:50px;padding:5px 10px;font-size:10px;}
+  .card .badge{top:12px;left:12px;padding:6px 11px;font-size:9.5px;}
+  .card .close{top:12px;right:12px;}
   .card::before{content:"";position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:4;
     width:44px;height:5px;border-radius:3px;background:rgba(255,255,255,.9);box-shadow:0 1px 3px rgba(0,0,0,.3);}
+  /* compact, reordered body: description -> actions -> (scrollable) details */
+  .card .cbody{display:flex;flex-direction:column;padding:13px 16px 16px;gap:0;}
+  .card .desc{order:1;margin:0 0 12px;font-size:12.5px;line-height:1.55;
+    display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+  .card .actions{order:2;gap:8px;margin-bottom:10px;}
+  .card .actions .btn{padding:11px 8px;font-size:11.5px;border-radius:13px;}
+  .card .blk-title{order:5;margin-top:4px;}
+  .card .rows{order:5;margin-bottom:10px;}
+  .card .row{padding:8px 0;}
+  .card .row .ic{width:30px;height:30px;border-radius:9px;}
+  /* contact rows become tap targets (tel:/mailto:) */
+  .card .row.tap{cursor:pointer;}
+  .card .row.tap .v{color:var(--b-mid);}
 }
+/* finger-following hover tooltip is a desktop affordance — on touch it just
+   flickers the name/ID under your thumb while tapping. The card shows it all. */
+@media (pointer:coarse){ .tooltip{display:none!important;} }
 
 /* one-time gesture hint */
 .gesture-hint{position:fixed;left:50%;bottom:calc(150px + env(safe-area-inset-bottom));transform:translateX(-50%);
@@ -2641,11 +2668,20 @@ button{font-family:inherit;}
       '<div class="row"><div class="ic">'+icon(IC_ZONE)+'</div><div class="meta"><span class="k">Zone</span><span class="v">'+loc.wing+'</span></div></div>'+
       '<div class="row"><div class="ic">'+icon(IC_PIN)+'</div><div class="meta"><span class="k">Position</span><span class="v">'+loc.area+' · Unit '+s.id+'</span></div></div>';
     document.getElementById('cardContact').innerHTML=
-      '<div class="row"><div class="ic">'+icon(IC_PHONE)+'</div><div class="meta"><span class="k">Phone</span><span class="v">'+CONTACT.phone+'</span></div></div>'+
-      '<div class="row"><div class="ic">'+icon(IC_MAIL)+'</div><div class="meta"><span class="k">Email</span><span class="v">'+CONTACT.email+'</span></div></div>'+
+      '<a class="row tap" href="tel:'+CONTACT.phone.replace(/[^+\d]/g,'')+'"><div class="ic">'+icon(IC_PHONE)+'</div><div class="meta"><span class="k">Phone</span><span class="v">'+CONTACT.phone+'</span></div></a>'+
+      '<a class="row tap" href="mailto:'+CONTACT.email+'"><div class="ic">'+icon(IC_MAIL)+'</div><div class="meta"><span class="k">Email</span><span class="v">'+CONTACT.email+'</span></div></a>'+
       '<div class="row"><div class="ic">'+icon(IC_CLOCK)+'</div><div class="meta"><span class="k">Opening Hours</span><span class="v">'+CONTACT.hours+'</span></div></div>';
     var bd=document.getElementById('btnDirections'); if(bd)bd.style.display=(curFloor==='BL')?'none':'';
     card.classList.add('open');cardBack.classList.add('show');showMarker(s.cx,s.cy);
+    nudgeForCard(s);
+  }
+  /* mobile: the place card occupies the lower part of the screen, so slide the
+     tapped shop up into the still-visible map area above it (pan only, no zoom
+     change — keeps it robust against the 3D tilt). */
+  function nudgeForCard(s){
+    if(!window.matchMedia('(max-width:860px)').matches)return;
+    atHome=false;
+    animateVB({x:s.cx-vb.w/2,y:s.cy-vb.h*0.20,w:vb.w,h:vb.h});
   }
   function deselect(){if(typeof routing!=='undefined'&&routing.active&&!routing.advancing){clearRoute();}if(selected)selected.el.classList.remove('selected');selected=null;card.classList.remove('open');cardBack.classList.remove('show');marker.style.display='none';}
   function showMarker(x,y){marker.setAttribute('transform','translate('+x+' '+y+')');marker.style.display='';}
