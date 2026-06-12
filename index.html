@@ -116,15 +116,16 @@ button{font-family:inherit;}
 /* warm sunlight: bloom in the top-right corner + soft diagonal light wash */
 .canvas-wrap::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:6;
   background:
-    radial-gradient(circle at 88% 4%, rgba(255,218,150,.50), rgba(255,206,130,.20) 22%, transparent 52%),
-    radial-gradient(circle at 96% 0%, rgba(255,244,220,.60), transparent 24%),
-    linear-gradient(225deg, rgba(255,212,148,.13), transparent 46%);}
+    radial-gradient(circle at 88% 4%, rgba(255,218,150,.34), rgba(255,206,130,.12) 20%, transparent 46%),
+    radial-gradient(circle at 96% 0%, rgba(255,244,220,.42), transparent 22%),
+    linear-gradient(225deg, rgba(255,212,148,.08), transparent 42%);}
 .canvas-wrap::after{content:"";position:absolute;inset:0;pointer-events:none;}
 .map-wrapper{position:absolute;inset:0;overflow:hidden;z-index:1;}
 /* warm the street map to the ivory tone of the design; cast one long soft
    building shadow toward the bottom-left (sun at top-right) */
-#stage3d>svg.basemap{filter:sepia(.24) saturate(.72) brightness(1.05) contrast(.97);}
-#stage3d>svg.ext[data-k="5"]{filter:drop-shadow(-30px 34px 30px rgba(98,74,40,.42));}
+#stage3d>svg.basemap{filter:sepia(.13) saturate(.88) brightness(1.02);}
+#stage3d>svg.ext.shad{opacity:.30;filter:blur(2.5px);}
+#stage3d>svg.ext.rim{opacity:.85;}
 .osm-credit{position:absolute;right:12px;bottom:5px;z-index:9;font-size:10px;color:rgba(255,255,255,.6);text-decoration:none;background:rgba(8,18,34,.45);padding:2px 7px;border-radius:6px;backdrop-filter:blur(4px);}
 .osm-credit:hover{color:#fff;}
 #stage{position:absolute;inset:0;perspective:2600px;perspective-origin:50% 54%;}
@@ -138,12 +139,12 @@ button{font-family:inherit;}
 .floor-svg{width:100%;height:100%;display:block;touch-action:none;cursor:grab;visibility:hidden;}
 .floor-svg.ready{visibility:visible;}
 .floor-svg.panning{cursor:grabbing;}
-.floor-svg .unit{fill-opacity:1;stroke:none;cursor:pointer;transition:fill .15s ease,opacity .15s ease,filter .15s ease;}
+.floor-svg .unit{fill-opacity:1;stroke:rgba(255,250,238,.45);stroke-width:.7;cursor:pointer;transition:fill .15s ease,opacity .15s ease,filter .15s ease;}
 /* CAD exports carve column-grid markers as evenodd holes in the big units —
    they render as noisy little boxes. nonzero fill closes them for a clean roof. */
 .floor-svg .unit,#stage3d>svg.ext path{fill-rule:nonzero;}
 /* subtle TILAL wordmark watermark tiled over the basemap */
-.bm-brand text{font-family:var(--head);font-size:240px;font-weight:600;letter-spacing:.5em;fill:#1c4e8f;fill-opacity:.045;text-anchor:middle;}
+.bm-brand text{font-family:var(--head);font-size:240px;font-weight:600;letter-spacing:.5em;fill:#1c4e8f;fill-opacity:.06;text-anchor:middle;}
 .floor-svg .unit:hover{fill:#ffffff;filter:drop-shadow(0 0 12px rgba(120,195,255,.95)) brightness(1.04);}
 .floor-svg .unit.selected{fill:#ffffff;filter:drop-shadow(0 0 14px rgba(74,163,224,.95));}
 .floor-svg .unit.dim{opacity:.16;}
@@ -1925,7 +1926,7 @@ button{font-family:inherit;}
   const marker=document.getElementById('locMarker');
   const stage3d=svg.parentNode;
   const NS3='http://www.w3.org/2000/svg';
-  const EXT_N=5, EXT_H0=13;   // wall layers, and base extrusion height (px) at the fit view
+  const EXT_N=5, EXT_H0=26;   // wall layers, and base extrusion height (px) at the fit view
 
   /* ===== real-world basemap (OpenStreetMap) =====================================
      The mall plan is georeferenced onto live OSM street tiles.
@@ -2060,6 +2061,7 @@ button{font-family:inherit;}
   FLOOR_LIST.forEach(function(fl){(FLOOR_NODES[fl]||[]).forEach(function(p){
     if(!p.dataset.id)return;
     if(fl==='BL'&&(p.dataset.cat==='boh'||p.dataset.cat==='mep'))return;   /* basement service space: not searchable */
+    if(p.dataset.cat==='toilet')return;                                     /* restroom category removed */
     ALL_SHOPS.push({id:p.dataset.id,category:p.dataset.cat,floor:fl});});});
   const ALL_PRESENT={};ALL_SHOPS.forEach(function(s){if(s.category)ALL_PRESENT[s.category]=(ALL_PRESENT[s.category]||0)+1;});
   const ALL_LEASING_TOTAL=LEASING.reduce(function(n,c){return n+(ALL_PRESENT[c]||0);},0);
@@ -2089,6 +2091,30 @@ button{font-family:inherit;}
       stage3d.insertBefore(L, svg);
       LAYERS.push(L);
     }
+    /* per-building CRISP shadow, cast toward the bottom-left (sun top-right):
+       each block projects its own footprint onto the ground, offset and barely
+       blurred -- like the reference render. */
+    var SH=document.createElementNS(NS3,'svg');
+    SH.setAttribute('viewBox',vbAttr);SH.setAttribute('class','ext shad');SH.setAttribute('preserveAspectRatio','xMidYMid slice');
+    SH.dataset.k=EXT_N+1;SH.style.transform='translateZ(-'+((EXT_N+1)*step)+'px)';
+    var SG=document.createElementNS(NS3,'g');SG.setAttribute('transform','translate(-58 46)');
+    Array.prototype.forEach.call(units,function(p){
+      var c=p.cloneNode(false);
+      c.removeAttribute('class');c.removeAttribute('data-id');c.removeAttribute('data-cat');
+      c.setAttribute('fill','#6b5638');SG.appendChild(c);
+    });
+    SH.appendChild(SG);stage3d.insertBefore(SH,svg);LAYERS.push(SH);
+    /* golden rim light peeking on the sun-facing (top-right) edges */
+    var RM=document.createElementNS(NS3,'svg');
+    RM.setAttribute('viewBox',vbAttr);RM.setAttribute('class','ext rim');RM.setAttribute('preserveAspectRatio','xMidYMid slice');
+    RM.dataset.k=0.45;RM.style.transform='translateZ(-'+(0.45*step)+'px)';
+    var RG=document.createElementNS(NS3,'g');RG.setAttribute('transform','translate(5 -4)');
+    Array.prototype.forEach.call(units,function(p){
+      var c=p.cloneNode(false);
+      c.removeAttribute('class');c.removeAttribute('data-id');c.removeAttribute('data-cat');
+      c.setAttribute('fill','#ffe9bd');RG.appendChild(c);
+    });
+    RM.appendChild(RG);stage3d.insertBefore(RM,svg);LAYERS.push(RM);
     buildBasemap();
   }
   /* ---- gray ground / site podium so the mall sits on something ---- */
@@ -2265,10 +2291,14 @@ button{font-family:inherit;}
       if(bb.x<cMinX)cMinX=bb.x; if(bb.y<cMinY)cMinY=bb.y;
       if(bb.x+bb.width>cMaxX)cMaxX=bb.x+bb.width; if(bb.y+bb.height>cMaxY)cMaxY=bb.y+bb.height;
       const cat=el.dataset.cat,c=CATS[cat]||CATS.specialty;
+      /* tiny CAD slivers add noise, not information -- drop them */
+      if(bb.width<4||bb.height<4){el.style.display='none';return;}
       /* Basement back-of-house / plant rooms: vague + non-interactive — they
          are service space, not visitor destinations. */
       if(curFloor==='BL'&&(cat==='boh'||cat==='mep')){
-        el.setAttribute('fill','#e3e7ec');el.classList.add('boh-mute');return;}
+        el.setAttribute('fill','#e9e6dd');el.classList.add('boh-mute');return;}
+      /* restrooms: neutral, silent background shapes (category removed) */
+      if(cat==='toilet'){el.setAttribute('fill','#e7e4da');el.classList.add('boh-mute');return;}
       el.setAttribute('fill', c.color);
       SHOPS.push({id:el.dataset.id,category:el.dataset.cat,el:el,cx:bb.x+bb.width/2,cy:bb.y+bb.height/2,w:bb.width,h:bb.height,m2:el.dataset.m2,ft2:el.dataset.ft2,uname:el.dataset.name});
     });
@@ -2297,7 +2327,7 @@ button{font-family:inherit;}
     var ar=(r&&r.width>0&&r.height>0)?r.width/r.height:(bw/bh);
     var vbw=bw, vbh=bh;
     if(bw/bh>ar){ vbh=bw/ar; } else { vbw=bh*ar; }   /* grow the short side to match the screen */
-    var OUT=2.7;vbw*=OUT;vbh*=OUT;   /* open zoomed OUT: the mall in its neighbourhood, not filling the screen */
+    var OUT=1.25;vbw*=OUT;vbh*=OUT;   /* whole floor plan in frame with a margin of context */
     baseVB={x:cx-vbw/2,y:cy-vbh/2,w:vbw,h:vbh};
     vb=Object.assign({},baseVB);baseVBready=true;atHome=true;applyVB();
     setStageShift();}
