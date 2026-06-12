@@ -130,6 +130,11 @@ button{font-family:inherit;}
 .floor-svg.ready{visibility:visible;}
 .floor-svg.panning{cursor:grabbing;}
 .floor-svg .unit{fill-opacity:1;stroke:none;cursor:pointer;transition:fill .15s ease,opacity .15s ease,filter .15s ease;}
+/* CAD exports carve column-grid markers as evenodd holes in the big units —
+   they render as noisy little boxes. nonzero fill closes them for a clean roof. */
+.floor-svg .unit,#stage3d>svg.ext path{fill-rule:nonzero;}
+/* subtle TILAL wordmark watermark tiled over the basemap */
+.bm-brand text{font-family:var(--head);font-size:240px;font-weight:600;letter-spacing:.5em;fill:#1c4e8f;fill-opacity:.045;text-anchor:middle;}
 .floor-svg .unit:hover{fill:#ffffff;filter:drop-shadow(0 0 12px rgba(120,195,255,.95)) brightness(1.04);}
 .floor-svg .unit.selected{fill:#ffffff;filter:drop-shadow(0 0 14px rgba(74,163,224,.95));}
 .floor-svg .unit.dim{opacity:.16;}
@@ -1947,6 +1952,16 @@ button{font-family:inherit;}
     bmGroup=document.createElementNS(NS3,'g');
     bmGroup.setAttribute('transform','rotate('+GEO.rotDeg+' '+c[0].toFixed(1)+' '+c[1].toFixed(1)+')');
     G.appendChild(bmGroup);
+    /* tiled TILAL wordmark over the map — quiet brand presence on the background */
+    var wm=document.createElementNS(NS3,'g');wm.setAttribute('class','bm-brand');
+    var WS=2600;
+    for(var wy=-7;wy<=7;wy++){for(var wx=-7;wx<=7;wx++){
+      var wt=document.createElementNS(NS3,'text');
+      wt.setAttribute('x',(c[0]+wx*WS+(wy%2?WS/2:0)).toFixed(0));
+      wt.setAttribute('y',(c[1]+wy*WS*0.6).toFixed(0));
+      wt.textContent='TILAL';wm.appendChild(wt);
+    }}
+    G.appendChild(wm);
     bmTiles={};
     stage3d.insertBefore(G, stage3d.firstChild);
     LAYERS.push(G);
@@ -2088,7 +2103,7 @@ button{font-family:inherit;}
   function facilityIcons(){
     var S=14;
     SHOPS.forEach(function(s){
-      if(s.category!=='toilet' && s.category!=='service') return;
+      if(s.category!=='service') return;   /* restroom icons removed per design */
       if(s.w<10||s.h<10) return;
       var g=document.createElementNS(NS3,'g');
       g.setAttribute('class','facic');
@@ -2269,6 +2284,7 @@ button{font-family:inherit;}
     var ar=(r&&r.width>0&&r.height>0)?r.width/r.height:(bw/bh);
     var vbw=bw, vbh=bh;
     if(bw/bh>ar){ vbh=bw/ar; } else { vbw=bh*ar; }   /* grow the short side to match the screen */
+    var OUT=2.7;vbw*=OUT;vbh*=OUT;   /* open zoomed OUT: the mall in its neighbourhood, not filling the screen */
     baseVB={x:cx-vbw/2,y:cy-vbh/2,w:vbw,h:vbh};
     vb=Object.assign({},baseVB);baseVBready=true;atHome=true;applyVB();
     setStageShift();}
@@ -2299,7 +2315,7 @@ button{font-family:inherit;}
     }
     if(baseVB&&vb.w!==_lastW){_lastW=vb.w;var f=baseVB.w/vb.w;if(f>1.2)f=1.2;if(f<0.55)f=0.55;var step=EXT_H0/EXT_N*f;for(var j=0;j<LAYERS.length;j++){var k=LAYERS[j].dataset.k;if(k)LAYERS[j].style.transform='translateZ(-'+(k*step).toFixed(2)+'px)';}}
     clearTimeout(bmT);bmT=setTimeout(bmUpdate,160);   /* refresh street tiles for the new view */}
-  const MINW=function(){return baseVB.w/6;},MAXW=function(){return baseVB.w*42;};   /* zoom out far enough to see the whole city */
+  const MINW=function(){return baseVB.w/16;},MAXW=function(){return baseVB.w*15;};   /* same close-up reach as before; zoom out to city scale */
   const mapWrap=document.getElementById('mapWrapper');
   function zoomCenter(fz){atHome=false;const mn=MINW(),mx=MAXW();let nw=vb.w*fz;if(nw<mn)nw=mn;if(nw>mx)nw=mx;const k=nw/vb.w;const cx=vb.x+vb.w/2,cy=vb.y+vb.h/2;vb.w=nw;vb.h=vb.h*k;vb.x=cx-vb.w/2;vb.y=cy-vb.h/2;applyVB();}
   function resetView(){atHome=true;animateVB(Object.assign({},baseVB));}
