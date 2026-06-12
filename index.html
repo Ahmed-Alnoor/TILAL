@@ -143,6 +143,9 @@ button{font-family:inherit;}
 .floor-svg .unit.boh-mute:hover{filter:none;}
 .floor-svg .unit.match{filter:brightness(1.1) saturate(1.08) drop-shadow(0 0 9px rgba(46,143,207,.75));}
 .floor-svg .facic{pointer-events:none;}
+/* flying white gulls over the neighbourhood (fade with zoom) */
+#birds{pointer-events:none;}
+#birds .bird{fill:none;stroke:#ffffff;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke;filter:drop-shadow(0 1px 1px rgba(40,70,110,.35));}
 #locMarker{pointer-events:none;}
 #locMarker .ring{fill:none;stroke:var(--b-mid);stroke-width:2.5;vector-effect:non-scaling-stroke;transform-box:fill-box;transform-origin:center;animation:pulse 1.8s ease-out infinite;}
 #locMarker .core{fill:var(--b-mid);stroke:#fff;stroke-width:1.5;vector-effect:non-scaling-stroke;}
@@ -2580,9 +2583,52 @@ button{font-family:inherit;}
     computeBase();
     svg.classList.add('ready');
     syncChips();applyFilters();
+    ensureBirds();
     if(currentView==='list')renderList();
     applyFloorChrome();
   }
+
+  /* ===== flying birds — small white gulls drifting bottom-right -> top-right
+     over the surrounding neighbourhood. They live in plan/world coordinates, so
+     they pan & zoom WITH the map (you can follow them), and they fade away as
+     you zoom into the mall so they never distract from wayfinding. */
+  var BIRDS=[],birdG=null,birdRAF=0,birdLast=0;
+  function birdSpawn(b,mid){
+    var cx=(cMinX+cMaxX)/2,cy=(cMinY+cMaxY)/2,W=baseVB.w*0.55,H=baseVB.h*0.55;
+    b.span=baseVB.w*0.012*(0.7+Math.random()*0.8);
+    if(mid){b.x=cx+(Math.random()-0.5)*W*0.6;b.y=cy+(Math.random()-0.3)*H*0.5;}
+    else{b.x=cx+W*(0.10+Math.random()*0.55);b.y=cy+H*(0.45+Math.random()*0.55);}   /* bottom-right */
+    b.vx=-baseVB.w*(0.003+Math.random()*0.004);                                     /* drift gently left */
+    b.vy=-baseVB.w*(0.011+Math.random()*0.012);                                     /* rise toward the top */
+    b.flap=Math.random()*6.28;b.flapSpd=5.5+Math.random()*4;b.wob=Math.random()*6.28;
+  }
+  function ensureBirds(){
+    if(birdG&&birdG.parentNode===svg)return;
+    birdG=document.createElementNS(NS3,'g');birdG.setAttribute('id','birds');birdG.setAttribute('pointer-events','none');
+    BIRDS=[];for(var i=0;i<8;i++){var p=document.createElementNS(NS3,'path');p.setAttribute('class','bird');var b={el:p};birdSpawn(b,i<3);BIRDS.push(b);birdG.appendChild(p);}
+    svg.appendChild(birdG);
+  }
+  function birdFrame(t){
+    birdRAF=requestAnimationFrame(birdFrame);
+    if(!birdG||!birdG.parentNode||!baseVB||!vb){birdLast=t;return;}
+    var dt=Math.min(0.05,(t-(birdLast||t))/1000);birdLast=t;
+    var r=vb.w/baseVB.w, op=Math.max(0,Math.min(1,(r-0.5)/0.4))*0.9;   /* fade out when zooming in */
+    var show=op>0.02&&currentView==='map';
+    birdG.style.display=show?'':'none';birdG.style.opacity=op;
+    if(!show)return;
+    var cx=(cMinX+cMaxX)/2,cy=(cMinY+cMaxY)/2,W=baseVB.w*0.62,H=baseVB.h*0.62;
+    for(var i=0;i<BIRDS.length;i++){var b=BIRDS[i];
+      b.flap+=b.flapSpd*dt;b.wob+=dt*1.4;
+      b.x+=b.vx*dt+Math.cos(b.wob)*baseVB.w*0.0007;
+      b.y+=b.vy*dt;
+      if(b.y<cy-H||b.x<cx-W)birdSpawn(b,false);                        /* exited -> respawn bottom-right */
+      var k=Math.sin(b.flap),w=b.span/2,lift=b.span*(0.10+0.30*(k*0.5+0.5));
+      b.el.setAttribute('d','M'+(b.x-w).toFixed(1)+' '+b.y.toFixed(1)+
+        ' Q'+(b.x-w*0.45).toFixed(1)+' '+(b.y-lift).toFixed(1)+' '+b.x.toFixed(1)+' '+(b.y-b.span*0.04).toFixed(1)+
+        ' Q'+(b.x+w*0.45).toFixed(1)+' '+(b.y-lift).toFixed(1)+' '+(b.x+w).toFixed(1)+' '+b.y.toFixed(1));
+    }
+  }
+  birdRAF=requestAnimationFrame(birdFrame);
   function applyFloorChrome(){
     document.getElementById('floorTagName').textContent=floorNames[curFloor];
     var k=document.getElementById('kickerSub'); if(k)k.textContent=floorPlanLabel[curFloor]||floorNames[curFloor];
