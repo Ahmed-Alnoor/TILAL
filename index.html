@@ -190,20 +190,19 @@ button{font-family:inherit;}
 /* main-tenant popups (iOS-maps style pills) */
 .tenant-pops{position:fixed;inset:0;z-index:55;pointer-events:none;}
 .tenant-pops .tpop{position:fixed;transform:translate(-50%,-100%);display:flex;align-items:center;gap:8px;
-  padding:6px 11px 6px 6px;background:rgba(255,255,255,.96);border:1px solid rgba(31,39,51,.07);border-radius:13px;
+  padding:6px 11px 6px 6px;background:rgba(255,255,255,.55);backdrop-filter:blur(18px) saturate(1.6);-webkit-backdrop-filter:blur(18px) saturate(1.6);
+  border:1px solid rgba(255,255,255,.5);border-radius:13px;
   box-shadow:0 10px 26px -10px rgba(40,55,80,.42),0 2px 6px -2px rgba(40,55,80,.2);white-space:nowrap;
   opacity:0;transition:opacity .3s ease;will-change:left,top;}
 .tenant-pops.show .tpop{opacity:1;}
 .tenant-pops .tpop::after{content:"";position:absolute;left:50%;bottom:-6px;width:12px;height:12px;background:inherit;
-  border-right:1px solid rgba(31,39,51,.07);border-bottom:1px solid rgba(31,39,51,.07);transform:translateX(-50%) rotate(45deg);border-radius:0 0 3px 0;}
+  backdrop-filter:inherit;-webkit-backdrop-filter:inherit;
+  border-right:1px solid rgba(255,255,255,.5);border-bottom:1px solid rgba(255,255,255,.5);transform:translateX(-50%) rotate(45deg);border-radius:0 0 3px 0;}
 .tenant-pops .tp-ic{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;flex:none;
-  background:linear-gradient(135deg,#f6e2b6,#e7c581);color:#7a5a1e;}
+  background:linear-gradient(135deg,rgba(246,226,182,.85),rgba(231,197,129,.85));color:#7a5a1e;}
 .tenant-pops .tp-ic svg{width:17px;height:17px;}
 .tenant-pops .tp-nm{font-family:var(--head);font-weight:600;font-size:13.5px;color:#26303d;}
 .tenant-pops .tp-ct{font-family:var(--head);font-weight:700;font-size:12px;color:#8a8f96;margin-left:1px;}
-/* pulsing golden glow on the gold blocks */
-#stage3d>svg.ext.goldglow{mix-blend-mode:screen;animation:goldPulse 2.8s ease-in-out infinite;will-change:opacity;}
-@keyframes goldPulse{0%,100%{opacity:.06;}50%{opacity:.52;}}
 .tooltip .tc{display:flex;align-items:center;gap:7px;font-weight:500;font-size:11px;color:rgba(243,239,227,.72);margin-top:3px;}
 .tooltip .td{width:9px;height:9px;}
 .tooltip .code{font-family:var(--head);letter-spacing:.05em;color:var(--brass-2);}
@@ -1880,7 +1879,6 @@ button{font-family:inherit;}
   const CAT_ORDER=["hypermarket","anchor","mini-major","line-shop","fnb","fnb-cafe","fnb-kiosk","fnb-seating","kiosk","kiosk-seating","food-village","food-court","fc-seating","fec","cinema","customer-service","management-suite","tenant-store","hyper-store","prayer-room","circulation","mep","boh","toilet","hyper","retail","specialty","specialty-retail","seating","service","fnb-kiosk-seating-area","fc-kitchen","fv-kitchen"];
   const LEASING=["hypermarket","anchor","mini-major","line-shop","fnb","fnb-cafe","fnb-kiosk","fnb-seating","kiosk","kiosk-seating","food-village","food-court","fc-seating","fec","cinema"];
   const FACILITY=["customer-service","management-suite","tenant-store","hyper-store","prayer-room","circulation","mep","boh","toilet"];
-  const GOLD_CATS={fnb:1,'fnb-cafe':1,'fnb-kiosk':1,'food-court':1,'food-village':1,'fc-kitchen':1,'fv-kitchen':1,kiosk:1,'fc-seating':1,'fnb-seating':1};
   const CAT_ICON={
     hyper:'<path d="M5 7h14l-1.2 11a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8L5 7z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/>',
     hypermarket:'<path d="M5 7h14l-1.2 11a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8L5 7z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/>',
@@ -2136,17 +2134,6 @@ button{font-family:inherit;}
       c.setAttribute('fill','#4d3d24');SG.appendChild(c);
     });
     SH.appendChild(SG);stage3d.insertBefore(SH,svg);LAYERS.push(SH);
-    /* pulsing golden glow over the gold (dining/kiosk) blocks */
-    var GLOW=document.createElementNS(NS3,'svg');
-    GLOW.setAttribute('viewBox',vbAttr);GLOW.setAttribute('class','ext goldglow');GLOW.setAttribute('preserveAspectRatio','xMidYMid slice');
-    GLOW.style.transform='translateZ(0.4px)';
-    Array.prototype.forEach.call(units,function(p){
-      if(!GOLD_CATS[p.dataset.cat])return;
-      var c=p.cloneNode(false);c.removeAttribute('class');c.removeAttribute('data-id');c.removeAttribute('data-cat');c.removeAttribute('data-base');
-      c.setAttribute('fill','#ffcf78');c.setAttribute('stroke','#ffe7ab');c.setAttribute('stroke-width','2.4');c.setAttribute('vector-effect','non-scaling-stroke');
-      GLOW.appendChild(c);
-    });
-    stage3d.appendChild(GLOW);LAYERS.push(GLOW);
     buildBasemap();
   }
   /* ---- gray ground / site podium so the mall sits on something ---- */
@@ -2407,8 +2394,8 @@ button{font-family:inherit;}
   function zoomCenter(fz){atHome=false;const mn=MINW(),mx=MAXW();let nw=vb.w*fz;if(nw<mn)nw=mn;if(nw>mx)nw=mx;const k=nw/vb.w;const cx=vb.x+vb.w/2,cy=vb.y+vb.h/2;vb.w=nw;vb.h=vb.h*k;vb.x=cx-vb.w/2;vb.y=cy-vb.h/2;applyVB();scheduleTenantPops();}
   function resetView(){atHome=true;animateVB(Object.assign({},baseVB));scheduleTenantPops();}
   /* ---- main-tenant popups: appear from the stores on zoom, fade after 3s ---- */
-  var _popDeb=0,_popTO=0,_popRAF=0,_popActive=false,_popPills=[];
-  function scheduleTenantPops(){if(currentView!=='map')return;clearTimeout(_popDeb);_popDeb=setTimeout(showTenantPops,300);}
+  var _popDeb=0,_popTO=0,_popRAF=0,_popActive=false,_popPills=[],_popFired=false;
+  function scheduleTenantPops(){if(currentView!=='map'||_popFired)return;clearTimeout(_popDeb);_popDeb=setTimeout(showTenantPops,300);}
   function positionPops(){
     var wrap=mapWrap.getBoundingClientRect();
     for(var i=0;i<_popPills.length;i++){var p=_popPills[i],r=p.t.el.getBoundingClientRect();
@@ -2420,7 +2407,8 @@ button{font-family:inherit;}
     }
   }
   function showTenantPops(){
-    if(currentView!=='map'||!POPUP_TENANTS.length)return;
+    if(currentView!=='map'||!POPUP_TENANTS.length||_popFired)return;
+    _popFired=true;
     var cont=document.getElementById('tenantPops');cont.innerHTML='';_popPills=[];
     POPUP_TENANTS.forEach(function(t){
       var d=document.createElement('div');d.className='tpop';
