@@ -328,9 +328,10 @@ button{font-family:inherit;}
 /* Route stroke widths are in SVG user units (NOT non-scaling) so the path
    scales WITH the map -- a thin road when zoomed out, never wider than the
    shops. */
-.route-casing{stroke:#ffffff;stroke-opacity:.9;stroke-width:13;stroke-linecap:round;stroke-linejoin:round;}
-.route-line{stroke:url(#routeGrad);stroke-width:7;stroke-linecap:round;stroke-linejoin:round;}
-.route-dot{fill:#fff;stroke:var(--b-deep);stroke-width:3;}
+/* dotted route: fixed brand-blue dots, white halo; every 6th is an arrow dot */
+.route-dotp{fill:var(--b-mid);stroke:#fff;stroke-width:1.4;}
+.route-arrow .ra-bg{fill:var(--b-deep);stroke:#fff;stroke-width:1.6;}
+.route-arrow .ra-ch{fill:none;stroke:#fff;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;}
 /* ===== compact turn-by-turn nav card (one maneuver at a time) ===== */
 .nav-card{position:absolute;top:74px;left:50%;transform:translate(-50%,-14px);width:min(440px,calc(100% - 32px));z-index:54;
   background:rgba(255,255,255,.94);backdrop-filter:blur(18px) saturate(1.4);-webkit-backdrop-filter:blur(18px) saturate(1.4);
@@ -2907,37 +2908,35 @@ button{font-family:inherit;}
     var old=svg.querySelector('#routeLayer');if(old)old.remove();
     cancelAnimationFrame(routing.dotRAF);cancelAnimationFrame(routing.drawRAF);
     var g=document.createElementNS(RNS,'g');g.id='routeLayer';g.setAttribute('pointer-events','none');
-    var dstr=rPath(seg.pts);
-    var casing=document.createElementNS(RNS,'path');casing.setAttribute('d',dstr);casing.setAttribute('class','route-casing');casing.setAttribute('fill','none');
-    var line=document.createElementNS(RNS,'path');line.setAttribute('d',dstr);line.setAttribute('class','route-line');line.setAttribute('fill','none');
-    g.appendChild(casing);g.appendChild(line);
+    /* invisible guide path: used only to sample evenly spaced points */
+    var guide=document.createElementNS(RNS,'path');guide.setAttribute('d',rPath(seg.pts));
+    guide.setAttribute('fill','none');guide.setAttribute('stroke','none');
+    g.appendChild(guide);
+    svg.insertBefore(g,marker);routing.layer=g;
+    /* fixed dotted route: a dot every SP units (dot size = old line width),
+       and after each 5 dots a white direction arrow set inside a larger dot */
+    var len=guide.getTotalLength(),SP=17,DOT_R=3.5,i=0;
+    for(var L=SP/2;L<len;L+=SP,i++){
+      var p=guide.getPointAtLength(L);
+      if(i%6===5){
+        var p1=guide.getPointAtLength(Math.max(0,L-3)),p2=guide.getPointAtLength(Math.min(len,L+3));
+        var ang=Math.atan2(p2.y-p1.y,p2.x-p1.x)*180/Math.PI;
+        var a=document.createElementNS(RNS,'g');a.setAttribute('class','route-arrow');
+        a.setAttribute('transform','translate('+p.x.toFixed(1)+' '+p.y.toFixed(1)+') rotate('+ang.toFixed(1)+')');
+        a.innerHTML='<circle class="ra-bg" r="7"/><path class="ra-ch" d="M-2.4 -3.2 L2.8 0 L-2.4 3.2"/>';
+        g.appendChild(a);
+      }else{
+        var c=document.createElementNS(RNS,'circle');c.setAttribute('class','route-dotp');
+        c.setAttribute('r',DOT_R);c.setAttribute('cx',p.x.toFixed(1));c.setAttribute('cy',p.y.toFixed(1));
+        g.appendChild(c);
+      }
+    }
     if(seg.kind==='full'||seg.kind==='toEsc')g.appendChild(rMarker(R.oc[0],R.oc[1],'origin'));
     if(seg.kind==='toEsc')g.appendChild(rMarker(seg.esc[0],seg.esc[1],'esc'));
     if(seg.kind==='fromEsc')g.appendChild(rMarker(seg.esc[0],seg.esc[1],'esc'));
     if(seg.kind==='full'||seg.kind==='fromEsc')g.appendChild(rMarker(R.dc[0],R.dc[1],'dest'));
-    svg.insertBefore(g,marker);routing.layer=g;
-    var len=line.getTotalLength();line.style.strokeDasharray=len;line.style.strokeDashoffset=len;casing.style.strokeDasharray=len;casing.style.strokeDashoffset=len;
-    var t0=performance.now(),dur=Math.min(1500,500+len*0.05);
-    function step(t){var k=Math.min(1,(t-t0)/dur);var e=k<.5?4*k*k*k:1-Math.pow(-2*k+2,3)/2;line.style.strokeDashoffset=len*(1-e);casing.style.strokeDashoffset=len*(1-e);
-      if(k<1){routing.drawRAF=requestAnimationFrame(step);}
-      else{/* With vector-effect:non-scaling-stroke the dash pattern is measured in
-              screen pixels, so a fixed dasharray clips the line when you zoom in.
-              Clear it once the reveal is done so the whole route always renders. */
-        line.style.strokeDasharray='none';line.style.strokeDashoffset='0';
-        casing.style.strokeDasharray='none';casing.style.strokeDashoffset='0';
-        rStartDot(line,len);}}
-    routing.drawRAF=requestAnimationFrame(step);
     frameRoute(seg.pts);
   }
-  function rStartDot(line,len){
-    cancelAnimationFrame(routing.dotRAF);
-    var dot=document.createElementNS(RNS,'circle');dot.setAttribute('class','route-dot');dot.setAttribute('r','11');dot.setAttribute('cx','0');dot.setAttribute('cy','0');
-    if(routing.layer)routing.layer.appendChild(dot);
-    var t0=performance.now(),period=Math.max(1800,len*5);
-    function loop(t){if(!routing.active||!dot.parentNode)return;var k=((t-t0)%period)/period;var p=line.getPointAtLength(k*len);dot.setAttribute('cx',p.x);dot.setAttribute('cy',p.y);routing.dotRAF=requestAnimationFrame(loop);}
-    routing.dotRAF=requestAnimationFrame(loop);
-  }
-
   /* ---- summary / steps ---- */
   function rShopLabel(id,floor){var s=ALL_SHOPS.find(function(x){return x.id===id&&x.floor===floor;});var c=s?CATS[s.category]:null;return (c?c.label:'Unit')+' · '+id;}
   function IC(p){return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">'+p+'</svg>';}
