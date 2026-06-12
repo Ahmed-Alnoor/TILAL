@@ -114,17 +114,17 @@ button{font-family:inherit;}
 
 .canvas-wrap{flex:1;position:relative;min-width:0;overflow:hidden;background:radial-gradient(130% 120% at 50% 8%,var(--canvas-1) 0%,var(--canvas-2) 55%,var(--canvas-3) 100%);}
 /* warm sunlight: bloom in the top-right corner + soft diagonal light wash */
-.canvas-wrap::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:6;
+.canvas-wrap::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:6;mix-blend-mode:screen;
   background:
-    radial-gradient(circle at 88% 4%, rgba(255,218,150,.50), rgba(255,206,130,.20) 22%, transparent 52%),
-    radial-gradient(circle at 96% 0%, rgba(255,244,220,.60), transparent 24%),
-    linear-gradient(225deg, rgba(255,212,148,.13), transparent 46%);}
+    radial-gradient(circle at 90% 2%, rgba(255,247,225,.85), rgba(255,228,170,.40) 18%, transparent 44%),
+    radial-gradient(circle at 99% -2%, rgba(255,255,250,.95), transparent 16%),
+    linear-gradient(225deg, rgba(255,236,200,.22), transparent 40%);}
 .canvas-wrap::after{content:"";position:absolute;inset:0;pointer-events:none;}
 .map-wrapper{position:absolute;inset:0;overflow:hidden;z-index:1;}
 /* warm the street map to the ivory tone of the design; cast one long soft
    building shadow toward the bottom-left (sun at top-right) */
-#stage3d>svg.basemap{filter:sepia(.24) saturate(.72) brightness(1.05) contrast(.97);}
-#stage3d>svg.ext[data-k="5"]{filter:drop-shadow(-30px 34px 30px rgba(98,74,40,.42));}
+#stage3d>svg.basemap{filter:sepia(.5) saturate(1.35) brightness(1.04) contrast(1.12);}
+#stage3d>svg.ext.shad{opacity:.34;filter:blur(1.4px);}
 .osm-credit{position:absolute;right:12px;bottom:5px;z-index:9;font-size:10px;color:rgba(255,255,255,.6);text-decoration:none;background:rgba(8,18,34,.45);padding:2px 7px;border-radius:6px;backdrop-filter:blur(4px);}
 .osm-credit:hover{color:#fff;}
 #stage{position:absolute;inset:0;perspective:2600px;perspective-origin:50% 54%;}
@@ -1960,7 +1960,7 @@ button{font-family:inherit;}
     G.setAttribute('class','ext ground basemap'); G.setAttribute('preserveAspectRatio','xMidYMid slice');
     G.dataset.k=gk; G.dataset.bleed='0.18'; G.style.transform='translateZ(-'+(gk*step)+'px)';
     var bg=document.createElementNS(NS3,'rect');
-    bg.setAttribute('x','-200000');bg.setAttribute('y','-200000');bg.setAttribute('width','400000');bg.setAttribute('height','400000');bg.setAttribute('fill','#f3ecdd');
+    bg.setAttribute('x','-200000');bg.setAttribute('y','-200000');bg.setAttribute('width','400000');bg.setAttribute('height','400000');bg.setAttribute('fill','#ece3cf');
     G.appendChild(bg);
     bmGroup=document.createElementNS(NS3,'g');
     bmGroup.setAttribute('transform','rotate('+GEO.rotDeg+' '+c[0].toFixed(1)+' '+c[1].toFixed(1)+')');
@@ -2030,6 +2030,21 @@ button{font-family:inherit;}
     while(bmGroup.firstChild)bmGroup.removeChild(bmGroup.firstChild);
     bmTiles={};bmUpdate();
   }
+  var _grads={};
+  function gradFor(color){
+    if(color.charAt(0)!=='#')return color;
+    var id='g'+color.replace('#','');
+    if(!_grads[id]){
+      var defs=svg.querySelector('defs');
+      var lg=document.createElementNS(NS3,'linearGradient');
+      lg.setAttribute('id',id);lg.setAttribute('x1','1');lg.setAttribute('y1','0');lg.setAttribute('x2','0');lg.setAttribute('y2','1');
+      lg.innerHTML='<stop offset="0" stop-color="'+shade(color,18)+'"/>'+
+                   '<stop offset="0.5" stop-color="'+color+'"/>'+
+                   '<stop offset="1" stop-color="'+shade(color,-7)+'"/>';
+      defs.appendChild(lg);_grads[id]=1;
+    }
+    return 'url(#'+id+')';
+  }
   function shade(hex,amt){
     if(hex.charAt(0)!=='#'){return hex;}
     hex=hex.replace('#','');var r=parseInt(hex.substr(0,2),16),g=parseInt(hex.substr(2,2),16),b=parseInt(hex.substr(4,2),16);
@@ -2083,12 +2098,25 @@ button{font-family:inherit;}
       Array.prototype.forEach.call(units,function(p){
         var c=p.cloneNode(false);
         c.removeAttribute('class'); c.removeAttribute('data-id'); c.removeAttribute('data-cat');
-        c.setAttribute('fill', shade(p.getAttribute('fill'), -30));
+        c.setAttribute('fill', shade(p.dataset.base||p.getAttribute('fill'), -30));
         L.appendChild(c);
       });
       stage3d.insertBefore(L, svg);
       LAYERS.push(L);
     }
+    /* grounded shadow: footprints projected onto the FLOOR, offset toward the
+       bottom-left (sun is top-right) so blocks look planted, not floating.
+       One layer, crisp -> no costly full-frame blur filter. */
+    var SH=document.createElementNS(NS3,'svg');
+    SH.setAttribute('viewBox',vbAttr);SH.setAttribute('class','ext shad');SH.setAttribute('preserveAspectRatio','xMidYMid slice');
+    SH.dataset.k=EXT_N+0.6;SH.style.transform='translateZ(-'+((EXT_N+0.6)*step)+'px)';
+    var SG=document.createElementNS(NS3,'g');SG.setAttribute('transform','translate(-40 34)');
+    Array.prototype.forEach.call(units,function(p){
+      var c=p.cloneNode(false);
+      c.removeAttribute('class');c.removeAttribute('data-id');c.removeAttribute('data-cat');c.removeAttribute('data-base');
+      c.setAttribute('fill','#4d3d24');SG.appendChild(c);
+    });
+    SH.appendChild(SG);stage3d.insertBefore(SH,svg);LAYERS.push(SH);
     buildBasemap();
   }
   /* ---- gray ground / site podium so the mall sits on something ---- */
@@ -2269,7 +2297,7 @@ button{font-family:inherit;}
          are service space, not visitor destinations. */
       if(curFloor==='BL'&&(cat==='boh'||cat==='mep')){
         el.setAttribute('fill','#e3e7ec');el.classList.add('boh-mute');return;}
-      el.setAttribute('fill', c.color);
+      el.dataset.base=c.color;el.setAttribute('fill', gradFor(c.color));
       SHOPS.push({id:el.dataset.id,category:el.dataset.cat,el:el,cx:bb.x+bb.width/2,cy:bb.y+bb.height/2,w:bb.width,h:bb.height,m2:el.dataset.m2,ft2:el.dataset.ft2,uname:el.dataset.name});
     });
     planW=cMaxX-cMinX;planH=cMaxY-cMinY;ctrX=(cMinX+cMaxX)/2;
