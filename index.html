@@ -123,7 +123,7 @@ button{font-family:inherit;}
 .map-wrapper{position:absolute;inset:0;overflow:hidden;z-index:1;}
 /* warm the street map to the ivory tone of the design; cast one long soft
    building shadow toward the bottom-left (sun at top-right) */
-#stage3d>svg.basemap{filter:sepia(.5) saturate(1.35) brightness(1.04) contrast(1.12);}
+#stage3d>svg.basemap{filter:sepia(.10) saturate(1.15) brightness(.985);}
 #stage3d>svg.ext.shad{opacity:.34;filter:blur(1.4px);}
 .osm-credit{position:absolute;right:12px;bottom:5px;z-index:9;font-size:10px;color:rgba(255,255,255,.6);text-decoration:none;background:rgba(8,18,34,.45);padding:2px 7px;border-radius:6px;backdrop-filter:blur(4px);}
 .osm-credit:hover{color:#fff;}
@@ -1960,7 +1960,7 @@ button{font-family:inherit;}
     G.setAttribute('class','ext ground basemap'); G.setAttribute('preserveAspectRatio','xMidYMid slice');
     G.dataset.k=gk; G.dataset.bleed='0.18'; G.style.transform='translateZ(-'+(gk*step)+'px)';
     var bg=document.createElementNS(NS3,'rect');
-    bg.setAttribute('x','-200000');bg.setAttribute('y','-200000');bg.setAttribute('width','400000');bg.setAttribute('height','400000');bg.setAttribute('fill','#ece3cf');
+    bg.setAttribute('x','-200000');bg.setAttribute('y','-200000');bg.setAttribute('width','400000');bg.setAttribute('height','400000');bg.setAttribute('fill','#efeee7');
     G.appendChild(bg);
     bmGroup=document.createElementNS(NS3,'g');
     bmGroup.setAttribute('transform','rotate('+GEO.rotDeg+' '+c[0].toFixed(1)+' '+c[1].toFixed(1)+')');
