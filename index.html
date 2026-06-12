@@ -187,6 +187,23 @@ button{font-family:inherit;}
 .empty-floor p{margin:0;font-size:13px;max-width:300px;line-height:1.7;}
 .tooltip{position:fixed;z-index:60;pointer-events:none;padding:9px 13px;background:rgba(29,35,30,.94);border:0;color:#f3efe3;font-size:12px;font-weight:600;opacity:0;transform:translateY(5px);transition:opacity .14s,transform .14s;white-space:nowrap;box-shadow:var(--shadow-sm);}
 .tooltip.show{opacity:1;transform:translateY(0);}
+/* main-tenant popups (iOS-maps style pills) */
+.tenant-pops{position:fixed;inset:0;z-index:55;pointer-events:none;}
+.tenant-pops .tpop{position:fixed;transform:translate(-50%,-100%);display:flex;align-items:center;gap:8px;
+  padding:6px 11px 6px 6px;background:rgba(255,255,255,.96);border:1px solid rgba(31,39,51,.07);border-radius:13px;
+  box-shadow:0 10px 26px -10px rgba(40,55,80,.42),0 2px 6px -2px rgba(40,55,80,.2);white-space:nowrap;
+  opacity:0;transition:opacity .3s ease;will-change:left,top;}
+.tenant-pops.show .tpop{opacity:1;}
+.tenant-pops .tpop::after{content:"";position:absolute;left:50%;bottom:-6px;width:12px;height:12px;background:inherit;
+  border-right:1px solid rgba(31,39,51,.07);border-bottom:1px solid rgba(31,39,51,.07);transform:translateX(-50%) rotate(45deg);border-radius:0 0 3px 0;}
+.tenant-pops .tp-ic{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;flex:none;
+  background:linear-gradient(135deg,#f6e2b6,#e7c581);color:#7a5a1e;}
+.tenant-pops .tp-ic svg{width:17px;height:17px;}
+.tenant-pops .tp-nm{font-family:var(--head);font-weight:600;font-size:13.5px;color:#26303d;}
+.tenant-pops .tp-ct{font-family:var(--head);font-weight:700;font-size:12px;color:#8a8f96;margin-left:1px;}
+/* pulsing golden glow on the gold blocks */
+#stage3d>svg.ext.goldglow{mix-blend-mode:screen;animation:goldPulse 2.8s ease-in-out infinite;will-change:opacity;}
+@keyframes goldPulse{0%,100%{opacity:.06;}50%{opacity:.52;}}
 .tooltip .tc{display:flex;align-items:center;gap:7px;font-weight:500;font-size:11px;color:rgba(243,239,227,.72);margin-top:3px;}
 .tooltip .td{width:9px;height:9px;}
 .tooltip .code{font-family:var(--head);letter-spacing:.05em;color:var(--brass-2);}
@@ -924,6 +941,7 @@ button{font-family:inherit;}
   </div>
 </div>
 <button class="nav-reopen" id="navReopen" aria-label="Show directions"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-8-8 18-2-8-8-2z"/></svg></button>
+<div class="tenant-pops" id="tenantPops"></div>
 <div class="tooltip" id="tooltip"></div>
 <div class="toast" id="toast"></div>
 <template id="unitsF1"><svg xmlns="http://www.w3.org/2000/svg"><path class="unit" data-id="MT-FF-01" data-cat="toilet" data-name="Male Toilet" data-m2="82" data-ft2="877.37" fill="#fee8e0" fill-rule="evenodd" d="M1075.7 943.0L1075.2 943.2L1074.2 943.7L1073.5 943.9L1072.1 944.6L1071.4 944.9L1069.9 945.6L1069.2 945.8L1067.8 946.6L1067.0 946.8L1065.6 947.5L1064.9 947.8L1063.4 948.5L1062.7 948.7L1060.8 949.7L1060.1 949.9L1058.6 950.6L1057.9 950.9L1056.5 951.6L1055.8 951.8L1054.3 952.6L1053.6 952.8L1052.2 953.5L1051.4 953.8L1050.0 954.5L1049.3 954.7L1047.8 955.4L1047.1 955.7L1047.4 955.9L1047.4 956.6L1046.9 956.6L1045.4 957.4L1045.4 957.1L1045.2 956.9L1044.5 956.9L1043.5 957.4L1042.8 957.6L1041.4 958.3L1040.6 958.6L1039.2 959.3L1038.5 959.5L1037.0 960.2L1036.3 960.5L1034.9 961.2L1034.2 961.4L1033.2 961.9L1032.5 962.2L1032.7 962.4L1032.7 963.1L1032.2 963.1L1031.3 963.6L1030.6 963.8L1030.6 963.4L1029.8 963.4L1028.9 963.8L1029.1 964.1L1029.1 964.6L1029.4 964.6L1029.4 965.0L1029.6 965.0L1029.6 965.5L1029.8 965.5L1029.8 966.0L1030.1 966.0L1030.1 966.5L1030.3 966.5L1030.3 967.2L1030.6 967.2L1030.6 967.7L1030.8 967.7L1030.8 968.2L1031.0 968.2L1031.0 968.6L1031.3 968.6L1031.3 969.1L1031.5 969.1L1031.5 969.8L1031.8 969.8L1031.8 970.3L1032.0 970.3L1032.0 970.8L1032.2 970.8L1032.2 971.3L1032.5 971.3L1032.5 971.8L1032.7 971.8L1032.7 972.5L1033.0 972.5L1033.0 973.0L1033.2 973.0L1033.2 973.4L1033.4 973.4L1033.4 973.9L1033.7 973.9L1033.7 974.4L1033.9 974.4L1033.9 975.1L1034.2 975.1L1034.2 975.6L1034.4 975.6L1034.4 976.1L1034.6 976.1L1034.6 976.6L1034.9 976.6L1034.9 977.0L1035.1 977.0L1035.1 977.8L1035.4 977.8L1035.4 978.2L1035.6 978.2L1035.6 978.7L1035.8 978.7L1035.8 979.2L1036.1 979.2L1036.1 979.7L1036.3 979.7L1036.3 980.2L1036.6 980.2L1036.6 980.6L1036.8 980.6L1036.8 981.1L1037.0 981.1L1037.0 981.6L1037.3 981.6L1037.3 982.1L1037.5 982.1L1037.5 982.6L1037.8 982.6L1037.8 983.0L1038.0 983.0L1038.0 983.5L1038.2 983.5L1038.2 984.0L1038.5 984.0L1038.5 984.5L1038.7 984.5L1038.7 985.0L1039.0 985.0L1039.0 985.4L1039.2 985.4L1039.2 985.9L1039.4 985.9L1039.4 986.4L1039.7 986.4L1039.7 986.9L1039.9 986.9L1039.9 987.6L1040.2 987.6L1040.2 988.1L1040.4 988.1L1040.4 988.6L1040.6 988.6L1040.6 989.0L1040.9 989.0L1040.9 989.5L1041.1 989.5L1041.1 990.0L1041.4 990.0L1041.4 990.5L1041.6 990.5L1041.6 991.0L1041.8 991.0L1041.8 991.4L1042.1 991.4L1042.1 991.9L1042.3 991.9L1042.3 992.4L1043.3 991.9L1043.8 991.9L1043.8 991.2L1043.5 991.0L1045.0 990.2L1045.7 990.2L1045.9 990.5L1046.4 990.7L1046.4 990.5L1057.9 984.7L1058.2 984.0L1057.9 983.8L1086.2 969.6L1086.7 969.6L1086.7 969.1L1086.5 969.1L1086.5 967.9L1086.2 967.9L1086.2 967.4L1086.0 967.4L1086.0 967.0L1085.8 967.0L1085.8 966.5L1085.5 966.5L1085.5 966.0L1085.3 966.0L1085.3 965.5L1085.0 965.5L1085.0 965.0L1084.8 965.0L1084.8 964.6L1084.6 964.6L1084.6 964.1L1084.3 964.1L1084.3 963.6L1084.1 963.6L1084.1 963.1L1083.8 963.1L1083.8 962.6L1083.1 962.6L1083.1 961.9L1082.9 961.9L1082.9 961.4L1082.6 961.2L1083.1 961.0L1083.6 961.0L1083.6 960.2L1083.4 960.2L1083.4 959.8L1083.1 959.8L1083.1 959.3L1082.9 959.3L1082.9 958.6L1082.6 958.6L1082.6 958.1L1082.4 958.1L1082.4 957.6L1082.2 957.6L1082.2 957.1L1081.4 957.1L1080.7 957.4L1080.7 956.9L1080.5 956.9L1080.5 956.4L1080.2 956.4L1080.2 955.7L1080.0 955.7L1080.0 955.2L1079.8 955.2L1079.8 954.7L1079.0 954.7L1076.2 956.2L1075.4 956.4L1075.4 955.9L1075.2 955.9L1075.2 955.4L1075.0 955.4L1075.0 955.0L1074.7 955.0L1074.7 954.5L1074.5 954.5L1074.5 954.0L1074.2 954.0L1074.2 953.5L1074.0 953.5L1074.0 952.8L1073.8 952.8L1073.8 952.3L1073.5 952.3L1073.5 951.8L1073.3 951.8L1073.3 951.4L1073.0 951.4L1073.0 950.9L1072.8 950.9L1072.8 950.4L1072.6 950.4L1072.6 949.9L1072.3 949.7L1073.0 949.4L1075.9 948.0L1076.6 947.8L1079.0 946.6L1079.5 946.6L1079.5 946.1L1079.3 946.1L1079.3 945.6L1079.0 945.6L1079.0 945.1L1078.8 945.1L1078.8 944.6L1078.6 944.6L1078.6 944.2L1078.3 944.2L1078.3 943.7L1078.1 943.7L1078.1 943.2L1077.1 943.2L1076.4 943.4L1076.4 943.0L1075.7 943.0"/>
@@ -1862,6 +1880,7 @@ button{font-family:inherit;}
   const CAT_ORDER=["hypermarket","anchor","mini-major","line-shop","fnb","fnb-cafe","fnb-kiosk","fnb-seating","kiosk","kiosk-seating","food-village","food-court","fc-seating","fec","cinema","customer-service","management-suite","tenant-store","hyper-store","prayer-room","circulation","mep","boh","toilet","hyper","retail","specialty","specialty-retail","seating","service","fnb-kiosk-seating-area","fc-kitchen","fv-kitchen"];
   const LEASING=["hypermarket","anchor","mini-major","line-shop","fnb","fnb-cafe","fnb-kiosk","fnb-seating","kiosk","kiosk-seating","food-village","food-court","fc-seating","fec","cinema"];
   const FACILITY=["customer-service","management-suite","tenant-store","hyper-store","prayer-room","circulation","mep","boh","toilet"];
+  const GOLD_CATS={fnb:1,'fnb-cafe':1,'fnb-kiosk':1,'food-court':1,'food-village':1,'fc-kitchen':1,'fv-kitchen':1,kiosk:1,'fc-seating':1,'fnb-seating':1};
   const CAT_ICON={
     hyper:'<path d="M5 7h14l-1.2 11a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8L5 7z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/>',
     hypermarket:'<path d="M5 7h14l-1.2 11a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8L5 7z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/>',
@@ -2117,6 +2136,17 @@ button{font-family:inherit;}
       c.setAttribute('fill','#4d3d24');SG.appendChild(c);
     });
     SH.appendChild(SG);stage3d.insertBefore(SH,svg);LAYERS.push(SH);
+    /* pulsing golden glow over the gold (dining/kiosk) blocks */
+    var GLOW=document.createElementNS(NS3,'svg');
+    GLOW.setAttribute('viewBox',vbAttr);GLOW.setAttribute('class','ext goldglow');GLOW.setAttribute('preserveAspectRatio','xMidYMid slice');
+    GLOW.style.transform='translateZ(0.4px)';
+    Array.prototype.forEach.call(units,function(p){
+      if(!GOLD_CATS[p.dataset.cat])return;
+      var c=p.cloneNode(false);c.removeAttribute('class');c.removeAttribute('data-id');c.removeAttribute('data-cat');c.removeAttribute('data-base');
+      c.setAttribute('fill','#ffcf78');c.setAttribute('stroke','#ffe7ab');c.setAttribute('stroke-width','2.4');c.setAttribute('vector-effect','non-scaling-stroke');
+      GLOW.appendChild(c);
+    });
+    stage3d.appendChild(GLOW);LAYERS.push(GLOW);
     buildBasemap();
   }
   /* ---- gray ground / site podium so the mall sits on something ---- */
@@ -2306,6 +2336,22 @@ button{font-family:inherit;}
     present={};SHOPS.forEach(function(s){present[s.category]=(present[s.category]||0)+1;});
     leasingTotal=LEASING.reduce(function(n,c){return n+(present[c]||0);},0);
     buildCatUI();
+    buildTenantPops();
+  }
+  var POPUP_CATS={toilet:1,'food-court':1,'food-village':1,'fc-kitchen':1,'fv-kitchen':1,anchor:1,cinema:1,hypermarket:1,hyper:1};
+  var POPUP_LABEL={toilet:'Restroom','food-court':'Food Court','fc-kitchen':'Food Court','food-village':'Food Village','fv-kitchen':'Food Village',anchor:'Anchor Store',cinema:'Cinema',hypermarket:'Hypermarket',hyper:'Hypermarket'};
+  var POPUP_TENANTS=[];
+  function buildTenantPops(){
+    POPUP_TENANTS=[];var byCat={};
+    SHOPS.forEach(function(s){if(POPUP_CATS[s.category])(byCat[s.category]=byCat[s.category]||[]).push(s);});
+    var thr=Math.max(planW,planH)*0.085;
+    Object.keys(byCat).forEach(function(cat){
+      var arr=byCat[cat].slice().sort(function(a,b){return b.w*b.h-a.w*a.h;}),cl=[];
+      arr.forEach(function(s){var best=null,bd=1e18;
+        for(var i=0;i<cl.length;i++){var d=Math.hypot(cl[i].cx-s.cx,cl[i].cy-s.cy);if(d<thr&&d<bd){bd=d;best=cl[i];}}
+        if(best)best.count++;else cl.push({cx:s.cx,cy:s.cy,el:s.el,count:1});});
+      cl.forEach(function(c){POPUP_TENANTS.push({el:c.el,cat:cat,name:POPUP_LABEL[cat]||(CATS[cat]&&CATS[cat].label)||cat,count:c.count});});
+    });
   }
 
   function locationOf(s){const dx=s.cx-ctrX,ry=(s.cy-cMinY)/planH;
@@ -2358,8 +2404,34 @@ button{font-family:inherit;}
     clearTimeout(bmT);bmT=setTimeout(bmUpdate,160);   /* refresh street tiles for the new view */}
   const MINW=function(){return baseVB.w/16;},MAXW=function(){return baseVB.w*15;};   /* same close-up reach as before; zoom out to city scale */
   const mapWrap=document.getElementById('mapWrapper');
-  function zoomCenter(fz){atHome=false;const mn=MINW(),mx=MAXW();let nw=vb.w*fz;if(nw<mn)nw=mn;if(nw>mx)nw=mx;const k=nw/vb.w;const cx=vb.x+vb.w/2,cy=vb.y+vb.h/2;vb.w=nw;vb.h=vb.h*k;vb.x=cx-vb.w/2;vb.y=cy-vb.h/2;applyVB();}
-  function resetView(){atHome=true;animateVB(Object.assign({},baseVB));}
+  function zoomCenter(fz){atHome=false;const mn=MINW(),mx=MAXW();let nw=vb.w*fz;if(nw<mn)nw=mn;if(nw>mx)nw=mx;const k=nw/vb.w;const cx=vb.x+vb.w/2,cy=vb.y+vb.h/2;vb.w=nw;vb.h=vb.h*k;vb.x=cx-vb.w/2;vb.y=cy-vb.h/2;applyVB();scheduleTenantPops();}
+  function resetView(){atHome=true;animateVB(Object.assign({},baseVB));scheduleTenantPops();}
+  /* ---- main-tenant popups: appear from the stores on zoom, fade after 3s ---- */
+  var _popDeb=0,_popTO=0,_popRAF=0,_popActive=false,_popPills=[];
+  function scheduleTenantPops(){if(currentView!=='map')return;clearTimeout(_popDeb);_popDeb=setTimeout(showTenantPops,300);}
+  function positionPops(){
+    var wrap=mapWrap.getBoundingClientRect();
+    for(var i=0;i<_popPills.length;i++){var p=_popPills[i],r=p.t.el.getBoundingClientRect();
+      var on=r.width>16&&r.right>wrap.left+8&&r.left<wrap.right-8&&r.bottom>wrap.top+8&&r.top<wrap.bottom-8;
+      if(!on){p.el.style.opacity='0';continue;}
+      p.el.style.opacity='';
+      p.el.style.left=((r.left+r.right)/2).toFixed(1)+'px';
+      p.el.style.top=(r.top-8).toFixed(1)+'px';
+    }
+  }
+  function showTenantPops(){
+    if(currentView!=='map'||!POPUP_TENANTS.length)return;
+    var cont=document.getElementById('tenantPops');cont.innerHTML='';_popPills=[];
+    POPUP_TENANTS.forEach(function(t){
+      var d=document.createElement('div');d.className='tpop';
+      d.innerHTML='<span class="tp-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+(CAT_ICON[t.cat]||CAT_ICON.service)+'</svg></span><span class="tp-nm">'+t.name+'</span>'+(t.count>1?'<span class="tp-ct">'+t.count+'</span>':'');
+      cont.appendChild(d);_popPills.push({el:d,t:t});
+    });
+    positionPops();cont.classList.add('show');_popActive=true;
+    cancelAnimationFrame(_popRAF);(function loop(){if(!_popActive)return;positionPops();_popRAF=requestAnimationFrame(loop);})();
+    clearTimeout(_popTO);_popTO=setTimeout(function(){cont.classList.remove('show');setTimeout(function(){_popActive=false;cancelAnimationFrame(_popRAF);},360);},3000);
+  }
+  function hideTenantPops(){var c=document.getElementById('tenantPops');if(c)c.classList.remove('show');_popActive=false;cancelAnimationFrame(_popRAF);}
   function focusOn(s){atHome=false;const bb=s.el.getBBox();const m=Math.max(bb.width,bb.height)*1.9+150;let nv={x:bb.x+bb.width/2-m,y:bb.y+bb.height/2-m,w:m*2,h:m*2};if(nv.w<MINW()){var fz=MINW()/nv.w;nv.w=MINW();nv.h*=fz;}animateVB(nv);}
   function focusXY(x,y,r){atHome=false;r=r||260;let nv={x:x-r,y:y-r,w:r*2,h:r*2};if(nv.w<MINW()){nv.w=MINW();nv.h=MINW();nv.x=x-nv.w/2;nv.y=y-nv.h/2;}animateVB(nv);}
   function animateVB(target){const from=Object.assign({},vb);const t0=performance.now(),dur=540;
@@ -2368,7 +2440,7 @@ button{font-family:inherit;}
 
   /* zoom keeping a screen point fixed (cursor for wheel, finger-midpoint for
      pinch) -- the key "feels right" behaviour on touch + trackpad. */
-  function zoomAt(fz,sx,sy){atHome=false;const mn=MINW(),mx=MAXW();let nw=vb.w*fz;if(nw<mn)nw=mn;if(nw>mx)nw=mx;const k=nw/vb.w;
+  function zoomAt(fz,sx,sy){atHome=false;scheduleTenantPops();const mn=MINW(),mx=MAXW();let nw=vb.w*fz;if(nw<mn)nw=mn;if(nw>mx)nw=mx;const k=nw/vb.w;
     const r=mapWrap.getBoundingClientRect();const fx=(sx-r.left-mapShiftPx)/r.width,fy=(sy-r.top)/r.height;
     const ax=vb.x+fx*vb.w,ay=vb.y+fy*vb.h;vb.w=nw;vb.h=vb.h*k;vb.x=ax-fx*vb.w;vb.y=ay-fy*vb.h;applyVB();}
   let inertia=0;
@@ -2736,6 +2808,7 @@ button{font-family:inherit;}
       loadFloor('BL');
     }
     currentView=v;
+    if(v!=='map')hideTenantPops();
     document.querySelectorAll('.vt-btn').forEach(function(b){b.classList.toggle('active',b.dataset.view===v);});
     var isList=(v==='list'),isPark=(v==='parking'),isMap=(v==='map');
     listView.classList.toggle('show',isList);
