@@ -113,9 +113,18 @@ button{font-family:inherit;}
 .side-note{margin-top:auto;font-size:11.5px;line-height:1.7;color:var(--ink-soft);padding:15px 16px;background:var(--soft);}
 
 .canvas-wrap{flex:1;position:relative;min-width:0;overflow:hidden;background:radial-gradient(130% 120% at 50% 8%,var(--canvas-1) 0%,var(--canvas-2) 55%,var(--canvas-3) 100%);}
-.canvas-wrap::before{content:"";position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px);background-size:48px 48px;mask-image:radial-gradient(circle at 50% 46%,#000 35%,transparent 82%);-webkit-mask-image:radial-gradient(circle at 50% 46%,#000 35%,transparent 82%);}
+/* warm sunlight: bloom in the top-right corner + soft diagonal light wash */
+.canvas-wrap::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:6;
+  background:
+    radial-gradient(circle at 88% 4%, rgba(255,218,150,.50), rgba(255,206,130,.20) 22%, transparent 52%),
+    radial-gradient(circle at 96% 0%, rgba(255,244,220,.60), transparent 24%),
+    linear-gradient(225deg, rgba(255,212,148,.13), transparent 46%);}
 .canvas-wrap::after{content:"";position:absolute;inset:0;pointer-events:none;}
 .map-wrapper{position:absolute;inset:0;overflow:hidden;z-index:1;}
+/* warm the street map to the ivory tone of the design; cast one long soft
+   building shadow toward the bottom-left (sun at top-right) */
+#stage3d>svg.basemap{filter:sepia(.24) saturate(.72) brightness(1.05) contrast(.97);}
+#stage3d>svg.ext[data-k="5"]{filter:drop-shadow(-30px 34px 30px rgba(98,74,40,.42));}
 .osm-credit{position:absolute;right:12px;bottom:5px;z-index:9;font-size:10px;color:rgba(255,255,255,.6);text-decoration:none;background:rgba(8,18,34,.45);padding:2px 7px;border-radius:6px;backdrop-filter:blur(4px);}
 .osm-credit:hover{color:#fff;}
 #stage{position:absolute;inset:0;perspective:2600px;perspective-origin:50% 54%;}
@@ -1815,40 +1824,40 @@ button{font-family:inherit;}
 (function(){
   "use strict";
   const CATS={
-    hypermarket:{label:"Hypermarket",color:"#aac3df",tag:"Anchor Hypermarket",desc:"An expansive hypermarket anchor for everyday essentials, fresh produce and household needs.",img:"images/hyper%20market.webp"},
-    "hyper-store":{label:"Hypermarket Store",color:"#c6cdd6",tag:"Hypermarket Storage",desc:"Back-of-house storage and stockrooms serving the hypermarket anchor.",img:""},
-    anchor:{label:"Anchor Store",color:"#7298c6",tag:"Anchor Store",desc:"A flagship anchor store drawing footfall across the mall.",img:"images/shopping.webp"},
-    "mini-major":{label:"Mini-Major",color:"#9ab7da",tag:"Mini-Major Store",desc:"Larger-format mini-major stores offering depth of range across fashion and lifestyle.",img:"images/shopping.webp"},
-    "line-shop":{label:"Retail Shop",color:"#d4e2f1",tag:"Line Shop",desc:"In-line retail boutiques presenting fashion, lifestyle and specialty brands.",img:"images/shopping.webp"},
-    fnb:{label:"Restaurant",color:"#d9c3a7",tag:"Dining & Restaurants",desc:"Signature restaurants serving international and regional cuisine in a refined setting.",img:"images/f%26b.webp"},
-    "fnb-cafe":{label:"Café",color:"#e4d6c2",tag:"Café & Bakery",desc:"Relaxed cafés, bakeries and coffee houses for a casual break.",img:"images/f%26b.webp"},
-    "fnb-kiosk":{label:"F&B Kiosk",color:"#e0cbac",tag:"F&B Kiosk",desc:"Grab-and-go food kiosks and counters serving quick bites.",img:"images/food%20village.webp"},
-    "fnb-seating":{label:"F&B Seating",color:"#cdd9dd",tag:"F&B Seating",desc:"Comfortable shared dining seating beside the F&B outlets.",img:"images/food%20court.webp"},
-    kiosk:{label:"Kiosk",color:"#b7cae0",tag:"Retail Kiosk",desc:"Compact retail kiosks and pop-ups lining the concourse.",img:"images/food%20village.webp"},
-    "kiosk-seating":{label:"Kiosk Seating",color:"#bccedf",tag:"Kiosk Seating Area",desc:"Shared seating alongside the food and retail kiosks.",img:""},
-    "food-village":{label:"Food Village",color:"#ddccb2",tag:"Food Village",desc:"A lively food village bringing together a world of flavours under one roof.",img:"images/food%20village.webp"},
-    "food-court":{label:"Food Court",color:"#d8c4a8",tag:"Food Court Hall",desc:"The central food court hall, a vibrant dining destination for the whole family.",img:"images/food%20court.webp"},
-    "fc-seating":{label:"Food Court Seating",color:"#cdd9dd",tag:"Food Court Seating",desc:"Light-filled food court seating at the heart of the dining experience.",img:"images/food%20court.webp"},
-    fec:{label:"Family Entertainment",color:"#aebfd6",tag:"Family Entertainment",desc:"A family entertainment centre packed with games, rides and attractions for all ages.",img:"images/entertarnemnt.webp"},
-    cinema:{label:"Cinema",color:"#b8c6db",tag:"Cineplex",desc:"A multi-screen cineplex showing the latest blockbusters in premium comfort.",img:"images/cinema.webp"},
-    "customer-service":{label:"Customer Service",color:"#d7dee5",tag:"Guest Services",desc:"Guest services and amenities dedicated to a seamless, comfortable visit.",img:"images/medical.webp"},
-    "management-suite":{label:"Management",color:"#c8d2db",tag:"Mall Management",desc:"Mall management offices and administration suites.",img:""},
-    "tenant-store":{label:"Storage",color:"#cfccc4",tag:"Tenant Storage",desc:"Dedicated tenant storage and stockrooms supporting the retail offer.",img:""},
-    "prayer-room":{label:"Prayer Room",color:"#dadfe3",tag:"Prayer Facilities",desc:"Quiet prayer rooms with ablution facilities for visitors and staff.",img:""},
-    circulation:{label:"Circulation",color:"#eef3f8",tag:"Concourse & Circulation",desc:"Concourses, corridors and vertical circulation connecting the mall.",img:""},
-    mep:{label:"Building Services",color:"#d3d7db",tag:"MEP / Services",desc:"Mechanical, electrical and plumbing plant serving the building.",img:""},
-    boh:{label:"Back of House",color:"#d8dadd",tag:"Back of House",desc:"Back-of-house service and support spaces.",img:""},
-    toilet:{label:"Restroom",color:"#c3cedd",tag:"Restrooms",desc:"Premium guest restroom facilities, conveniently located across the floor.",img:""},
+    hypermarket:{label:"Hypermarket",color:"#ede5d2",tag:"Anchor Hypermarket",desc:"An expansive hypermarket anchor for everyday essentials, fresh produce and household needs.",img:"images/hyper%20market.webp"},
+    "hyper-store":{label:"Hypermarket Store",color:"#d8d2c2",tag:"Hypermarket Storage",desc:"Back-of-house storage and stockrooms serving the hypermarket anchor.",img:""},
+    anchor:{label:"Anchor Store",color:"#34517e",tag:"Anchor Store",desc:"A flagship anchor store drawing footfall across the mall.",img:"images/shopping.webp"},
+    "mini-major":{label:"Mini-Major",color:"#7390ba",tag:"Mini-Major Store",desc:"Larger-format mini-major stores offering depth of range across fashion and lifestyle.",img:"images/shopping.webp"},
+    "line-shop":{label:"Retail Shop",color:"#ccd9ea",tag:"Line Shop",desc:"In-line retail boutiques presenting fashion, lifestyle and specialty brands.",img:"images/shopping.webp"},
+    fnb:{label:"Restaurant",color:"#c79a4e",tag:"Dining & Restaurants",desc:"Signature restaurants serving international and regional cuisine in a refined setting.",img:"images/f%26b.webp"},
+    "fnb-cafe":{label:"Café",color:"#d8b170",tag:"Café & Bakery",desc:"Relaxed cafés, bakeries and coffee houses for a casual break.",img:"images/f%26b.webp"},
+    "fnb-kiosk":{label:"F&B Kiosk",color:"#cda45c",tag:"F&B Kiosk",desc:"Grab-and-go food kiosks and counters serving quick bites.",img:"images/food%20village.webp"},
+    "fnb-seating":{label:"F&B Seating",color:"#e7d4a8",tag:"F&B Seating",desc:"Comfortable shared dining seating beside the F&B outlets.",img:"images/food%20court.webp"},
+    kiosk:{label:"Kiosk",color:"#b9914a",tag:"Retail Kiosk",desc:"Compact retail kiosks and pop-ups lining the concourse.",img:"images/food%20village.webp"},
+    "kiosk-seating":{label:"Kiosk Seating",color:"#ccd9ea",tag:"Kiosk Seating Area",desc:"Shared seating alongside the food and retail kiosks.",img:""},
+    "food-village":{label:"Food Village",color:"#d8b170",tag:"Food Village",desc:"A lively food village bringing together a world of flavours under one roof.",img:"images/food%20village.webp"},
+    "food-court":{label:"Food Court",color:"#c79a4e",tag:"Food Court Hall",desc:"The central food court hall, a vibrant dining destination for the whole family.",img:"images/food%20court.webp"},
+    "fc-seating":{label:"Food Court Seating",color:"#e7d4a8",tag:"Food Court Seating",desc:"Light-filled food court seating at the heart of the dining experience.",img:"images/food%20court.webp"},
+    fec:{label:"Family Entertainment",color:"#7390ba",tag:"Family Entertainment",desc:"A family entertainment centre packed with games, rides and attractions for all ages.",img:"images/entertarnemnt.webp"},
+    cinema:{label:"Cinema",color:"#34517e",tag:"Cineplex",desc:"A multi-screen cineplex showing the latest blockbusters in premium comfort.",img:"images/cinema.webp"},
+    "customer-service":{label:"Customer Service",color:"#e3d9c2",tag:"Guest Services",desc:"Guest services and amenities dedicated to a seamless, comfortable visit.",img:"images/medical.webp"},
+    "management-suite":{label:"Management",color:"#c6d1de",tag:"Mall Management",desc:"Mall management offices and administration suites.",img:""},
+    "tenant-store":{label:"Storage",color:"#d6cfbf",tag:"Tenant Storage",desc:"Dedicated tenant storage and stockrooms supporting the retail offer.",img:""},
+    "prayer-room":{label:"Prayer Room",color:"#e6e1d2",tag:"Prayer Facilities",desc:"Quiet prayer rooms with ablution facilities for visitors and staff.",img:""},
+    circulation:{label:"Circulation",color:"#f0f2f4",tag:"Concourse & Circulation",desc:"Concourses, corridors and vertical circulation connecting the mall.",img:""},
+    mep:{label:"Building Services",color:"#d9d6cd",tag:"MEP / Services",desc:"Mechanical, electrical and plumbing plant serving the building.",img:""},
+    boh:{label:"Back of House",color:"#dddacf",tag:"Back of House",desc:"Back-of-house service and support spaces.",img:""},
+    toilet:{label:"Restroom",color:"#bfcbdb",tag:"Restrooms",desc:"Premium guest restroom facilities, conveniently located across the floor.",img:""},
     /* legacy aliases (kept so any stray old value still renders) */
-    hyper:{label:"Hypermarket",color:"#aac3df",tag:"Anchor Hypermarket",desc:"An expansive hypermarket anchor for everyday essentials.",img:"images/hyper%20market.webp"},
-    retail:{label:"Retail Shop",color:"#d4e2f1",tag:"Line Shop",desc:"In-line retail boutiques.",img:"images/shopping.webp"},
-    specialty:{label:"Retail Shop",color:"#d4e2f1",tag:"Line Shop",desc:"In-line retail boutiques.",img:"images/shopping.webp"},
-    "specialty-retail":{label:"Retail Shop",color:"#d4e2f1",tag:"Line Shop",desc:"In-line retail boutiques.",img:"images/shopping.webp"},
-    seating:{label:"Food Court Seating",color:"#cdd9dd",tag:"Food Court Seating",desc:"Food court seating.",img:"images/food%20court.webp"},
-    service:{label:"Customer Service",color:"#d7dee5",tag:"Guest Services",desc:"Guest services.",img:"images/medical.webp"},
-    "fnb-kiosk-seating-area":{label:"Kiosk Seating",color:"#bccedf",tag:"Kiosk Seating Area",desc:"Shared kiosk seating.",img:""},
-    "fc-kitchen":{label:"Food Court",color:"#d8c4a8",tag:"Food Court Hall",desc:"The central food court hall.",img:"images/food%20court.webp"},
-    "fv-kitchen":{label:"Food Village",color:"#ddccb2",tag:"Food Village",desc:"The food village.",img:"images/food%20village.webp"}
+    hyper:{label:"Hypermarket",color:"#ede5d2",tag:"Anchor Hypermarket",desc:"An expansive hypermarket anchor for everyday essentials.",img:"images/hyper%20market.webp"},
+    retail:{label:"Retail Shop",color:"#ccd9ea",tag:"Line Shop",desc:"In-line retail boutiques.",img:"images/shopping.webp"},
+    specialty:{label:"Retail Shop",color:"#ccd9ea",tag:"Line Shop",desc:"In-line retail boutiques.",img:"images/shopping.webp"},
+    "specialty-retail":{label:"Retail Shop",color:"#ccd9ea",tag:"Line Shop",desc:"In-line retail boutiques.",img:"images/shopping.webp"},
+    seating:{label:"Food Court Seating",color:"#e7d4a8",tag:"Food Court Seating",desc:"Food court seating.",img:"images/food%20court.webp"},
+    service:{label:"Customer Service",color:"#e3d9c2",tag:"Guest Services",desc:"Guest services.",img:"images/medical.webp"},
+    "fnb-kiosk-seating-area":{label:"Kiosk Seating",color:"#ccd9ea",tag:"Kiosk Seating Area",desc:"Shared kiosk seating.",img:""},
+    "fc-kitchen":{label:"Food Court",color:"#c79a4e",tag:"Food Court Hall",desc:"The central food court hall.",img:"images/food%20court.webp"},
+    "fv-kitchen":{label:"Food Village",color:"#d8b170",tag:"Food Village",desc:"The food village.",img:"images/food%20village.webp"}
   };
   const CAT_ORDER=["hypermarket","anchor","mini-major","line-shop","fnb","fnb-cafe","fnb-kiosk","fnb-seating","kiosk","kiosk-seating","food-village","food-court","fc-seating","fec","cinema","customer-service","management-suite","tenant-store","hyper-store","prayer-room","circulation","mep","boh","toilet","hyper","retail","specialty","specialty-retail","seating","service","fnb-kiosk-seating-area","fc-kitchen","fv-kitchen"];
   const LEASING=["hypermarket","anchor","mini-major","line-shop","fnb","fnb-cafe","fnb-kiosk","fnb-seating","kiosk","kiosk-seating","food-village","food-court","fc-seating","fec","cinema"];
@@ -1951,7 +1960,7 @@ button{font-family:inherit;}
     G.setAttribute('class','ext ground basemap'); G.setAttribute('preserveAspectRatio','xMidYMid slice');
     G.dataset.k=gk; G.dataset.bleed='0.18'; G.style.transform='translateZ(-'+(gk*step)+'px)';
     var bg=document.createElementNS(NS3,'rect');
-    bg.setAttribute('x','-200000');bg.setAttribute('y','-200000');bg.setAttribute('width','400000');bg.setAttribute('height','400000');bg.setAttribute('fill','#f6f5f1');
+    bg.setAttribute('x','-200000');bg.setAttribute('y','-200000');bg.setAttribute('width','400000');bg.setAttribute('height','400000');bg.setAttribute('fill','#f3ecdd');
     G.appendChild(bg);
     bmGroup=document.createElementNS(NS3,'g');
     bmGroup.setAttribute('transform','rotate('+GEO.rotDeg+' '+c[0].toFixed(1)+' '+c[1].toFixed(1)+')');
