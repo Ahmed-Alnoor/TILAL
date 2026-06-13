@@ -448,20 +448,20 @@ var FLOORS = {"BL":{"name":"Basement","units":[{"id":"BL0001","cat":"boh","name"
    golden (amber) and blue families are saturated so they read distinctly.
    t=tag, d=description for the info card. */
 var CAT = {
-  hypermarket:{l:"Hypermarket",c:0xcfba86,h:9,g:"lease",t:"Anchor Hypermarket",d:"An expansive hypermarket anchor for everyday essentials, fresh produce and household needs."},
+  hypermarket:{l:"Hypermarket",c:0xdcd4c1,h:9,g:"lease",t:"Anchor Hypermarket",d:"An expansive hypermarket anchor for everyday essentials, fresh produce and household needs."},
   "hyper-store":{l:"Hypermarket Storage",c:0xd4ccb6,h:3.5,g:"fac",t:"Hypermarket Storage",d:"Back-of-house storage serving the hypermarket anchor."},
   anchor:{l:"Anchor Store",c:0x142a54,h:9,g:"lease",t:"Anchor Store",d:"A flagship anchor store drawing footfall across the mall."},
   "mini-major":{l:"Mini-Major",c:0x32538c,h:7,g:"lease",t:"Mini-Major Store",d:"Larger-format mini-major stores across fashion and lifestyle."},
-  "line-shop":{l:"Retail Shop",c:0x9cb1d2,h:5,g:"lease",t:"Line Shop",d:"In-line retail boutiques presenting fashion, lifestyle and specialty brands."},
+  "line-shop":{l:"Retail Shop",c:0xb0c0d6,h:5,g:"lease",t:"Line Shop",d:"In-line retail boutiques presenting fashion, lifestyle and specialty brands."},
   fnb:{l:"Restaurant",c:0xa8661a,h:5.5,g:"lease",t:"Dining & Restaurants",d:"Signature restaurants serving international and regional cuisine."},
   "fnb-cafe":{l:"Café",c:0xc6882a,h:5,g:"lease",t:"Café & Bakery",d:"Relaxed cafés, bakeries and coffee houses for a casual break."},
   "fnb-kiosk":{l:"F&B Kiosk",c:0xa46116,h:4.5,g:"lease",t:"F&B Kiosk",d:"Grab-and-go food kiosks and counters serving quick bites."},
-  "fnb-seating":{l:"F&B Seating",c:0xc8a35a,h:3.5,g:"lease",t:"F&B Seating",d:"Comfortable shared dining seating beside the F&B outlets."},
+  "fnb-seating":{l:"F&B Seating",c:0xd4bd84,h:3.5,g:"lease",t:"F&B Seating",d:"Comfortable shared dining seating beside the F&B outlets."},
   kiosk:{l:"Kiosk",c:0x9b5e13,h:4.5,g:"lease",t:"Retail Kiosk",d:"Compact retail kiosks and pop-ups lining the concourse."},
   "kiosk-seating":{l:"Kiosk Seating",c:0xb4c5df,h:3.5,g:"lease",t:"Kiosk Seating",d:"Shared seating alongside the food and retail kiosks."},
   "food-village":{l:"Food Village",c:0xab681a,h:5.5,g:"lease",t:"Food Village",d:"A lively food village bringing together a world of flavours."},
   "food-court":{l:"Food Court",c:0xa8661a,h:5.5,g:"lease",t:"Food Court Hall",d:"The central food court hall, a vibrant dining destination."},
-  "fc-seating":{l:"Food Court Seating",c:0xc8a35a,h:3.5,g:"lease",t:"Food Court Seating",d:"Light-filled food court seating at the heart of dining."},
+  "fc-seating":{l:"Food Court Seating",c:0xd4bd84,h:3.5,g:"lease",t:"Food Court Seating",d:"Light-filled food court seating at the heart of dining."},
   fec:{l:"Family Entertainment",c:0x365789,h:7,g:"lease",t:"Family Entertainment",d:"Games, rides and attractions for the whole family."},
   cinema:{l:"Cinema",c:0x112440,h:9,g:"lease",t:"Cineplex",d:"A multi-screen cineplex showing the latest blockbusters."},
   "customer-service":{l:"Customer Service",c:0xdccfb2,h:5,g:"fac",t:"Guest Services",d:"Guest services and amenities for a seamless visit."},
@@ -473,11 +473,11 @@ var CAT = {
   boh:{l:"Back of House",c:0xd5d1c2,h:3,g:"fac",t:"Back of House",d:"Back-of-house service and support spaces."},
   toilet:{l:"Restroom",c:0x9aabc8,h:4.5,g:"fac",t:"Restrooms",d:"Premium guest restroom facilities, conveniently located."},
   /* legacy aliases so any stray value still renders */
-  hyper:{l:"Hypermarket",c:0xcfba86,h:9,g:"lease",t:"Anchor Hypermarket",d:"An expansive hypermarket anchor."},
-  retail:{l:"Retail Shop",c:0x9cb1d2,h:5,g:"lease",t:"Line Shop",d:"In-line retail boutiques."},
-  specialty:{l:"Retail Shop",c:0x9cb1d2,h:5,g:"lease",t:"Line Shop",d:"In-line retail boutiques."},
-  "specialty-retail":{l:"Retail Shop",c:0x9cb1d2,h:5,g:"lease",t:"Line Shop",d:"In-line retail boutiques."},
-  seating:{l:"Food Court Seating",c:0xc8a35a,h:3.5,g:"lease",t:"Food Court Seating",d:"Food court seating."},
+  hyper:{l:"Hypermarket",c:0xdcd4c1,h:9,g:"lease",t:"Anchor Hypermarket",d:"An expansive hypermarket anchor."},
+  retail:{l:"Retail Shop",c:0xb0c0d6,h:5,g:"lease",t:"Line Shop",d:"In-line retail boutiques."},
+  specialty:{l:"Retail Shop",c:0xb0c0d6,h:5,g:"lease",t:"Line Shop",d:"In-line retail boutiques."},
+  "specialty-retail":{l:"Retail Shop",c:0xb0c0d6,h:5,g:"lease",t:"Line Shop",d:"In-line retail boutiques."},
+  seating:{l:"Food Court Seating",c:0xd4bd84,h:3.5,g:"lease",t:"Food Court Seating",d:"Food court seating."},
   service:{l:"Customer Service",c:0xdccfb2,h:5,g:"fac",t:"Guest Services",d:"Guest services."},
   "fnb-kiosk-seating-area":{l:"Kiosk Seating",c:0xb4c5df,h:3.5,g:"lease",t:"Kiosk Seating Area",d:"Shared kiosk seating."},
   "fc-kitchen":{l:"Food Court",c:0xa8661a,h:5.5,g:"lease",t:"Food Court Hall",d:"The central food court hall."},
@@ -485,16 +485,9 @@ var CAT = {
 };
 var DEF = {l:"Unit",c:0xcfd6df,h:5,g:"fac",t:"Unit",d:""};
 function cat(k){ return CAT[k] || DEF; }
-/* warm "storefront light" glow per category: brightest for F&B/food stalls,
-   soft for retail/anchors, almost none for back-of-house. */
-var GOLD_CATS = {fnb:1,"fnb-cafe":1,"fnb-kiosk":1,kiosk:1,"food-village":1,"food-court":1,"fc-seating":1,"fnb-seating":1,"kiosk-seating":1,"fc-kitchen":1,"fv-kitchen":1,seating:1};
-var BLUE_CATS = {anchor:1,cinema:1,"mini-major":1,"line-shop":1,fec:1,retail:1,specialty:1,"specialty-retail":1};
-function emissiveFor(k){
-  if(GOLD_CATS[k]) return {c:0xff8a22, i:0.72};   // bright amber — glowing food/F&B storefronts
-  if(BLUE_CATS[k]) return {c:0xffc488, i:0.20};   // warm lit interior, subtle on the blues
-  if(cat(k).g === "lease") return {c:0xffc488, i:0.24};
-  return {c:0x000000, i:0.0};                      // facilities — none
-}
+/* the actual food/retail OUTLETS get a glowing storefront facade — not the
+   open seating areas (those stay matte). */
+var GLOW_CATS = {fnb:1,"fnb-cafe":1,"fnb-kiosk":1,kiosk:1,"food-village":1,"food-court":1,"fc-kitchen":1,"fv-kitchen":1};
 
 /* mall contact + per-unit photo pools (served from /images, work over file:// too) */
 var CONTACT = {phone:"+971 123 456 789", email:"hello@tilalgrandmall.ae", hours:"10:00 — 22:00"};
@@ -893,26 +886,43 @@ function hideLocPrompt(){ document.getElementById("locPrompt").classList.remove(
 /* My-Location button: snap to the dot if we have it, else start tracking */
 function myLocation(){ if(userWorld && youMarker && youMarker.visible){ flyToMarker(); } else { locateMe(); } }
 
-/* warm light "spilling" from the F&B storefronts onto the concourse floor:
-   each unit's footprint, inflated a little and laid flat just above the floor
-   with additive blending, so the floor glows warm around the food units. */
-function buildFloorGlow(data, group){
-  var geos=[];
+/* glowing storefronts for F&B/food units: a warm light shell over the unit's
+   FACADES (vertical walls, not the roof or the base), plus a soft warm
+   reflection on the floor in front of it. */
+function buildStorefronts(data, group){
+  var wallGeos=[], reflGeos=[];
   data.units.forEach(function(u){
-    if(!GOLD_CATS[u.cat]) return;
-    try{
-      var o=u.s[0].o, n=o.length/2, cx=0, cy=0, i;
+    if(!GLOW_CATS[u.cat]) return;
+    var h = cat(u.cat).h;
+    u.s.forEach(function(sh){
+      var o=sh.o, n=o.length/2, cx=0, cy=0, i;
       for(i=0;i<o.length;i+=2){ cx+=o[i]; cy+=o[i+1]; } cx/=n; cy/=n;
-      var sh=new THREE.Shape();
-      for(i=0;i<o.length;i+=2){ var x=cx+(o[i]-cx)*1.34, y=cy+(o[i+1]-cy)*1.34; if(i===0)sh.moveTo(x,y); else sh.lineTo(x,y); }
-      var g=new THREE.ShapeGeometry(sh); g.translate(0,0,0.12); geos.push(g);
-    }catch(e){}
+      try{
+        /* facade: a thin wall shell just outside the block walls, full height */
+        var ring=[]; for(i=0;i<o.length;i+=2) ring.push([cx+(o[i]-cx)*1.012, cy+(o[i+1]-cy)*1.012]);
+        var pos=[];
+        for(i=0;i<ring.length;i++){
+          var a=ring[i], b=ring[(i+1)%ring.length];
+          pos.push(a[0],a[1],0,  b[0],b[1],0,  b[0],b[1],h,   a[0],a[1],0,  b[0],b[1],h,  a[0],a[1],h);
+        }
+        var wg=new THREE.BufferGeometry(); wg.setAttribute("position", new THREE.Float32BufferAttribute(pos,3)); wallGeos.push(wg);
+        /* floor reflection: faint, slightly inflated footprint just above the floor */
+        var rs=new THREE.Shape();
+        for(i=0;i<o.length;i+=2){ var x=cx+(o[i]-cx)*1.18, y=cy+(o[i+1]-cy)*1.18; if(i===0)rs.moveTo(x,y); else rs.lineTo(x,y); }
+        var rg=new THREE.ShapeGeometry(rs); rg.translate(0,0,0.05); reflGeos.push(rg);
+      }catch(e){}
+    });
   });
-  if(!geos.length) return;
-  var merged=THREE.BufferGeometryUtils.mergeBufferGeometries(geos,false); if(!merged) return;
-  var glow=new THREE.Mesh(merged, new THREE.MeshBasicMaterial({
-    color:0x4a2c08, blending:THREE.AdditiveBlending, transparent:true, depthWrite:false }));
-  glow.renderOrder=1; group.add(glow);
+  if(wallGeos.length){
+    var wm=new THREE.Mesh(THREE.BufferGeometryUtils.mergeBufferGeometries(wallGeos,false),
+      new THREE.MeshBasicMaterial({color:0xffc070, side:THREE.DoubleSide, transparent:true, opacity:0.92, fog:true}));
+    wm.renderOrder=2; group.add(wm);
+  }
+  if(reflGeos.length){
+    var rm=new THREE.Mesh(THREE.BufferGeometryUtils.mergeBufferGeometries(reflGeos,false),
+      new THREE.MeshBasicMaterial({color:0x3a2206, blending:THREE.AdditiveBlending, transparent:true, opacity:0.6, depthWrite:false}));
+    rm.renderOrder=1; group.add(rm);
+  }
 }
 
 /* -------- build a whole floor: one merged mesh per category -------- */
@@ -941,10 +951,9 @@ function buildFloor(fkey){
                : THREE.BufferGeometryUtils.mergeBufferGeometries(bucket.geos, false);
     if(!merged) return;
     var c = cat(k);
-    var em = emissiveFor(k);
     var mat = new THREE.MeshStandardMaterial({
-      color:c.c, roughness:0.6, metalness:0.05, flatShading:false, side:THREE.DoubleSide,
-      emissive:em.c, emissiveIntensity:em.i        // warm light spilling from the storefronts
+      color:c.c, roughness:0.58, metalness:0.04, flatShading:false, side:THREE.DoubleSide
+      // no block emissive — true colours; storefront light is a separate facade glow
     });
     var mesh = new THREE.Mesh(merged, mat);
     mesh.castShadow = true; mesh.receiveShadow = true;
@@ -955,7 +964,7 @@ function buildFloor(fkey){
   });
 
   buildEscalators(fkey, group);
-  buildFloorGlow(data, group);
+  buildStorefronts(data, group);
 
   /* orient: the plan is drawn in the XY plane (y-down). Rotating -90° about X
      lays it flat on the ground (XZ) and sends the extrude axis (+Z) straight
