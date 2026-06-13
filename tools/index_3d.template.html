@@ -102,29 +102,46 @@
   .card{
     position:fixed; z-index:7; left:12px; right:12px;
     bottom:calc(env(safe-area-inset-bottom,0px) + 12px);
-    border-radius:20px; padding:15px 16px;
+    border-radius:22px; overflow:hidden;
     background:var(--glass-strong); border:1px solid var(--stroke);
-    backdrop-filter:blur(20px) saturate(140%); -webkit-backdrop-filter:blur(20px) saturate(140%);
+    backdrop-filter:blur(22px) saturate(150%); -webkit-backdrop-filter:blur(22px) saturate(150%);
     box-shadow:var(--shadow);
-    transform:translateY(140%); opacity:0; transition:transform .34s cubic-bezier(.2,.8,.2,1), opacity .34s;
+    transform:translateY(150%); opacity:0; transition:transform .36s cubic-bezier(.2,.8,.2,1), opacity .36s;
   }
   .card.show{transform:translateY(0); opacity:1;}
-  .card .top{display:flex; align-items:flex-start; gap:12px;}
-  .card .dot{width:30px;height:30px;border-radius:9px;flex:0 0 auto;margin-top:1px;
-    box-shadow:inset 0 0 0 1px rgba(255,255,255,.5), 0 3px 8px rgba(60,44,24,.18);}
-  .card h2{margin:0; font-size:17px; font-weight:700; letter-spacing:.01em;}
-  .card .cat{margin:2px 0 0; font-size:12.5px; color:var(--ink-soft); letter-spacing:.02em;}
-  .card .close{
-    margin-left:auto; cursor:pointer; border:0; background:rgba(255,255,255,.4); color:var(--ink);
-    width:30px;height:30px;border-radius:50%; font-size:17px; line-height:1; flex:0 0 auto;
-  }
-  .card .meta{display:flex; gap:8px; margin-top:13px; flex-wrap:wrap;}
-  .card .pill{
-    font-size:12px; color:var(--ink); background:rgba(255,255,255,.42);
-    border:1px solid rgba(255,255,255,.5); border-radius:999px; padding:6px 11px;
-    font-variant-numeric:tabular-nums;
-  }
-  .card .pill b{font-weight:700;}
+  .card .hero{position:relative; height:150px; background:linear-gradient(135deg,#cbb98f,#9a7b48);}
+  .card .hero img{width:100%; height:100%; object-fit:cover; display:block;}
+  .card .hero-grad{position:absolute; inset:0; background:linear-gradient(180deg,rgba(20,24,33,.30) 0,rgba(20,24,33,0) 30%,rgba(20,24,33,.05) 52%,rgba(20,24,33,.74) 100%);}
+  .card .chip{display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; padding:6px 10px; border-radius:9px; background:rgba(255,255,255,.88); color:#33384a; box-shadow:0 2px 8px rgba(40,30,16,.18);}
+  .card .cat-chip{position:absolute; top:12px; left:12px;}
+  .card .cat-chip .cdot{width:11px;height:11px;border-radius:3px;}
+  .card .code-chip{background:rgba(30,52,90,.88); color:#fff; letter-spacing:.06em;}
+  .card .hero-tr{position:absolute; top:12px; right:12px; display:flex; align-items:center; gap:8px;}
+  .card .close{cursor:pointer; border:0; background:rgba(255,255,255,.92); color:#33384a; width:30px;height:30px;border-radius:50%; font-size:18px; line-height:1; flex:0 0 auto; box-shadow:0 2px 8px rgba(40,30,16,.18);}
+  .card .hero-title{position:absolute; left:16px; right:16px; bottom:12px; color:#fff;}
+  .card .hero-title h2{margin:0; font-size:20px; font-weight:700; letter-spacing:.01em; text-shadow:0 1px 10px rgba(0,0,0,.45);}
+  .card .hero-title .cat{margin:2px 0 0; font-size:12.5px; opacity:.92; letter-spacing:.02em; text-shadow:0 1px 8px rgba(0,0,0,.4);}
+  .card-body{padding:14px 16px 16px;}
+  .card .desc{margin:0 0 12px; font-size:13px; line-height:1.5; color:var(--ink-soft);
+    display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;}
+  .card .meta{display:flex; gap:8px; flex-wrap:wrap;}
+  .card .pill{font-size:12px; color:var(--ink); background:rgba(255,255,255,.46);
+    border:1px solid rgba(255,255,255,.55); border-radius:999px; padding:6px 11px; font-variant-numeric:tabular-nums;}
+  .card .pill b{font-weight:700; color:var(--ink-soft);}
+  .card .actions{display:flex; gap:9px; margin-top:14px;}
+  .card .act{flex:1; cursor:pointer; border:1px solid rgba(255,255,255,.55); border-radius:13px;
+    padding:11px 12px; font:inherit; font-size:13px; font-weight:600; color:var(--ink); background:rgba(255,255,255,.42);
+    display:flex; align-items:center; justify-content:center; gap:7px; transition:.16s;}
+  .card .act:hover{background:rgba(255,255,255,.62);}
+  .card .act svg{width:16px;height:16px;}
+  .card .act.primary{color:#fff; border-color:transparent; background:linear-gradient(135deg,#3f74c0,#2f5391);}
+  .card .act.primary:hover{filter:brightness(1.06);}
+
+  /* ---------- toast ---------- */
+  #toast{position:fixed; left:50%; bottom:calc(env(safe-area-inset-bottom,0px) + 96px); transform:translate(-50%,12px);
+    z-index:12; pointer-events:none; opacity:0; transition:.25s; font-size:13px; color:#fff;
+    background:rgba(34,40,54,.92); border-radius:999px; padding:10px 18px; box-shadow:var(--shadow); white-space:nowrap;}
+  #toast.show{opacity:1; transform:translate(-50%,0);}
 
   /* ---------- loader ---------- */
   #loader{
@@ -142,7 +159,8 @@
   /* ---------- desktop refinements ---------- */
   @media (min-width:760px){
     .brand b{font-size:17px;}
-    .card{left:auto; right:18px; bottom:18px; width:340px;}
+    .card{left:auto; right:18px; bottom:18px; width:360px;}
+    .card .hero{height:168px;}
     .legend{width:248px;}
     .hint{font-size:12.5px;}
   }
@@ -170,16 +188,26 @@
   <div class="hint" id="hint">Drag to orbit · pinch to zoom · tap a unit</div>
 
   <div class="card" id="card">
-    <div class="top">
-      <span class="dot" id="cDot"></span>
-      <div style="min-width:0">
-        <h2 id="cName">—</h2>
-        <p class="cat" id="cCat">—</p>
+    <div class="hero" id="cHero">
+      <img id="cImg" alt="" draggable="false"/>
+      <div class="hero-grad"></div>
+      <span class="chip cat-chip"><span class="cdot" id="cDot"></span><span id="cTag">—</span></span>
+      <div class="hero-tr">
+        <span class="chip code-chip" id="cCode"></span>
+        <button class="close" id="cClose" aria-label="Close">×</button>
       </div>
-      <button class="close" id="cClose" aria-label="Close">×</button>
+      <div class="hero-title"><h2 id="cName">—</h2><p class="cat" id="cCat">—</p></div>
     </div>
-    <div class="meta" id="cMeta"></div>
+    <div class="card-body">
+      <p class="desc" id="cDesc"></p>
+      <div class="meta" id="cMeta"></div>
+      <div class="actions">
+        <button class="act primary" id="cLocate" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.3-7-11a7 7 0 0 1 14 0c0 4.7-7 11-7 11z"/><circle cx="12" cy="10" r="2.6"/></svg>Locate</button>
+        <button class="act" id="cShare" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="M8.3 10.8l7.4-4.3M8.3 13.2l7.4 4.3"/></svg>Share</button>
+      </div>
+    </div>
   </div>
+  <div id="toast"></div>
 
   <div id="loader">
     <div class="ring" id="spinner"></div>
@@ -197,44 +225,77 @@
 var FLOORS = __FLOORDATA__;
 
 /* per-category look: label, soft palette colour, extrude height, group */
+/* per-category look + copy. c=colour, h=extrude height in world units — kept
+   in a tight 1.6–9 band so a tall anchor never hides a small restroom. The
+   golden (amber) and blue families are saturated so they read distinctly.
+   t=tag, d=description for the info card. */
 var CAT = {
-  hypermarket:{l:"Hypermarket",c:0xe7dcc4,h:16,g:"lease"},
-  "hyper-store":{l:"Hypermarket Storage",c:0xd8d2c2,h:6,g:"fac"},
-  anchor:{l:"Anchor Store",c:0x3f5f90,h:16,g:"lease"},
-  "mini-major":{l:"Mini-Major",c:0x7693bd,h:14,g:"lease"},
-  "line-shop":{l:"Retail Shop",c:0xc6d6ea,h:11,g:"lease"},
-  fnb:{l:"Restaurant",c:0xcf9f4e,h:11,g:"lease"},
-  "fnb-cafe":{l:"Café",c:0xddb673,h:10,g:"lease"},
-  "fnb-kiosk":{l:"F&B Kiosk",c:0xd2a557,h:9,g:"lease"},
-  "fnb-seating":{l:"F&B Seating",c:0xe9d7ac,h:6,g:"lease"},
-  kiosk:{l:"Kiosk",c:0xc0974d,h:9,g:"lease"},
-  "kiosk-seating":{l:"Kiosk Seating",c:0xd6dded,h:6,g:"lease"},
-  "food-village":{l:"Food Village",c:0xddb673,h:11,g:"lease"},
-  "food-court":{l:"Food Court",c:0xcf9f4e,h:11,g:"lease"},
-  "fc-seating":{l:"Food Court Seating",c:0xe9d7ac,h:6,g:"lease"},
-  fec:{l:"Family Entertainment",c:0x6f8dc0,h:14,g:"lease"},
-  cinema:{l:"Cinema",c:0x3f5f90,h:16,g:"lease"},
-  "customer-service":{l:"Customer Service",c:0xe3d9c2,h:9,g:"fac"},
-  "management-suite":{l:"Management",c:0xc6d1de,h:9,g:"fac"},
-  "tenant-store":{l:"Storage",c:0xd6cfbf,h:6,g:"fac"},
-  "prayer-room":{l:"Prayer Room",c:0xe6e1d2,h:8,g:"fac"},
-  circulation:{l:"Circulation",c:0xeef1f5,h:3,g:"fac"},
-  mep:{l:"Building Services",c:0xd9d6cd,h:5,g:"fac"},
-  boh:{l:"Back of House",c:0xdddacf,h:5,g:"fac"},
-  toilet:{l:"Restroom",c:0xc2cedd,h:5,g:"fac"},
+  hypermarket:{l:"Hypermarket",c:0xe3d4b0,h:9,g:"lease",t:"Anchor Hypermarket",d:"An expansive hypermarket anchor for everyday essentials, fresh produce and household needs."},
+  "hyper-store":{l:"Hypermarket Storage",c:0xd4ccb6,h:3.5,g:"fac",t:"Hypermarket Storage",d:"Back-of-house storage serving the hypermarket anchor."},
+  anchor:{l:"Anchor Store",c:0x325b97,h:9,g:"lease",t:"Anchor Store",d:"A flagship anchor store drawing footfall across the mall."},
+  "mini-major":{l:"Mini-Major",c:0x6184bb,h:7,g:"lease",t:"Mini-Major Store",d:"Larger-format mini-major stores across fashion and lifestyle."},
+  "line-shop":{l:"Retail Shop",c:0xb3c8e8,h:5,g:"lease",t:"Line Shop",d:"In-line retail boutiques presenting fashion, lifestyle and specialty brands."},
+  fnb:{l:"Restaurant",c:0xd28e26,h:5.5,g:"lease",t:"Dining & Restaurants",d:"Signature restaurants serving international and regional cuisine."},
+  "fnb-cafe":{l:"Café",c:0xe0a73f,h:5,g:"lease",t:"Café & Bakery",d:"Relaxed cafés, bakeries and coffee houses for a casual break."},
+  "fnb-kiosk":{l:"F&B Kiosk",c:0xcc8f2c,h:4.5,g:"lease",t:"F&B Kiosk",d:"Grab-and-go food kiosks and counters serving quick bites."},
+  "fnb-seating":{l:"F&B Seating",c:0xecd6a0,h:3.5,g:"lease",t:"F&B Seating",d:"Comfortable shared dining seating beside the F&B outlets."},
+  kiosk:{l:"Kiosk",c:0xbd8528,h:4.5,g:"lease",t:"Retail Kiosk",d:"Compact retail kiosks and pop-ups lining the concourse."},
+  "kiosk-seating":{l:"Kiosk Seating",c:0xc8d9f0,h:3.5,g:"lease",t:"Kiosk Seating",d:"Shared seating alongside the food and retail kiosks."},
+  "food-village":{l:"Food Village",c:0xd99e35,h:5.5,g:"lease",t:"Food Village",d:"A lively food village bringing together a world of flavours."},
+  "food-court":{l:"Food Court",c:0xd28e26,h:5.5,g:"lease",t:"Food Court Hall",d:"The central food court hall, a vibrant dining destination."},
+  "fc-seating":{l:"Food Court Seating",c:0xecd6a0,h:3.5,g:"lease",t:"Food Court Seating",d:"Light-filled food court seating at the heart of dining."},
+  fec:{l:"Family Entertainment",c:0x5479b6,h:7,g:"lease",t:"Family Entertainment",d:"Games, rides and attractions for the whole family."},
+  cinema:{l:"Cinema",c:0x2b4d8c,h:9,g:"lease",t:"Cineplex",d:"A multi-screen cineplex showing the latest blockbusters."},
+  "customer-service":{l:"Customer Service",c:0xdccfb2,h:5,g:"fac",t:"Guest Services",d:"Guest services and amenities for a seamless visit."},
+  "management-suite":{l:"Management",c:0xbfccdd,h:5,g:"fac",t:"Mall Management",d:"Mall management offices and administration suites."},
+  "tenant-store":{l:"Storage",c:0xcec5ad,h:3.5,g:"fac",t:"Tenant Storage",d:"Dedicated tenant storage and stockrooms."},
+  "prayer-room":{l:"Prayer Room",c:0xe1dac4,h:4.5,g:"fac",t:"Prayer Facilities",d:"Quiet prayer rooms with ablution facilities."},
+  circulation:{l:"Circulation",c:0xedeff3,h:1.6,g:"fac",t:"Concourse & Circulation",d:"Concourses, corridors and vertical circulation connecting the mall."},
+  mep:{l:"Building Services",c:0xd1cec2,h:3,g:"fac",t:"MEP / Services",d:"Mechanical, electrical and plumbing plant serving the building."},
+  boh:{l:"Back of House",c:0xd5d1c2,h:3,g:"fac",t:"Back of House",d:"Back-of-house service and support spaces."},
+  toilet:{l:"Restroom",c:0xafbed4,h:4.5,g:"fac",t:"Restrooms",d:"Premium guest restroom facilities, conveniently located."},
   /* legacy aliases so any stray value still renders */
-  hyper:{l:"Hypermarket",c:0xe7dcc4,h:16,g:"lease"},
-  retail:{l:"Retail Shop",c:0xc6d6ea,h:11,g:"lease"},
-  specialty:{l:"Retail Shop",c:0xc6d6ea,h:11,g:"lease"},
-  "specialty-retail":{l:"Retail Shop",c:0xc6d6ea,h:11,g:"lease"},
-  seating:{l:"Food Court Seating",c:0xe9d7ac,h:6,g:"lease"},
-  service:{l:"Customer Service",c:0xe3d9c2,h:9,g:"fac"},
-  "fnb-kiosk-seating-area":{l:"Kiosk Seating",c:0xd6dded,h:6,g:"lease"},
-  "fc-kitchen":{l:"Food Court",c:0xcf9f4e,h:11,g:"lease"},
-  "fv-kitchen":{l:"Food Village",c:0xddb673,h:11,g:"lease"}
+  hyper:{l:"Hypermarket",c:0xe3d4b0,h:9,g:"lease",t:"Anchor Hypermarket",d:"An expansive hypermarket anchor."},
+  retail:{l:"Retail Shop",c:0xb3c8e8,h:5,g:"lease",t:"Line Shop",d:"In-line retail boutiques."},
+  specialty:{l:"Retail Shop",c:0xb3c8e8,h:5,g:"lease",t:"Line Shop",d:"In-line retail boutiques."},
+  "specialty-retail":{l:"Retail Shop",c:0xb3c8e8,h:5,g:"lease",t:"Line Shop",d:"In-line retail boutiques."},
+  seating:{l:"Food Court Seating",c:0xecd6a0,h:3.5,g:"lease",t:"Food Court Seating",d:"Food court seating."},
+  service:{l:"Customer Service",c:0xdccfb2,h:5,g:"fac",t:"Guest Services",d:"Guest services."},
+  "fnb-kiosk-seating-area":{l:"Kiosk Seating",c:0xc8d9f0,h:3.5,g:"lease",t:"Kiosk Seating Area",d:"Shared kiosk seating."},
+  "fc-kitchen":{l:"Food Court",c:0xd28e26,h:5.5,g:"lease",t:"Food Court Hall",d:"The central food court hall."},
+  "fv-kitchen":{l:"Food Village",c:0xd99e35,h:5.5,g:"lease",t:"Food Village",d:"The food village."}
 };
-var DEF = {l:"Unit",c:0xcfd6df,h:9,g:"fac"};
+var DEF = {l:"Unit",c:0xcfd6df,h:5,g:"fac",t:"Unit",d:""};
 function cat(k){ return CAT[k] || DEF; }
+
+/* mall contact + per-unit photo pools (served from /images, work over file:// too) */
+var CONTACT = {phone:"+971 123 456 789", email:"hello@tilalgrandmall.ae", hours:"10:00 — 22:00"};
+function _enc(n){ return "images/" + n.replace(/&/g,"%26").replace(/ /g,"%20"); }
+var IMGS = {
+  "line-shop":["shop.webp","shop (2).webp","shop (3).webp","shop (4).webp","shop (5).webp","shop (6).webp","shopping.webp","shoops in first floor.webp"],
+  anchor:["family shooping.webp","shop (4).webp","shopping.webp"],
+  "mini-major":["shop (5).webp","shop (2).webp","family shooping.webp"],
+  fnb:["F&b.webp","F&B (3).webp","f&b (2).webp","external food resturant.webp","external first floor f&b.webp"],
+  "fnb-cafe":["CAFE.webp","CAFE (2).webp","external caffe.webp"],
+  "fnb-kiosk":["F&b KIOSK.webp","F&b KIOSK (2).webp"],
+  "fnb-seating":["F&B Seating (5).webp","F&b SEATING (4).webp","F&b seating (2).webp","F&b seating (3).webp"],
+  kiosk:["KIOSK.webp","KIOSK (2).webp","KIOSK (3).webp","KIOSK (4).webp","KIOSK (9).webp","kiosk (5).webp","kiosk (6).webp","kiosk (7).webp","kiosk (8).webp"],
+  "kiosk-seating":["F&b seating (3).webp","F&b seating (2).webp"],
+  "food-court":["food court.webp"], "fc-seating":["food court.webp"],
+  "food-village":["food village.webp","food village (2).webp"],
+  hypermarket:["hyper market.webp"], cinema:["cinema.webp"],
+  fec:["entertarnemnt.webp","edutarnemtn.webp"], "customer-service":["medical.webp"]
+};
+function imageFor(u){ var pool = IMGS[u.cat];
+  if(pool && pool.length){ var h=0, id=u.id||""; for(var i=0;i<id.length;i++) h=(h*31+id.charCodeAt(i))>>>0; return _enc(pool[h%pool.length]); }
+  return ""; }
+
+/* escalator positions (raw plan/viewBox units, Ground + Level 1 only) */
+var ESCALATORS = {
+  G:[[1370,973],[1068,1081],[1372,1356],[1684,1279],[1995,1360],[2350,1017],[2031,1009],[1031,1275],[1693,1515],[2339,1275],[1315,1180],[2026,1169]],
+  F1:[[1370,943],[1985,945],[1002,1022],[1918,1397],[2329,1011],[1704,1481],[2253,1245]]
+};
+var PLAN_SCALE = 0.11;   // must match tools/build_3d_data.py
 
 var FLOOR_ORDER = ["BL","G","F1"];
 var FLOOR_SHORT = {BL:"B", G:"G", F1:"1"};
@@ -287,7 +348,7 @@ function init(){
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.outputEncoding = THREE.sRGBEncoding;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.05;                 // warm, filmic glow
+  renderer.toneMappingExposure = 0.96;                 // warm filmic glow, but keep colours rich (not washed)
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;     // soft, no acne
   app.appendChild(renderer.domElement);
@@ -297,28 +358,28 @@ function init(){
 
   camera = new THREE.PerspectiveCamera(46, window.innerWidth/window.innerHeight, 1, 4000);
 
-  /* ---- golden-hour lighting ---- */
-  var hemi = new THREE.HemisphereLight(0xffe9c8, 0x3a3550, 0.62);  // warm sky / cool ground fill
+  /* ---- golden-hour lighting (calmer fill so category colours stay rich) ---- */
+  var hemi = new THREE.HemisphereLight(0xffe9c8, 0x3a3550, 0.42);  // warm sky / cool ground fill
   scene.add(hemi);
 
-  var key = new THREE.DirectionalLight(0xffd9a0, 2.2);  // warm late-afternoon sun, high & to the right
-  key.position.set(150, 220, 90);
+  var key = new THREE.DirectionalLight(0xffd29a, 2.05); // warm late-afternoon sun
+  key.position.set(165, 150, 78);                       // lower in the sky -> long, defined golden-hour shadows
   key.castShadow = true;
-  key.shadow.mapSize.set(isMobile ? 1024 : 2048, isMobile ? 1024 : 2048);
-  key.shadow.bias = -0.00042;
-  key.shadow.normalBias = 0.7;
-  key.shadow.radius = 4;                                // soft penumbra
+  key.shadow.mapSize.set(isMobile ? 2048 : 4096, isMobile ? 2048 : 4096);  // crisp, no grain
+  key.shadow.bias = -0.0004;
+  key.shadow.normalBias = 0.8;
+  key.shadow.radius = 3.2;                              // soft but readable penumbra
   scene.add(key);
   scene.add(key.target);
   window._key = key;
 
-  var fill = new THREE.DirectionalLight(0xbcd0ff, 0.32); // cool counter-fill so shadows aren't dead
+  var fill = new THREE.DirectionalLight(0xbcd0ff, 0.26); // cool counter-fill so shadows aren't dead
   fill.position.set(-120, 90, -110);
   scene.add(fill);
 
   /* transparent ground that only catches a soft contact shadow (CSS sky shows through) */
-  ground = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000),
-                          new THREE.ShadowMaterial({color:0x4b3a23, opacity:0.16}));
+  ground = new THREE.Mesh(new THREE.PlaneGeometry(8000, 8000),
+                          new THREE.ShadowMaterial({color:0x36281a, opacity:0.34}));
   ground.rotation.x = -Math.PI/2;
   ground.position.y = -0.02;
   ground.receiveShadow = true;
@@ -335,9 +396,8 @@ function init(){
   controls.zoomSpeed = 0.9;
   controls.panSpeed = 0.8;
   controls.screenSpacePanning = false;
-  controls.autoRotate = true;           // calm showroom drift; pauses on touch
-  controls.autoRotateSpeed = 0.32;
-  controls.addEventListener("start", onUserInteract);
+  controls.autoRotate = false;          // no drift — the user is in full control
+  controls.enablePan = true;
 
   buildFloorSwitcher();
 
@@ -348,6 +408,7 @@ function init(){
   buildLegend();
   hideLoader();
   revealHint();
+  applyDeepLink();
 
   setTimeout(function(){
     FLOOR_ORDER.forEach(function(f){ if(!floorObjs[f]) buildFloor(f); });
@@ -356,6 +417,8 @@ function init(){
   window.addEventListener("resize", onResize);
   setupPicking();
   document.getElementById("cClose").addEventListener("click", deselect);
+  document.getElementById("cLocate").addEventListener("click", locateSelected);
+  document.getElementById("cShare").addEventListener("click", shareSelected);
   document.getElementById("lgHead").addEventListener("click", function(){
     document.getElementById("legend").classList.toggle("collapsed");
   });
@@ -407,6 +470,34 @@ function extrudeUnit(u, height){
   return geo;
 }
 
+/* -------- escalator markers (floating pins above the concourse) -------- */
+var _escTex = null;
+function escTexture(){
+  if(_escTex) return _escTex;
+  var cv = document.createElement("canvas"); cv.width = cv.height = 128;
+  var x = cv.getContext("2d");
+  function rrect(a,b,w,h,r){ x.beginPath(); x.moveTo(a+r,b); x.arcTo(a+w,b,a+w,b+h,r); x.arcTo(a+w,b+h,a,b+h,r); x.arcTo(a,b+h,a,b,r); x.arcTo(a,b,a+w,b,r); x.closePath(); }
+  x.fillStyle = "rgba(33,55,68,0.96)"; rrect(8,8,112,112,30); x.fill();
+  x.strokeStyle = "rgba(255,255,255,0.4)"; x.lineWidth = 3; rrect(8,8,112,112,30); x.stroke();
+  x.strokeStyle = "#fff"; x.lineWidth = 8; x.lineCap = "round"; x.lineJoin = "round";
+  x.beginPath(); x.moveTo(28,98); x.lineTo(48,98); x.lineTo(48,82); x.lineTo(68,82); x.lineTo(68,66); x.lineTo(86,66); x.stroke(); // staircase
+  x.beginPath(); x.moveTo(74,52); x.lineTo(86,40); x.lineTo(98,52); x.moveTo(86,40); x.lineTo(86,66); x.stroke();               // up arrow
+  _escTex = new THREE.CanvasTexture(cv);
+  _escTex.anisotropy = 4; _escTex.encoding = THREE.sRGBEncoding;
+  return _escTex;
+}
+function buildEscalators(fkey, group){
+  var list = ESCALATORS[fkey]; if(!list) return;
+  var tex = escTexture();
+  list.forEach(function(p){
+    var sp = new THREE.Sprite(new THREE.SpriteMaterial({map:tex, transparent:true, depthWrite:false, depthTest:true}));
+    sp.position.set(p[0]*PLAN_SCALE, p[1]*PLAN_SCALE, 10);   // local; group maps +z -> world +y (height)
+    sp.scale.set(7, 7, 1);
+    sp.userData.escalator = true;
+    group.add(sp);
+  });
+}
+
 /* -------- build a whole floor: one merged mesh per category -------- */
 function buildFloor(fkey){
   var data = FLOORS[fkey]; if(!data) return;
@@ -434,7 +525,7 @@ function buildFloor(fkey){
     if(!merged) return;
     var c = cat(k);
     var mat = new THREE.MeshStandardMaterial({
-      color:c.c, roughness:0.62, metalness:0.08, flatShading:false, side:THREE.DoubleSide
+      color:c.c, roughness:0.74, metalness:0.0, flatShading:false, side:THREE.DoubleSide
     });
     var mesh = new THREE.Mesh(merged, mat);
     mesh.castShadow = true; mesh.receiveShadow = true;
@@ -443,6 +534,8 @@ function buildFloor(fkey){
     group.add(mesh);
     meshes[k] = mesh;
   });
+
+  buildEscalators(fkey, group);
 
   /* orient: the plan is drawn in the XY plane (y-down). Rotating -90° about X
      lays it flat on the ground (XZ) and sends the extrude axis (+Z) straight
@@ -580,11 +673,17 @@ function select(u, mesh){
   if(highlightMesh){ highlightMesh.parent.remove(highlightMesh); highlightMesh.geometry.dispose(); highlightMesh = null; }
   var c = cat(u.cat);
   try{
-    var geo = extrudeUnit(u, c.h + 0.9);
-    geo.translate(0, 0, -0.45);   // enclose the base block (no z-fighting), pop slightly above
-    var mat = new THREE.MeshStandardMaterial({color:c.c, emissive:0xffce86, emissiveIntensity:0.5, roughness:0.45, metalness:0.1, side:THREE.DoubleSide});
+    /* a slightly taller glowing copy. polygonOffset biases it toward the camera
+       so its walls win the depth test cleanly against the base block — no
+       coplanar z-fighting ("pixel boxes") on the selected unit. */
+    var geo = extrudeUnit(u, c.h + 0.6);
+    var mat = new THREE.MeshStandardMaterial({
+      color:c.c, emissive:0xffb24d, emissiveIntensity:0.9, roughness:0.4, metalness:0.0,
+      side:THREE.DoubleSide, polygonOffset:true, polygonOffsetFactor:-4, polygonOffsetUnits:-4
+    });
     highlightMesh = new THREE.Mesh(geo, mat);
     highlightMesh.castShadow = true;
+    highlightMesh.renderOrder = 2;
     floorObjs[curFloor].group.add(highlightMesh);
   }catch(e){ /* ignore highlight build errors */ }
   showCard(u);
@@ -598,13 +697,22 @@ function deselect(){
 }
 
 /* -------- info card -------- */
+function hex6(n){ return "#" + n.toString(16).padStart(6,"0"); }
 function showCard(u){
-  var c = cat(u.cat);
-  document.getElementById("cDot").style.background = "#" + c.c.toString(16).padStart(6,"0");
+  var c = cat(u.cat), col = hex6(c.c);
+  var img = document.getElementById("cImg"), hero = document.getElementById("cHero"), photo = imageFor(u);
+  if(photo){ img.style.display = "block"; img.src = photo;
+    img.onerror = function(){ img.style.display = "none"; }; }
+  else { img.style.display = "none"; }
+  hero.style.background = "linear-gradient(135deg," + col + "," + shade(c.c,-30) + ")";
+  document.getElementById("cDot").style.background = col;
+  document.getElementById("cTag").textContent = c.t || c.l;
+  document.getElementById("cCode").textContent = u.id || "";
   document.getElementById("cName").textContent = u.name && u.name.trim() ? u.name : c.l;
   document.getElementById("cCat").textContent = c.l + " · " + FLOORS[curFloor].name;
+  document.getElementById("cDesc").textContent = c.d || "";
   var meta = document.getElementById("cMeta"); meta.innerHTML = "";
-  if(u.id) meta.appendChild(pill("Unit", u.id));
+  meta.appendChild(pill("Floor", FLOORS[curFloor].name));
   if(u.m2 && parseFloat(u.m2) > 0){
     var m2 = parseFloat(u.m2);
     meta.appendChild(pill("Area", Math.round(m2).toLocaleString() + " m²"));
@@ -615,15 +723,74 @@ function showCard(u){
 }
 function pill(label, val){
   var d = document.createElement("span"); d.className = "pill";
-  d.innerHTML = (label ? '<b>' + label + '</b> ' : '') + val;
+  d.innerHTML = (label ? "<b>" + label + "</b> " : "") + val;
   return d;
 }
+/* darken/lighten a 0xRRGGBB colour, returning a #hex string */
+function shade(n, amt){
+  var r = (n>>16)&255, g = (n>>8)&255, b = n&255, f = amt*2.55|0;
+  r = Math.max(0,Math.min(255,r+f)); g = Math.max(0,Math.min(255,g+f)); b = Math.max(0,Math.min(255,b+f));
+  return "#" + ((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);
+}
 
-/* -------- idle auto-rotate handling -------- */
-function onUserInteract(){
-  controls.autoRotate = false;
-  if(idleTimer) clearTimeout(idleTimer);
-  idleTimer = setTimeout(function(){ controls.autoRotate = true; }, 4500);
+/* fly the camera to frame the selected unit's world position */
+function locateSelected(){
+  if(!selected) return;
+  var o = selected.unit.s[0].o, n = o.length/2, sx=0, sy=0;
+  for(var i=0;i<o.length;i+=2){ sx+=o[i]; sy+=o[i+1]; }
+  var wx = sx/n, wz = sy/n;                     // unit centre in local plan space
+  var p = new THREE.Vector3(wx, 0, wz);
+  p.applyMatrix4(floorObjs[curFloor].group.matrixWorld);   // -> world
+  var dist = Math.max(MODEL.w, MODEL.d) * 0.26;
+  var dir = new THREE.Vector3(0.3, 0.86, 1).normalize();
+  flyTo(p.clone().addScaledVector(dir, dist), new THREE.Vector3(p.x, cat(selected.unit.cat).h*0.5, p.z));
+}
+var _fly = null;
+function flyTo(camPos, target){
+  _fly = {cp0:camera.position.clone(), tp0:controls.target.clone(), cp1:camPos, tp1:target, t:0};
+}
+function shareSelected(){
+  if(!selected) return;
+  var u = selected.unit;
+  var url = location.origin + location.pathname + "?floor=" + curFloor + "&unit=" + encodeURIComponent(u.id||"");
+  var name = (u.name && u.name.trim()) ? u.name : cat(u.cat).l;
+  if(navigator.share){ navigator.share({title:"Tilal Mall · " + name, url:url}).catch(function(){}); }
+  else if(navigator.clipboard){ navigator.clipboard.writeText(url).then(function(){ toast("Link copied"); }, function(){ toast(url); }); }
+  else { toast(url); }
+}
+var _toastT = null;
+function toast(msg){
+  var el = document.getElementById("toast"); el.textContent = msg; el.classList.add("show");
+  clearTimeout(_toastT); _toastT = setTimeout(function(){ el.classList.remove("show"); }, 2200);
+}
+
+/* open a shared ?floor=&unit= link straight to that unit */
+function selectById(id){
+  var fo = floorObjs[curFloor]; if(!fo || !id) return false;
+  for(var k in fo.meshes){ var rs = fo.meshes[k].userData.ranges;
+    for(var i=0;i<rs.length;i++){ if(rs[i].u.id === id){ select(rs[i].u, fo.meshes[k]); locateSelected(); return true; } } }
+  return false;
+}
+function applyDeepLink(){
+  var q; try{ q = new URLSearchParams(location.search); }catch(e){ return; }
+  var f = q.get("floor"), id = q.get("unit");
+  if(f && FLOORS[f] && f !== curFloor){ if(!floorObjs[f]) buildFloor(f); showFloor(f); }
+  if(id) selectById(id);
+}
+
+/* -------- keep the model in frame: clamp the pan target to a box around the
+            origin (and shift the camera by the same amount so it never jerks),
+            so the plan can't drift off-screen no matter how you pan. -------- */
+function clampView(){
+  if(!MODEL) return;
+  var t = controls.target, lx = MODEL.w*0.5, lz = MODEL.d*0.6, ly = MODEL.h*1.3;
+  var nx = Math.max(-lx, Math.min(lx, t.x)),
+      nz = Math.max(-lz, Math.min(lz, t.z)),
+      ny = Math.max(0,   Math.min(ly, t.y));
+  if(nx!==t.x || ny!==t.y || nz!==t.z){
+    camera.position.x += nx - t.x; camera.position.y += ny - t.y; camera.position.z += nz - t.z;
+    t.set(nx, ny, nz);
+  }
 }
 function revealHint(){
   var h = document.getElementById("hint"); h.classList.add("show");
@@ -633,7 +800,15 @@ function revealHint(){
 /* -------- loop & resize -------- */
 function animate(){
   requestAnimationFrame(animate);
+  if(_fly){
+    _fly.t = Math.min(1, _fly.t + 0.045);
+    var e = 1 - Math.pow(1 - _fly.t, 3);            // ease-out
+    camera.position.lerpVectors(_fly.cp0, _fly.cp1, e);
+    controls.target.lerpVectors(_fly.tp0, _fly.tp1, e);
+    if(_fly.t >= 1) _fly = null;
+  }
   controls.update();
+  clampView();
   renderer.render(scene, camera);
 }
 function onResize(){

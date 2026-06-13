@@ -32,6 +32,7 @@ INDEX = os.path.join(HERE, '..', 'index.html')
 # Tuning -----------------------------------------------------------------
 RDP_EPS   = 1.4     # simplification tolerance, viewBox units (~4px @200dpi)
 MIN_AREA  = 14.0    # drop rings smaller than this (viewBox units^2) — slivers
+INSET     = 1.1     # shrink outer rings inward (viewBox units) to de-coincide shared walls
 PLAN_SCALE = 0.11   # viewBox units -> world units (plan longest side ~= 205)
 DEC = 1             # output decimal places (after scaling)
 
@@ -220,6 +221,27 @@ def with_winding(ring, want_positive):
         return ring[::-1]
     return ring
 
+def inset_ring(ring, d):
+    """Shrink an outer ring inward by ~d units toward its centroid. Adjacent
+    units are traced as separate paths that share a wall; without a hairline
+    gap those coincident walls z-fight ("boxes noise"). The per-vertex step is
+    clamped, and the whole inset is reverted if it would collapse a thin unit."""
+    n = len(ring)
+    cx = sum(p[0] for p in ring) / n
+    cy = sum(p[1] for p in ring) / n
+    out = []
+    for x, y in ring:
+        dx, dy = cx - x, cy - y
+        L = (dx*dx + dy*dy) ** 0.5
+        if L < 1e-6:
+            out.append((x, y)); continue
+        step = min(d, 0.30 * L)
+        out.append((x + dx/L*step, y + dy/L*step))
+    a0, a1 = abs(signed_area(ring)), abs(signed_area(out))
+    if a1 < 0.45 * a0 or (signed_area(ring) > 0) != (signed_area(out) > 0):
+        return ring          # would distort a thin unit — leave it
+    return out
+
 def round_ring(r):
     return [round(v, DEC) for p in r for v in p]
 
@@ -241,7 +263,7 @@ def bake():
                     continue
                 packed = []
                 for sh in shapes:
-                    outer = with_winding(sh['o'], True)
+                    outer = with_winding(inset_ring(sh['o'], INSET), True)
                     o = [round(v*PLAN_SCALE, DEC) for p in outer for v in p]
                     hs = [[round(v*PLAN_SCALE, DEC) for p in with_winding(hole, False) for v in p]
                           for hole in sh['h']]
