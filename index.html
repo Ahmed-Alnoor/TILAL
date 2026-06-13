@@ -131,11 +131,11 @@ button{font-family:inherit;}
 /* warm the street map to the ivory tone of the design; cast one long soft
    building shadow toward the bottom-left (sun at top-right) */
 #stage3d>svg.basemap{filter:sepia(.10) saturate(1.15) brightness(.985);}
-#stage3d>svg.ext.shad{opacity:.34;filter:blur(1.4px);}
+#stage3d>svg.ext.shad{opacity:.9;filter:blur(2px);}
 /* phones: full-screen layer filters re-evaluate on every pan/zoom frame */
 @media (max-width:860px){
   #stage3d>svg.basemap{filter:none;}
-  #stage3d>svg.ext.shad{filter:none;opacity:.3;}
+  #stage3d>svg.ext.shad{filter:none;opacity:.85;}
 }
 .osm-credit{position:absolute;right:12px;bottom:5px;z-index:9;font-size:10px;color:rgba(255,255,255,.6);text-decoration:none;background:rgba(8,18,34,.45);padding:2px 7px;border-radius:6px;backdrop-filter:blur(4px);}
 .osm-credit:hover{color:#fff;}
@@ -479,25 +479,28 @@ a.row.tap:active{opacity:.6;}
      the sidebar, detail card and directions sheets, which previously hid these
      controls. Top-right keeps them tappable in every state. */
   .zoom-ctl{top:calc(72px + env(safe-area-inset-top));right:calc(12px + env(safe-area-inset-right));bottom:auto;z-index:30;}
-  .floor-tag{bottom:calc(30px + env(safe-area-inset-bottom));}
-  /* While navigating: hide the filter sheet, drop the zoom controls below the
+  .floor-tag{display:none;}   /* the top floor tabs already show the active floor */
+  /* While navigating: hide the menu bar, drop the zoom controls below the
      turn-by-turn card so nothing overlaps. */
-  .body.nav-on .sidebar{transform:translateY(100%);pointer-events:none;}
+  .body.nav-on .sidebar{transform:translateY(110%);pointer-events:none;}
   .body.nav-on .zoom-ctl{top:calc(206px + env(safe-area-inset-top));}
 
-  /* Sidebar (view-toggle + search + filters) becomes a bottom sheet. It peeks
-     by default -- showing the grab handle, Map/List/Parking and the search box
-     -- so the map stays visible; drag/tap the handle to expand for filters. */
-  .sidebar{--peek:150px;top:auto;left:0;right:0;bottom:0;width:100%;max-width:100%;height:80vh;max-height:80vh;
-    border-radius:22px 22px 0 0;border-left:1px solid var(--line);padding:8px 16px 16px;
-    padding-bottom:calc(16px + env(safe-area-inset-bottom));
-    box-shadow:0 -18px 50px -24px rgba(8,22,46,.5);z-index:40;
-    transform:translateY(calc(100% - var(--peek)));
+  /* ONE menu only: a compact bottom bar with the Map / List toggle + search.
+     The category filters are gone. The bar stays docked at the bottom in BOTH
+     views, so the map shows above it in Map view and the directory scrolls above
+     it in List view — there are never two overlapping menus. (Parking keeps its
+     panel: the bar grows and scrolls when that view is active.) */
+  .sidebar{top:auto;left:0;right:0;bottom:0;width:100%;max-width:100%;height:auto;max-height:72vh;overflow-y:auto;
+    border-radius:22px 22px 0 0;border-left:0;border-top:1px solid var(--line);
+    padding:14px 16px calc(14px + env(safe-area-inset-bottom));gap:12px;
+    box-shadow:0 -16px 44px -24px rgba(8,22,46,.45);z-index:40;transform:none;
     transition:transform .42s cubic-bezier(.22,1,.36,1);}
-  .sidebar::before{content:"";display:block;flex:none;width:42px;height:5px;border-radius:3px;
-    background:rgba(31,39,51,.22);margin:2px auto 10px;}
-  .sidebar.expanded{transform:translateY(0);}
-  .body.nav-hidden .sidebar{transform:translateY(calc(100% + 4px));pointer-events:none;}
+  .sidebar::before{display:none;}                 /* no grab handle / peek */
+  #mapPanel,#listPanel{display:none!important;}    /* drop category filters on mobile */
+  .body.nav-hidden .sidebar,.body.route-open .sidebar{transform:translateY(calc(100% + 6px));pointer-events:none;}
+  /* List view: floor tabs are map-only, and the directory clears the bottom bar */
+  .body.view-list .topbar{display:none;}
+  .list-view{padding:18px 18px calc(154px + env(safe-area-inset-bottom));}
 
   /* Shop detail card = compact place card (Apple/Google-Maps style): small,
      so the MAP STAYS VISIBLE above it. Header shows name + category; the
@@ -2159,19 +2162,32 @@ a.row.tap:active{opacity:.6;}
       stage3d.insertBefore(L, svg);
       LAYERS.push(L);
     }
-    /* grounded shadow: footprints projected onto the FLOOR, offset toward the
-       bottom-left (sun is top-right) so blocks look planted, not floating.
-       One layer, crisp -> no costly full-frame blur filter. */
+    /* Floor-cast SIDE shadow. The old version was one dark slab pushed BELOW the
+       blocks, which made them look like they float. Instead we lay the shadow ON
+       the floor plane (coplanar with the wall base) and cast it toward the
+       lower-left (sun is top-right). It's a short stack of footprint copies
+       stepped toward the lower-left at low opacity each: where many copies
+       overlap — right at the wall — it is darkest, and it fades to nothing as it
+       reaches out, so it reads as a soft shadow dropping ON the floor from the
+       wall. No blur filter, so it stays smooth on mobile; the blocks render in
+       front and hide the core, leaving only the fading edge beside each building. */
+    var SN=window.matchMedia('(max-width:860px)').matches?4:7, sdx=-4.5, sdy=3.6;
     var SH=document.createElementNS(NS3,'svg');
     SH.setAttribute('viewBox',vbAttr);SH.setAttribute('class','ext shad');SH.setAttribute('preserveAspectRatio','xMidYMid slice');
-    SH.dataset.k=EXT_N+0.6;SH.style.transform='translateZ(-'+((EXT_N+0.6)*step)+'px)';
-    var SG=document.createElementNS(NS3,'g');SG.setAttribute('transform','translate(-40 34)');
-    Array.prototype.forEach.call(units,function(p){
-      var c=p.cloneNode(false);
-      c.removeAttribute('class');c.removeAttribute('data-id');c.removeAttribute('data-cat');c.removeAttribute('data-base');
-      c.setAttribute('fill','#4d3d24');SG.appendChild(c);
-    });
-    SH.appendChild(SG);stage3d.insertBefore(SH,svg);LAYERS.push(SH);
+    SH.dataset.k=EXT_N+0.3;SH.style.transform='translateZ(-'+((EXT_N+0.3)*step)+'px)';
+    for(var sI=SN;sI>=1;sI--){
+      var SG=document.createElementNS(NS3,'g');
+      SG.setAttribute('transform','translate('+(sdx*sI).toFixed(1)+' '+(sdy*sI).toFixed(1)+')');
+      SG.setAttribute('fill','#243049');SG.setAttribute('fill-opacity','0.13');
+      Array.prototype.forEach.call(units,function(p){
+        var c=p.cloneNode(false);
+        c.removeAttribute('class');c.removeAttribute('data-id');c.removeAttribute('data-cat');c.removeAttribute('data-base');
+        c.removeAttribute('fill');c.removeAttribute('stroke');
+        SG.appendChild(c);
+      });
+      SH.appendChild(SG);
+    }
+    stage3d.insertBefore(SH,svg);LAYERS.push(SH);
     buildBasemap();
   }
   /* ---- gray ground / site podium so the mall sits on something ---- */
@@ -2801,6 +2817,8 @@ a.row.tap:active{opacity:.6;}
     }
     currentView=v;
     if(v!=='map')hideTenantPops();
+    var bodyEl=document.querySelector('.body');
+    bodyEl.classList.remove('view-map','view-list','view-parking');bodyEl.classList.add('view-'+v);
     document.querySelectorAll('.vt-btn').forEach(function(b){b.classList.toggle('active',b.dataset.view===v);});
     var isList=(v==='list'),isPark=(v==='parking'),isMap=(v==='map');
     listView.classList.toggle('show',isList);
@@ -3129,7 +3147,7 @@ a.row.tap:active{opacity:.6;}
   }
   function navShow(){document.querySelector('.body').classList.add('nav-on');document.getElementById('navCard').classList.add('show');document.getElementById('navReopen').classList.remove('show');}
   function navHideCard(){document.getElementById('navCard').classList.remove('show');if(routing.active)document.getElementById('navReopen').classList.add('show');}
-  function navEnd(){document.querySelector('.body').classList.remove('nav-on');document.getElementById('navCard').classList.remove('show');document.getElementById('navReopen').classList.remove('show');}
+  function navEnd(){document.querySelector('.body').classList.remove('nav-on','route-open');document.getElementById('navCard').classList.remove('show');document.getElementById('navReopen').classList.remove('show');}
   function gotoStep(i){
     if(!routing.steps)return;i=Math.max(0,Math.min(routing.steps.length-1,i));routing.si=i;
     var seg=routing.steps[i].seg;
@@ -3172,9 +3190,10 @@ a.row.tap:active{opacity:.6;}
     var fl=document.getElementById('routeFromList');fl.innerHTML='';fl.classList.remove('show');
     var sm=document.getElementById('routeSummary');sm.innerHTML='';sm.classList.remove('show');
     card.classList.remove('open');cardBack.classList.remove('show');
+    document.querySelector('.body').classList.add('route-open');
     document.getElementById('routePanel').classList.add('open');routing.panelOpen=true;fi.focus();
   }
-  function closeRoutePanel(){clearRoute();document.getElementById('routePanel').classList.remove('open');routing.panelOpen=false;}
+  function closeRoutePanel(){clearRoute();document.querySelector('.body').classList.remove('route-open');document.getElementById('routePanel').classList.remove('open');routing.panelOpen=false;}
   function renderFromList(q){
     var list=document.getElementById('routeFromList');q=q.trim().toLowerCase();
     if(!q){list.classList.remove('show');list.innerHTML='';return;}
@@ -3233,6 +3252,7 @@ a.row.tap:active{opacity:.6;}
 
   /* ===== boot ===== */
   loadFloor('G');
+  document.querySelector('.body').classList.add('view-map');
   const sp=new URLSearchParams(location.search).get('shop');
   if(sp){const s=SHOPS.find(function(x){return x.id===sp.toUpperCase();});if(s){selectShop(s);setTimeout(function(){focusOn(s);},300);}}
   window.SHOPS=SHOPS;
