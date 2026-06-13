@@ -183,6 +183,23 @@
     background:rgba(34,40,54,.92); border-radius:999px; padding:10px 18px; box-shadow:var(--shadow); white-space:nowrap;}
   #toast.show{opacity:1; transform:translate(-50%,0);}
 
+  /* ---------- route info bar ---------- */
+  .routebar{position:fixed; left:50%; top:calc(env(safe-area-inset-top,0px) + 74px); transform:translate(-50%,-130%);
+    z-index:10; display:flex; align-items:center; gap:14px; max-width:94vw; padding:10px 12px 10px 16px;
+    border-radius:16px; background:var(--glass-strong); border:1px solid var(--stroke);
+    backdrop-filter:blur(20px) saturate(140%); -webkit-backdrop-filter:blur(20px) saturate(140%);
+    box-shadow:var(--shadow); opacity:0; transition:transform .34s cubic-bezier(.2,.8,.2,1), opacity .34s;}
+  .routebar.show{transform:translate(-50%,0); opacity:1;}
+  .routebar .rb-main{display:flex; flex-direction:column; line-height:1.15; flex:0 0 auto;}
+  .routebar .rb-main b{font-size:16px;}
+  .routebar .rb-main span{font-size:12px; color:var(--ink-soft); font-variant-numeric:tabular-nums;}
+  .routebar .rb-od{font-size:12.5px; color:var(--ink); max-width:40vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .routebar .rb-step{display:none; align-items:center; gap:6px; cursor:pointer; border:0; border-radius:11px;
+    padding:9px 13px; font:inherit; font-size:12.5px; font-weight:600; color:#fff; background:linear-gradient(135deg,#d99e35,#c0892f);}
+  .routebar .rb-x{flex:0 0 auto; cursor:pointer; border:0; background:rgba(255,255,255,.4); color:var(--ink);
+    width:30px;height:30px; border-radius:50%; font-size:18px; line-height:1;}
+  @media (max-width:759px){ .routebar{flex-wrap:wrap; max-width:92vw;} .routebar .rb-od{max-width:60vw;} }
+
   /* ---------- full-page directory (List) ---------- */
   .directory{position:fixed; inset:0; z-index:16; display:flex; flex-direction:column;
     background:radial-gradient(120% 80% at 80% 0%, rgba(255,240,210,.75), rgba(255,240,210,0) 46%),
@@ -312,11 +329,21 @@
       <p class="desc" id="cDesc"></p>
       <div class="meta" id="cMeta"></div>
       <div class="actions">
-        <button class="act primary" id="cLocate" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.3-7-11a7 7 0 0 1 14 0c0 4.7-7 11-7 11z"/><circle cx="12" cy="10" r="2.6"/></svg>Locate</button>
+        <button class="act primary" id="cDir" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21.7 11.3 12.7 2.3a1 1 0 0 0-1.4 0l-9 9a1 1 0 0 0 0 1.4l9 9a1 1 0 0 0 1.4 0l9-9a1 1 0 0 0 0-1.4z"/><path d="M9 13v-2.5a1.5 1.5 0 0 1 1.5-1.5H15M15 9l-2.2-2.2M15 9l-2.2 2.2"/></svg>Directions</button>
+        <button class="act" id="cLocate" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.3-7-11a7 7 0 0 1 14 0c0 4.7-7 11-7 11z"/><circle cx="12" cy="10" r="2.6"/></svg>Locate</button>
         <button class="act" id="cShare" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="M8.3 10.8l7.4-4.3M8.3 13.2l7.4 4.3"/></svg>Share</button>
       </div>
     </div>
   </div>
+
+  <!-- route info bar -->
+  <div class="routebar" id="routeBar">
+    <div class="rb-main"><b id="rbTime">— min</b><span id="rbDist">— m</span></div>
+    <div class="rb-od" id="rbOD"></div>
+    <button class="rb-step" id="rbStep" type="button"></button>
+    <button class="rb-x" id="rbClose" aria-label="End route" type="button">×</button>
+  </div>
+
   <div id="toast"></div>
 
   <!-- full-page directory (List) -->
@@ -554,6 +581,9 @@ function init(){
   document.getElementById("cClose").addEventListener("click", deselect);
   document.getElementById("cLocate").addEventListener("click", locateSelected);
   document.getElementById("cShare").addEventListener("click", shareSelected);
+  document.getElementById("cDir").addEventListener("click", function(){ if(selected) directionsTo(selected.unit); });
+  document.getElementById("rbStep").addEventListener("click", routeStepFloor);
+  document.getElementById("rbClose").addEventListener("click", clearRoute);
   document.getElementById("zoomIn").addEventListener("click", function(){ zoomBy(0.78); });
   document.getElementById("zoomOut").addEventListener("click", function(){ zoomBy(1.28); });
   document.getElementById("myLoc").addEventListener("click", myLocation);
@@ -567,7 +597,9 @@ function init(){
   document.getElementById("search").addEventListener("input", function(e){ setSearch(e.target.value); });
   document.getElementById("dirSearch").addEventListener("input", function(e){ setSearch(e.target.value); });
   document.getElementById("dirBack").addEventListener("click", function(){ dirGroup = null; renderDirectory(); });
-  document.getElementById("dirClose").addEventListener("click", function(){ clearSearch(); setMode("map"); });
+  document.getElementById("dirClose").addEventListener("click", function(){
+    routePick = false; document.getElementById("directory").classList.remove("pick"); clearSearch(); setMode("map");
+  });
   document.getElementById("locPromptClose").addEventListener("click", hideLocPrompt);
 
   animate();
@@ -826,6 +858,7 @@ function showFloor(fkey){
     b.classList.toggle("active", b.dataset.f === fkey);
   });
   renderPanel();
+  if(ROUTE.active){ drawRouteForFloor(); renderRouteBar(); }   // keep the route in sync across floors
 }
 
 /* -------- camera framing (aspect-aware so the wide fan fits portrait + desktop) -------- */
@@ -1015,7 +1048,8 @@ function pickFromDirectory(f, u){
   panelMode = "map";
   document.querySelectorAll("#seg button").forEach(function(b){ b.classList.toggle("active", b.dataset.mode === "map"); });
   closeDirectory();
-  goToUnit(f, u);
+  if(routePick){ routePick = false; document.getElementById("directory").classList.remove("pick"); setRouteStartShop(f, u); }
+  else goToUnit(f, u);
 }
 function clearSearch(){ searchQ = ""; var a=document.getElementById("search"), b=document.getElementById("dirSearch"); if(a)a.value=""; if(b)b.value=""; }
 function setSearch(q){
@@ -1024,6 +1058,240 @@ function setSearch(q){
   if(a && a.value !== q) a.value = q; if(b && b.value !== q) b.value = q;
   if(searchQ && !directoryOpen()){ setMode("list"); }   /* searching from the map jumps to the directory */
   else if(directoryOpen()){ dirGroup = null; renderDirectory(); }
+}
+
+/* ======================= WAYFINDING / ROUTING =======================
+   Ported from the 2.5D map: a per-floor walkable corridor mask (units rasterised
+   as obstacles, morphological closing recovers the footprint, walkable = footprint
+   minus units), then a clearance-biased A* that rides the wide public concourse.
+   Everything here runs in raw viewBox units (the baked points are viewBox*SCALE,
+   so we divide by SCALE); the resulting path is converted to world for drawing. */
+var RMASKS = {}, UNITS_PER_M = 3.769, WALK_MS = 1.2, RSQ2 = Math.SQRT2;
+/* not obstacles: the concourse itself (circulation) is the walkable space, and
+   kiosks stand in the middle of it (the path may pass over them) */
+var KIOSK_FREE = {circulation:1, kiosk:1, "fnb-kiosk":1, "kiosk-seating":1};
+function vb(v){ return v / PLAN_SCALE; }                       // world-scaled -> viewBox
+function vbToWorld(x, y, h){ return new THREE.Vector3(x*PLAN_SCALE - OFFSET.x, h||0, -y*PLAN_SCALE - OFFSET.z); }
+function unitCentroidVB(u){
+  var o = u.s[0].o, n = o.length/2, sx=0, sy=0;
+  for(var i=0;i<o.length;i+=2){ sx += o[i]; sy += o[i+1]; }
+  return [vb(sx/n), vb(sy/n)];
+}
+function rHeapPush(a,n){ a.push(n); var i=a.length-1; while(i>0){ var p=(i-1)>>1; if(a[p].f<=a[i].f)break; var t=a[p];a[p]=a[i];a[i]=t;i=p; } }
+function rHeapPop(a){ var top=a[0], last=a.pop(); if(a.length){ a[0]=last; var i=0,n=a.length; for(;;){ var l=2*i+1,r=l+1,m=i; if(l<n&&a[l].f<a[m].f)m=l; if(r<n&&a[r].f<a[m].f)m=r; if(m===i)break; var t=a[m];a[m]=a[i];a[i]=t;i=m; } } return top; }
+function rDilate(src,cols,rows,r){
+  var tmp=new Uint8Array(cols*rows),out=new Uint8Array(cols*rows),x,y,k;
+  for(y=0;y<rows;y++){var base=y*cols;for(x=0;x<cols;x++){var v=0;for(k=-r;k<=r;k++){var xx=x+k;if(xx>=0&&xx<cols&&src[base+xx]){v=1;break;}}tmp[base+x]=v;}}
+  for(x=0;x<cols;x++){for(y=0;y<rows;y++){var w=0;for(k=-r;k<=r;k++){var yy=y+k;if(yy>=0&&yy<rows&&tmp[yy*cols+x]){w=1;break;}}out[y*cols+x]=w;}}
+  return out;
+}
+function buildMask(floor){
+  if(RMASKS[floor]) return RMASKS[floor];
+  var units = (FLOORS[floor]||{units:[]}).units;
+  var minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9, paths=[];
+  units.forEach(function(u){
+    var d="";
+    for(var si=0;si<u.s.length;si++){ var o=u.s[si].o;
+      for(var i=0;i<o.length;i+=2){ var x=vb(o[i]), y=vb(o[i+1]);
+        if(x<minX)minX=x; if(y<minY)minY=y; if(x>maxX)maxX=x; if(y>maxY)maxY=y;
+        d += (i===0?"M":"L") + x.toFixed(1) + " " + y.toFixed(1); }
+      d += "Z"; }
+    if(!KIOSK_FREE[u.cat]) paths.push(d);
+  });
+  if(maxX<minX) return null;
+  var pad=90; minX-=pad; minY-=pad; maxX+=pad; maxY+=pad;
+  var CELL=3, cols=Math.ceil((maxX-minX)/CELL), rows=Math.ceil((maxY-minY)/CELL);
+  var cv=document.createElement("canvas"); cv.width=cols; cv.height=rows; var ctx=cv.getContext("2d");
+  ctx.setTransform(1/CELL,0,0,1/CELL,-minX/CELL,-minY/CELL); ctx.fillStyle="#fff";
+  paths.forEach(function(d){ try{ ctx.fill(new Path2D(d)); }catch(e){} });
+  var img=ctx.getImageData(0,0,cols,rows).data, N=cols*rows, solid=new Uint8Array(N);
+  for(var si=0;si<N;si++) solid[si]=img[si*4]>40?1:0;
+  var RC=Math.round(70/CELL);
+  var dil=rDilate(solid,cols,rows,RC), inv=new Uint8Array(N);
+  for(var a=0;a<N;a++) inv[a]=dil[a]?0:1;
+  var invd=rDilate(inv,cols,rows,RC), foot=new Uint8Array(N);
+  for(var b=0;b<N;b++) foot[b]=invd[b]?0:1;
+  var seen=new Uint8Array(N),stk=new Int32Array(N),sp=0,hx,hy;
+  for(hx=0;hx<cols;hx++){var c0=hx,c1=(rows-1)*cols+hx;if(!foot[c0]&&!seen[c0]){seen[c0]=1;stk[sp++]=c0;}if(!foot[c1]&&!seen[c1]){seen[c1]=1;stk[sp++]=c1;}}
+  for(hy=0;hy<rows;hy++){var l0=hy*cols,r0=hy*cols+cols-1;if(!foot[l0]&&!seen[l0]){seen[l0]=1;stk[sp++]=l0;}if(!foot[r0]&&!seen[r0]){seen[r0]=1;stk[sp++]=r0;}}
+  while(sp){var fc=stk[--sp],fx=fc%cols,fy=(fc/cols)|0;
+    if(fx+1<cols&&!foot[fc+1]&&!seen[fc+1]){seen[fc+1]=1;stk[sp++]=fc+1;}
+    if(fx-1>=0&&!foot[fc-1]&&!seen[fc-1]){seen[fc-1]=1;stk[sp++]=fc-1;}
+    if(fy+1<rows&&!foot[fc+cols]&&!seen[fc+cols]){seen[fc+cols]=1;stk[sp++]=fc+cols;}
+    if(fy-1>=0&&!foot[fc-cols]&&!seen[fc-cols]){seen[fc-cols]=1;stk[sp++]=fc-cols;}}
+  for(var h2=0;h2<N;h2++) if(!foot[h2]&&!seen[h2]) foot[h2]=1;
+  var walk=new Uint8Array(N); for(var w0=0;w0<N;w0++) walk[w0]=(foot[w0]&&!solid[w0])?1:0;
+  var q=new Int32Array(N),comp=new Int32Array(N); for(var c2=0;c2<N;c2++) comp[c2]=-1;
+  var bigC=-1,bigSz=0,ncc=0;
+  for(var s0=0;s0<N;s0++){ if(walk[s0]&&comp[s0]<0){ var st=0; q[st++]=s0; comp[s0]=ncc; var sz=0;
+    for(var sh=0; sh<st; ){ var cc=q[sh++],ax=cc%cols,ay=(cc/cols)|0; sz++;
+      if(ax+1<cols&&walk[cc+1]&&comp[cc+1]<0){comp[cc+1]=ncc;q[st++]=cc+1;}
+      if(ax-1>=0&&walk[cc-1]&&comp[cc-1]<0){comp[cc-1]=ncc;q[st++]=cc-1;}
+      if(ay+1<rows&&walk[cc+cols]&&comp[cc+cols]<0){comp[cc+cols]=ncc;q[st++]=cc+cols;}
+      if(ay-1>=0&&walk[cc-cols]&&comp[cc-cols]<0){comp[cc-cols]=ncc;q[st++]=cc-cols;} }
+    if(sz>bigSz){bigSz=sz;bigC=ncc;} ncc++; } }
+  var main=new Uint8Array(N); for(var mi=0;mi<N;mi++) main[mi]=(comp[mi]===bigC)?1:0;
+  for(var wi=0;wi<N;wi++) if(!main[wi]) walk[wi]=0;
+  var dist=new Float32Array(N),D1=1,D2=RSQ2,BIG=1e9,maxD=0;
+  for(var di=0;di<N;di++) dist[di]=main[di]?BIG:0;
+  for(var fy2=0;fy2<rows;fy2++)for(var fx2=0;fx2<cols;fx2++){var fi=fy2*cols+fx2;if(!main[fi])continue;var v=dist[fi];
+    if(fx2>0)v=Math.min(v,dist[fi-1]+D1); if(fy2>0)v=Math.min(v,dist[fi-cols]+D1);
+    if(fx2>0&&fy2>0)v=Math.min(v,dist[fi-cols-1]+D2); if(fx2<cols-1&&fy2>0)v=Math.min(v,dist[fi-cols+1]+D2); dist[fi]=v;}
+  for(var by=rows-1;by>=0;by--)for(var bx=cols-1;bx>=0;bx--){var bi=by*cols+bx;if(!main[bi])continue;var v2=dist[bi];
+    if(bx<cols-1)v2=Math.min(v2,dist[bi+1]+D1); if(by<rows-1)v2=Math.min(v2,dist[bi+cols]+D1);
+    if(bx<cols-1&&by<rows-1)v2=Math.min(v2,dist[bi+cols+1]+D2); if(bx>0&&by<rows-1)v2=Math.min(v2,dist[bi+cols-1]+D2);
+    dist[bi]=v2; if(v2>maxD&&v2<BIG)maxD=v2;}
+  var m={cols:cols,rows:rows,CELL:CELL,ox:minX,oy:minY,walkable:walk,main:main,dist:dist,maxD:maxD};
+  RMASKS[floor]=m; return m;
+}
+function rSnap(m,x,y){
+  var gx=Math.floor((x-m.ox)/m.CELL),gy=Math.floor((y-m.oy)/m.CELL);
+  gx=Math.max(0,Math.min(m.cols-1,gx)); gy=Math.max(0,Math.min(m.rows-1,gy));
+  if(m.walkable[gy*m.cols+gx]) return [gx,gy];
+  for(var r=1;r<300;r++){ for(var dx=-r;dx<=r;dx++)for(var dy=-r;dy<=r;dy++){ if(Math.max(Math.abs(dx),Math.abs(dy))!==r)continue;
+    var nx=gx+dx,ny=gy+dy; if(nx<0||ny<0||nx>=m.cols||ny>=m.rows)continue; if(m.walkable[ny*m.cols+nx])return [nx,ny]; } }
+  return null;
+}
+function rAStar(m,a,b){
+  var w=m.walkable,cols=m.cols,rows=m.rows,dist=m.dist,maxD=m.maxD||1,N=cols*rows;
+  var g=new Float64Array(N),came=new Int32Array(N),closed=new Uint8Array(N),i;
+  for(i=0;i<N;i++){g[i]=Infinity;came[i]=-1;}
+  function id(x,y){return y*cols+x;}
+  var sI=id(a[0],a[1]),gI=id(b[0],b[1]); if(!w[sI]||!w[gI])return null;
+  var ref=Math.min(maxD,13),LAMBDA=34;
+  function bias(idx){var c=dist[idx];if(c>=ref)return 0;var t=(ref-c)/ref;return LAMBDA*t*t;}
+  function h(x,y){var dx=Math.abs(x-b[0]),dy=Math.abs(y-b[1]);return (dx+dy)+(RSQ2-2)*Math.min(dx,dy);}
+  var open=[]; g[sI]=0; rHeapPush(open,{i:sI,x:a[0],y:a[1],f:h(a[0],a[1])});
+  var D=[[1,0,1],[-1,0,1],[0,1,1],[0,-1,1],[1,1,RSQ2],[1,-1,RSQ2],[-1,1,RSQ2],[-1,-1,RSQ2]];
+  while(open.length){
+    var cur=rHeapPop(open); if(closed[cur.i])continue; closed[cur.i]=1;
+    if(cur.i===gI){var path=[],c=gI;while(c!==-1){path.push([c%cols,(c/cols)|0]);c=came[c];}return path.reverse();}
+    for(var d=0;d<8;d++){var nx=cur.x+D[d][0],ny=cur.y+D[d][1];if(nx<0||ny<0||nx>=cols||ny>=rows)continue;var nI=id(nx,ny);if(!w[nI]||closed[nI])continue;
+      if(D[d][2]>1&&(!w[id(cur.x+D[d][0],cur.y)]||!w[id(cur.x,cur.y+D[d][1])]))continue;
+      var ng=g[cur.i]+D[d][2]*(1+bias(nI));if(ng<g[nI]){g[nI]=ng;came[nI]=cur.i;rHeapPush(open,{i:nI,x:nx,y:ny,f:ng+h(nx,ny)});}}
+  }
+  return null;
+}
+function rPerp(p,a,b){var dx=b[0]-a[0],dy=b[1]-a[1],L=Math.hypot(dx,dy);if(L<1e-9)return Math.hypot(p[0]-a[0],p[1]-a[1]);return Math.abs((p[0]-a[0])*dy-(p[1]-a[1])*dx)/L;}
+function rDP(pts,eps){if(pts.length<3)return pts.slice();var dmax=0,idx=0;for(var i=1;i<pts.length-1;i++){var dd=rPerp(pts[i],pts[0],pts[pts.length-1]);if(dd>dmax){dmax=dd;idx=i;}}if(dmax>eps){var l=rDP(pts.slice(0,idx+1),eps),r=rDP(pts.slice(idx),eps);return l.slice(0,-1).concat(r);}return [pts[0],pts[pts.length-1]];}
+function rDirect(ax,ay,bx,by){var line=[[ax,ay],[bx,by]];line.entryA=[ax,ay];line.entryB=[bx,by];return line;}
+function routeOnFloor(floor,ax,ay,bx,by){
+  var m=buildMask(floor); if(!m)return rDirect(ax,ay,bx,by);
+  var A=rSnap(m,ax,ay),B=rSnap(m,bx,by); if(!A||!B)return rDirect(ax,ay,bx,by);
+  var cells=rAStar(m,A,B); if(!cells)return rDirect(ax,ay,bx,by);
+  var pts=cells.map(function(c){return [m.ox+(c[0]+0.5)*m.CELL,m.oy+(c[1]+0.5)*m.CELL];});
+  var line=rDP(pts,m.CELL*3.2);
+  line.entryA=[m.ox+(A[0]+0.5)*m.CELL,m.oy+(A[1]+0.5)*m.CELL];
+  line.entryB=[m.ox+(B[0]+0.5)*m.CELL,m.oy+(B[1]+0.5)*m.CELL];
+  return line;
+}
+function rNearEsc(floor,x,y){var L=ESCALATORS[floor]||[],best=null,bd=1e18;L.forEach(function(e){var dd=(e[0]-x)*(e[0]-x)+(e[1]-y)*(e[1]-y);if(dd<bd){bd=dd;best=e;}});return best;}
+function rLen(pts){var L=0;for(var i=1;i<pts.length;i++)L+=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]);return L;}
+/* origin/dest = {floor, pt:[vbx,vby], label} */
+function computeRoute(origin, dest){
+  var oc=origin.pt, dc=dest.pt;
+  if(origin.floor===dest.floor){
+    var pts=routeOnFloor(origin.floor,oc[0],oc[1],dc[0],dc[1]);
+    return {cross:false,segments:[{floor:origin.floor,pts:pts,oc:pts.entryA,dc:pts.entryB}]};
+  }
+  /* cross-floor: pick the SAME physical escalator bank on both floors (link<=120),
+     so you exit on the next floor at the exact escalator you rode up — no teleporting. */
+  var Lo=ESCALATORS[origin.floor]||[],Ld=ESCALATORS[dest.floor]||[],bestO=null,bestD=null,bs=1e18;
+  Lo.forEach(function(eo){Ld.forEach(function(ed){
+    var link=Math.hypot(eo[0]-ed[0],eo[1]-ed[1]); if(link>120)return;
+    var sc=Math.hypot(eo[0]-oc[0],eo[1]-oc[1])+link*4+Math.hypot(ed[0]-dc[0],ed[1]-dc[1]);
+    if(sc<bs){bs=sc;bestO=eo;bestD=ed;}
+  });});
+  if(!bestO){ Lo.forEach(function(e){var sc=Math.hypot(e[0]-oc[0],e[1]-oc[1])+Math.hypot(e[0]-dc[0],e[1]-dc[1]);if(sc<bs){bs=sc;bestO=e;}});
+    if(!bestO)return null; bestD=rNearEsc(dest.floor,bestO[0],bestO[1])||bestO; }
+  var emx=(bestO[0]+bestD[0])/2,emy=(bestO[1]+bestD[1])/2;
+  var s1=routeOnFloor(origin.floor,oc[0],oc[1],emx,emy), s2=routeOnFloor(dest.floor,emx,emy,dc[0],dc[1]);
+  return {cross:true,escFloor:origin.floor,segments:[
+    {floor:origin.floor,pts:s1,oc:s1.entryA,esc:s1.entryB,kind:"toEsc"},
+    {floor:dest.floor,pts:s2,esc:s2.entryA,dc:s2.entryB,kind:"fromEsc"}]};
+}
+
+/* ---- route state + 3D drawing ---- */
+var ROUTE = {active:false, route:null, origin:null, dest:null}, routeGroup=null, routePick=false, routeFromMe=false;
+function clearRoute(){
+  ROUTE.active=false; ROUTE.route=null; ROUTE.origin=null; ROUTE.dest=null; routeFromMe=false;
+  if(routeGroup){ scene.remove(routeGroup); routeGroup.traverse(function(o){ if(o.geometry)o.geometry.dispose(); }); routeGroup=null; }
+  document.getElementById("routeBar").classList.remove("show");
+}
+function routeMarker(world, color, kind){
+  var g=new THREE.Group();
+  var ring=new THREE.Mesh(new THREE.RingGeometry(2.2,3.4,28), new THREE.MeshBasicMaterial({color:color, side:THREE.DoubleSide, transparent:true, opacity:0.9, depthTest:false}));
+  ring.rotation.x=-Math.PI/2; ring.position.copy(world); ring.position.y=0.4; ring.renderOrder=4; g.add(ring);
+  var dot=new THREE.Mesh(new THREE.SphereGeometry(1.5,16,12), new THREE.MeshBasicMaterial({color:color, depthTest:false}));
+  dot.position.copy(world); dot.position.y=1.4; dot.renderOrder=5; g.add(dot);
+  return g;
+}
+function drawRouteForFloor(){
+  if(routeGroup){ scene.remove(routeGroup); routeGroup=null; }
+  if(!ROUTE.route) return;
+  var seg=null; ROUTE.route.segments.forEach(function(s){ if(s.floor===curFloor) seg=s; });
+  routeGroup=new THREE.Group(); scene.add(routeGroup);
+  if(!seg){ return; }                       // route is on other floors only
+  var pts=seg.pts.map(function(p){ return vbToWorld(p[0],p[1],0.8); });
+  if(pts.length>=2){
+    var curve=new THREE.CatmullRomCurve3(pts,false,"catmullrom",0.4);
+    var tube=new THREE.Mesh(new THREE.TubeGeometry(curve, Math.max(8,pts.length*4), 0.7, 8, false),
+      new THREE.MeshStandardMaterial({color:0x2f74d0, emissive:0x2f74d0, emissiveIntensity:0.6, roughness:0.4, metalness:0}));
+    tube.renderOrder=3; routeGroup.add(tube);
+  }
+  if(seg.oc) routeGroup.add(routeMarker(vbToWorld(seg.oc[0],seg.oc[1],0), 0x2fa15a, "origin"));
+  if(seg.esc) routeGroup.add(routeMarker(vbToWorld(seg.esc[0],seg.esc[1],0), 0xffb24d, "esc"));
+  if(seg.dc) routeGroup.add(routeMarker(vbToWorld(seg.dc[0],seg.dc[1],0), 0xd24d4d, "dest"));
+}
+function routeTotals(R){ var m=0; R.segments.forEach(function(s){ m+=rLen(s.pts); }); m/=UNITS_PER_M;
+  var secs=m/WALK_MS+(R.cross?25:0); return {m:Math.round(m), min:Math.max(1,Math.round(secs/60))}; }
+function startRoute(){
+  if(!ROUTE.origin || !ROUTE.dest) return;
+  var R=computeRoute(ROUTE.origin, ROUTE.dest); if(!R){ toast("No route found"); return; }
+  ROUTE.route=R; ROUTE.active=true;
+  var floorWithOrigin = R.segments[0].floor;
+  if(curFloor!==floorWithOrigin){ if(!floorObjs[floorWithOrigin]) buildFloor(floorWithOrigin); showFloor(floorWithOrigin); }
+  drawRouteForFloor();
+  renderRouteBar();
+  // frame the visible segment
+  var seg=R.segments[0], mid=seg.pts[Math.floor(seg.pts.length/2)];
+  var t=vbToWorld(mid[0],mid[1],2); flyTo(t.clone().addScaledVector(viewDir(), framingRadius()*0.5), t);
+}
+function renderRouteBar(){
+  var R=ROUTE.route; if(!R) return;
+  var tot=routeTotals(R);
+  document.getElementById("rbTime").textContent=tot.min+" min";
+  document.getElementById("rbDist").textContent=tot.m+" m";
+  document.getElementById("rbOD").textContent=(ROUTE.origin.label||"Start")+"  →  "+(ROUTE.dest.label||"Destination");
+  var step=document.getElementById("rbStep"), destFloor=R.segments[R.segments.length-1].floor;
+  if(R.cross && curFloor!==destFloor){ step.style.display="flex"; step.textContent="Take escalator to "+FLOORS[destFloor].name; }
+  else if(R.cross && curFloor===destFloor){ step.style.display="flex"; step.textContent="Back to "+FLOORS[R.segments[0].floor].name; }
+  else step.style.display="none";
+  document.getElementById("routeBar").classList.add("show");
+}
+function routeStepFloor(){
+  var R=ROUTE.route; if(!R||!R.cross) return;
+  var other=null; R.segments.forEach(function(s){ if(s.floor!==curFloor) other=s.floor; });
+  if(other){ if(!floorObjs[other]) buildFloor(other); showFloor(other); }   // showFloor redraws via drawRouteForFloor
+}
+/* entry points from the shop card's Directions button */
+function directionsTo(u){
+  ROUTE.dest={floor:curFloor, pt:unitCentroidVB(u), label:(u.name&&u.name.trim()?u.name:cat(u.cat).l)};
+  if(userWorld){            // Mode 1 — route from the live blue dot (entry is ground level)
+    routeFromMe=true;
+    ROUTE.origin={floor:"G", pt:[vb(userWorld.x+OFFSET.x), vb(-(userWorld.z+OFFSET.z))], label:"Your location"};
+    startRoute();
+  } else {                  // Mode 2 — ask for a starting shop
+    routePick=true;
+    document.getElementById("directory").classList.add("pick");
+    openDirectory();
+    document.getElementById("dirTitle").textContent="Choose your starting point";
+    document.getElementById("dirSub").textContent="Pick the shop you're starting from";
+  }
+}
+function setRouteStartShop(f, u){
+  ROUTE.origin={floor:f, pt:unitCentroidVB(u), label:(u.name&&u.name.trim()?u.name:cat(u.cat).l)};
+  startRoute();
 }
 
 /* -------- tap / click picking -------- */
