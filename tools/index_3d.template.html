@@ -1,0 +1,648 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f3d3a6">
+<title>Tilal Mall — 3D Floor Plan</title>
+<style>
+  /* ---- golden-hour background: soft blue sky fading to a warm peach horizon.
+         Painted in CSS behind a transparent WebGL canvas (no noisy texture). ---- */
+  :root{
+    --ink:#2c2f38; --ink-soft:#5b606e;
+    --glass:rgba(255,255,255,.16); --glass-strong:rgba(255,255,255,.30);
+    --stroke:rgba(255,255,255,.45); --shadow:0 10px 34px rgba(60,44,24,.18);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0; overflow:hidden; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink); -webkit-font-smoothing:antialiased;
+    background:
+      radial-gradient(120% 90% at 78% 6%, rgba(255,239,206,.55) 0%, rgba(255,239,206,0) 46%),
+      linear-gradient(180deg,#a7c1e4 0%, #bccbe2 26%, #e7d6c2 60%, #f6d3a4 84%, #f4c188 100%);
+  }
+  #app{position:fixed; inset:0;}
+  canvas{display:block; touch-action:none;}
+
+  /* ---------- top bar ---------- */
+  .topbar{
+    position:fixed; left:0; right:0; top:0; z-index:6;
+    display:flex; align-items:center; gap:10px;
+    padding:calc(env(safe-area-inset-top,0px) + 10px) 12px 10px;
+    pointer-events:none;
+  }
+  .brand{
+    pointer-events:auto; display:flex; align-items:center; gap:9px;
+    padding:8px 13px; border-radius:14px;
+    background:var(--glass); border:1px solid var(--stroke);
+    backdrop-filter:blur(16px) saturate(130%); -webkit-backdrop-filter:blur(16px) saturate(130%);
+    box-shadow:var(--shadow);
+  }
+  .brand .mark{width:20px;height:20px;border-radius:6px;
+    background:linear-gradient(135deg,#f6c885,#c98f4a); box-shadow:inset 0 0 0 1px rgba(255,255,255,.4);}
+  .brand b{font-size:15px; letter-spacing:.04em; font-weight:700;}
+  .brand span{font-size:11px; color:var(--ink-soft); letter-spacing:.06em; text-transform:uppercase;}
+  .spacer{flex:1;}
+
+  /* segmented floor switcher */
+  .floors{
+    pointer-events:auto; display:flex; gap:3px; padding:4px; border-radius:14px;
+    background:var(--glass); border:1px solid var(--stroke);
+    backdrop-filter:blur(16px) saturate(130%); -webkit-backdrop-filter:blur(16px) saturate(130%);
+    box-shadow:var(--shadow);
+  }
+  .floors button{
+    appearance:none; border:0; cursor:pointer; font:inherit; font-weight:600;
+    color:var(--ink-soft); background:transparent; border-radius:10px;
+    padding:8px 12px; min-width:40px; transition:.18s; line-height:1; font-size:13px;
+  }
+  .floors button .lvl{font-size:15px; font-weight:700; display:block;}
+  .floors button .nm{font-size:9px; letter-spacing:.05em; text-transform:uppercase; opacity:.75;}
+  .floors button.active{background:rgba(255,255,255,.62); color:var(--ink); box-shadow:0 4px 12px rgba(70,52,28,.14);}
+
+  /* ---------- hint ---------- */
+  .hint{
+    position:fixed; left:50%; transform:translateX(-50%); bottom:calc(env(safe-area-inset-bottom,0px) + 14px);
+    z-index:5; pointer-events:none; font-size:12px; color:var(--ink-soft);
+    background:var(--glass); border:1px solid var(--stroke); border-radius:999px;
+    padding:7px 14px; backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+    box-shadow:var(--shadow); opacity:0; transition:opacity .6s; white-space:nowrap;
+  }
+  .hint.show{opacity:1;}
+
+  /* ---------- legend ---------- */
+  .legend{
+    position:fixed; left:12px; bottom:calc(env(safe-area-inset-bottom,0px) + 12px); z-index:6;
+    width:min(230px,72vw); border-radius:16px; overflow:hidden;
+    background:var(--glass); border:1px solid var(--stroke);
+    backdrop-filter:blur(16px) saturate(130%); -webkit-backdrop-filter:blur(16px) saturate(130%);
+    box-shadow:var(--shadow); transition:.25s;
+  }
+  .legend .lg-head{
+    display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none;
+    padding:11px 13px; font-weight:600; font-size:13px;
+  }
+  .legend .lg-head .chev{margin-left:auto; transition:.25s; opacity:.6;}
+  .legend.collapsed .lg-body{display:none;}
+  .legend.collapsed .lg-head .chev{transform:rotate(180deg);}
+  .legend.cardopen{transform:translateY(180%); opacity:0; pointer-events:none;}  /* mobile: yield to info card */
+  .legend .lg-body{max-height:42vh; overflow:auto; padding:2px 6px 8px;}
+  .legend .row{
+    display:flex; align-items:center; gap:9px; padding:7px 8px; border-radius:9px; cursor:pointer;
+    font-size:12.5px; transition:.15s;
+  }
+  .legend .row:hover{background:rgba(255,255,255,.28);}
+  .legend .row.off{opacity:.4;}
+  .legend .sw{width:13px;height:13px;border-radius:4px;flex:0 0 auto;box-shadow:inset 0 0 0 1px rgba(0,0,0,.06);}
+  .legend .row .nm{flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .legend .row .ct{color:var(--ink-soft); font-variant-numeric:tabular-nums; font-size:11.5px;}
+
+  /* ---------- info card ---------- */
+  .card{
+    position:fixed; z-index:7; left:12px; right:12px;
+    bottom:calc(env(safe-area-inset-bottom,0px) + 12px);
+    border-radius:20px; padding:15px 16px;
+    background:var(--glass-strong); border:1px solid var(--stroke);
+    backdrop-filter:blur(20px) saturate(140%); -webkit-backdrop-filter:blur(20px) saturate(140%);
+    box-shadow:var(--shadow);
+    transform:translateY(140%); opacity:0; transition:transform .34s cubic-bezier(.2,.8,.2,1), opacity .34s;
+  }
+  .card.show{transform:translateY(0); opacity:1;}
+  .card .top{display:flex; align-items:flex-start; gap:12px;}
+  .card .dot{width:30px;height:30px;border-radius:9px;flex:0 0 auto;margin-top:1px;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.5), 0 3px 8px rgba(60,44,24,.18);}
+  .card h2{margin:0; font-size:17px; font-weight:700; letter-spacing:.01em;}
+  .card .cat{margin:2px 0 0; font-size:12.5px; color:var(--ink-soft); letter-spacing:.02em;}
+  .card .close{
+    margin-left:auto; cursor:pointer; border:0; background:rgba(255,255,255,.4); color:var(--ink);
+    width:30px;height:30px;border-radius:50%; font-size:17px; line-height:1; flex:0 0 auto;
+  }
+  .card .meta{display:flex; gap:8px; margin-top:13px; flex-wrap:wrap;}
+  .card .pill{
+    font-size:12px; color:var(--ink); background:rgba(255,255,255,.42);
+    border:1px solid rgba(255,255,255,.5); border-radius:999px; padding:6px 11px;
+    font-variant-numeric:tabular-nums;
+  }
+  .card .pill b{font-weight:700;}
+
+  /* ---------- loader ---------- */
+  #loader{
+    position:fixed; inset:0; z-index:20; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:16px;
+    background:linear-gradient(180deg,#bccbe2,#f4c188); transition:opacity .6s; color:var(--ink);
+  }
+  #loader.hide{opacity:0; pointer-events:none;}
+  .ring{width:46px;height:46px;border-radius:50%;
+    border:3px solid rgba(255,255,255,.45); border-top-color:#c98f4a; animation:spin 1s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  #loader .lbl{font-size:13px; letter-spacing:.14em; text-transform:uppercase; color:#6a5636;}
+  #loader .err{display:none; max-width:300px; text-align:center; font-size:13px; line-height:1.5; color:#7a3b2a;}
+
+  /* ---------- desktop refinements ---------- */
+  @media (min-width:760px){
+    .brand b{font-size:17px;}
+    .card{left:auto; right:18px; bottom:18px; width:340px;}
+    .legend{width:248px;}
+    .hint{font-size:12.5px;}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .card{transition:none;} .ring{animation-duration:2.4s;}
+  }
+</style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <div class="topbar">
+    <div class="brand"><span class="mark"></span><div><b>Tilal Mall</b><br><span>3D Plan</span></div></div>
+    <div class="spacer"></div>
+    <div class="floors" id="floors"></div>
+  </div>
+
+  <div class="legend collapsed" id="legend">
+    <div class="lg-head" id="lgHead">Categories
+      <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg>
+    </div>
+    <div class="lg-body" id="lgBody"></div>
+  </div>
+
+  <div class="hint" id="hint">Drag to orbit · pinch to zoom · tap a unit</div>
+
+  <div class="card" id="card">
+    <div class="top">
+      <span class="dot" id="cDot"></span>
+      <div style="min-width:0">
+        <h2 id="cName">—</h2>
+        <p class="cat" id="cCat">—</p>
+      </div>
+      <button class="close" id="cClose" aria-label="Close">×</button>
+    </div>
+    <div class="meta" id="cMeta"></div>
+  </div>
+
+  <div id="loader">
+    <div class="ring" id="spinner"></div>
+    <div class="lbl" id="loadLbl">Building 3D model…</div>
+    <div class="err" id="loadErr">Couldn’t load the 3D engine. This viewer needs an internet connection the first time (it fetches Three.js from a CDN).</div>
+  </div>
+
+<script>
+/* ============================================================================
+   Tilal Mall — 3D floor-plan viewer (single file, classic <script>, file://-safe)
+   Baked polygon data per floor is injected below. We build THREE.Shapes from the
+   pre-simplified points, extrude them with a soft bevel, light the scene for a
+   warm golden hour, and let you orbit / tap units.
+   ========================================================================== */
+var FLOORS = __FLOORDATA__;
+
+/* per-category look: label, soft palette colour, extrude height, group */
+var CAT = {
+  hypermarket:{l:"Hypermarket",c:0xe7dcc4,h:16,g:"lease"},
+  "hyper-store":{l:"Hypermarket Storage",c:0xd8d2c2,h:6,g:"fac"},
+  anchor:{l:"Anchor Store",c:0x3f5f90,h:16,g:"lease"},
+  "mini-major":{l:"Mini-Major",c:0x7693bd,h:14,g:"lease"},
+  "line-shop":{l:"Retail Shop",c:0xc6d6ea,h:11,g:"lease"},
+  fnb:{l:"Restaurant",c:0xcf9f4e,h:11,g:"lease"},
+  "fnb-cafe":{l:"Café",c:0xddb673,h:10,g:"lease"},
+  "fnb-kiosk":{l:"F&B Kiosk",c:0xd2a557,h:9,g:"lease"},
+  "fnb-seating":{l:"F&B Seating",c:0xe9d7ac,h:6,g:"lease"},
+  kiosk:{l:"Kiosk",c:0xc0974d,h:9,g:"lease"},
+  "kiosk-seating":{l:"Kiosk Seating",c:0xd6dded,h:6,g:"lease"},
+  "food-village":{l:"Food Village",c:0xddb673,h:11,g:"lease"},
+  "food-court":{l:"Food Court",c:0xcf9f4e,h:11,g:"lease"},
+  "fc-seating":{l:"Food Court Seating",c:0xe9d7ac,h:6,g:"lease"},
+  fec:{l:"Family Entertainment",c:0x6f8dc0,h:14,g:"lease"},
+  cinema:{l:"Cinema",c:0x3f5f90,h:16,g:"lease"},
+  "customer-service":{l:"Customer Service",c:0xe3d9c2,h:9,g:"fac"},
+  "management-suite":{l:"Management",c:0xc6d1de,h:9,g:"fac"},
+  "tenant-store":{l:"Storage",c:0xd6cfbf,h:6,g:"fac"},
+  "prayer-room":{l:"Prayer Room",c:0xe6e1d2,h:8,g:"fac"},
+  circulation:{l:"Circulation",c:0xeef1f5,h:3,g:"fac"},
+  mep:{l:"Building Services",c:0xd9d6cd,h:5,g:"fac"},
+  boh:{l:"Back of House",c:0xdddacf,h:5,g:"fac"},
+  toilet:{l:"Restroom",c:0xc2cedd,h:5,g:"fac"},
+  /* legacy aliases so any stray value still renders */
+  hyper:{l:"Hypermarket",c:0xe7dcc4,h:16,g:"lease"},
+  retail:{l:"Retail Shop",c:0xc6d6ea,h:11,g:"lease"},
+  specialty:{l:"Retail Shop",c:0xc6d6ea,h:11,g:"lease"},
+  "specialty-retail":{l:"Retail Shop",c:0xc6d6ea,h:11,g:"lease"},
+  seating:{l:"Food Court Seating",c:0xe9d7ac,h:6,g:"lease"},
+  service:{l:"Customer Service",c:0xe3d9c2,h:9,g:"fac"},
+  "fnb-kiosk-seating-area":{l:"Kiosk Seating",c:0xd6dded,h:6,g:"lease"},
+  "fc-kitchen":{l:"Food Court",c:0xcf9f4e,h:11,g:"lease"},
+  "fv-kitchen":{l:"Food Village",c:0xddb673,h:11,g:"lease"}
+};
+var DEF = {l:"Unit",c:0xcfd6df,h:9,g:"fac"};
+function cat(k){ return CAT[k] || DEF; }
+
+var FLOOR_ORDER = ["BL","G","F1"];
+var FLOOR_SHORT = {BL:"B", G:"G", F1:"1"};
+var FLOOR_SUB = {BL:"Basement", G:"Ground", F1:"Level 1"};
+
+/* ---- CDN loader: classic scripts (work from file://), with a fallback host.
+        r137 still ships examples/js global builds, which is why we pin it. ---- */
+var CDNS = ["https://cdn.jsdelivr.net/npm/three@0.137.0","https://unpkg.com/three@0.137.0"];
+var SCRIPTS = ["/build/three.min.js","/examples/js/controls/OrbitControls.js","/examples/js/utils/BufferGeometryUtils.js"];
+
+function loadFrom(hostIdx){
+  var host = CDNS[hostIdx];
+  var i = 0;
+  (function next(){
+    if(i >= SCRIPTS.length){ boot(); return; }
+    var s = document.createElement("script");
+    s.src = host + SCRIPTS[i];
+    s.onload = function(){ i++; next(); };
+    s.onerror = function(){
+      if(hostIdx + 1 < CDNS.length){ loadFrom(hostIdx + 1); }   // try the other CDN
+      else { showLoadError(); }
+    };
+    document.head.appendChild(s);
+  })();
+}
+function showLoadError(){
+  document.getElementById("spinner").style.display = "none";
+  document.getElementById("loadLbl").style.display = "none";
+  document.getElementById("loadErr").style.display = "block";
+}
+window.addEventListener("DOMContentLoaded", function(){ loadFrom(0); });
+
+/* ============================ the scene ==================================== */
+var renderer, scene, camera, controls, raycaster, ground;
+var floorObjs = {}, curFloor = "G", selected = null, highlightMesh = null;
+var OFFSET = null, MODEL = {w:200, d:90, h:16};   // shared transform + size
+var idleTimer = null, isMobile = matchMedia("(max-width:760px)").matches;
+
+function boot(){
+  if(typeof THREE === "undefined"){ showLoadError(); return; }
+  try { init(); }
+  catch(e){ console.error(e); showLoadError(); }
+}
+
+function init(){
+  var app = document.getElementById("app");
+
+  renderer = new THREE.WebGLRenderer({antialias:true, alpha:true, powerPreference:"high-performance"});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;                 // warm, filmic glow
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;     // soft, no acne
+  app.appendChild(renderer.domElement);
+
+  scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(0xf3d6ad, 260, 720);        // warm depth haze
+
+  camera = new THREE.PerspectiveCamera(46, window.innerWidth/window.innerHeight, 1, 4000);
+
+  /* ---- golden-hour lighting ---- */
+  var hemi = new THREE.HemisphereLight(0xffe9c8, 0x3a3550, 0.62);  // warm sky / cool ground fill
+  scene.add(hemi);
+
+  var key = new THREE.DirectionalLight(0xffd9a0, 2.2);  // warm late-afternoon sun, high & to the right
+  key.position.set(150, 220, 90);
+  key.castShadow = true;
+  key.shadow.mapSize.set(isMobile ? 1024 : 2048, isMobile ? 1024 : 2048);
+  key.shadow.bias = -0.00042;
+  key.shadow.normalBias = 0.7;
+  key.shadow.radius = 4;                                // soft penumbra
+  scene.add(key);
+  scene.add(key.target);
+  window._key = key;
+
+  var fill = new THREE.DirectionalLight(0xbcd0ff, 0.32); // cool counter-fill so shadows aren't dead
+  fill.position.set(-120, 90, -110);
+  scene.add(fill);
+
+  /* transparent ground that only catches a soft contact shadow (CSS sky shows through) */
+  ground = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000),
+                          new THREE.ShadowMaterial({color:0x4b3a23, opacity:0.16}));
+  ground.rotation.x = -Math.PI/2;
+  ground.position.y = -0.02;
+  ground.receiveShadow = true;
+  scene.add(ground);
+
+  raycaster = new THREE.Raycaster();
+
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.075;
+  controls.maxPolarAngle = 1.45;        // can't dip under the floor
+  controls.minPolarAngle = 0.18;
+  controls.rotateSpeed = 0.85;
+  controls.zoomSpeed = 0.9;
+  controls.panSpeed = 0.8;
+  controls.screenSpacePanning = false;
+  controls.autoRotate = true;           // calm showroom drift; pauses on touch
+  controls.autoRotateSpeed = 0.32;
+  controls.addEventListener("start", onUserInteract);
+
+  buildFloorSwitcher();
+
+  /* build the visible floor first, reveal, then build the rest off the critical path */
+  buildFloor(curFloor);
+  showFloor(curFloor);
+  frameModel(true);
+  buildLegend();
+  hideLoader();
+  revealHint();
+
+  setTimeout(function(){
+    FLOOR_ORDER.forEach(function(f){ if(!floorObjs[f]) buildFloor(f); });
+  }, 60);
+
+  window.addEventListener("resize", onResize);
+  setupPicking();
+  document.getElementById("cClose").addEventListener("click", deselect);
+  document.getElementById("lgHead").addEventListener("click", function(){
+    document.getElementById("legend").classList.toggle("collapsed");
+  });
+
+  animate();
+}
+
+/* -------- build shapes for one unit (outer ring + holes) -------- */
+function shapesFor(u){
+  var out = [];
+  for(var i=0;i<u.s.length;i++){
+    var sh = u.s[i], o = sh.o;
+    if(!o || o.length < 6) continue;
+    var shape = new THREE.Shape();
+    shape.moveTo(o[0], o[1]);
+    for(var k=2;k<o.length;k+=2) shape.lineTo(o[k], o[k+1]);
+    if(sh.h){
+      for(var hh=0;hh<sh.h.length;hh++){
+        var hole = sh.h[hh]; if(hole.length < 6) continue;
+        var p = new THREE.Path();
+        p.moveTo(hole[0], hole[1]);
+        for(var m=2;m<hole.length;m+=2) p.lineTo(hole[m], hole[m+1]);
+        shape.holes.push(p);
+      }
+    }
+    out.push(shape);
+  }
+  return out;
+}
+
+/* small units get a smaller bevel so the rounding never eats the footprint */
+function bevelFor(u){
+  var minx=1e9,miny=1e9,maxx=-1e9,maxy=-1e9, o=u.s[0].o;
+  for(var i=0;i<o.length;i+=2){ var x=o[i],y=o[i+1];
+    if(x<minx)minx=x; if(x>maxx)maxx=x; if(y<miny)miny=y; if(y>maxy)maxy=y; }
+  var md = Math.min(maxx-minx, maxy-miny);
+  return Math.max(0.12, Math.min(0.6, md*0.16));
+}
+
+function extrudeUnit(u, height){
+  var shapes = shapesFor(u);
+  if(!shapes.length) return null;
+  var b = bevelFor(u);
+  var geo = new THREE.ExtrudeGeometry(shapes, {
+    depth: height, bevelEnabled: true,
+    bevelThickness: b, bevelSize: b, bevelSegments: 2, steps: 1
+  });
+  geo.computeVertexNormals();   // smooth shading across the bevel
+  return geo;
+}
+
+/* -------- build a whole floor: one merged mesh per category -------- */
+function buildFloor(fkey){
+  var data = FLOORS[fkey]; if(!data) return;
+  var group = new THREE.Group();
+  var byCat = {};   // cat -> { geos:[], ranges:[{u,start,count}], tri:0 }
+
+  data.units.forEach(function(u){
+    try{
+      var c = cat(u.cat);
+      var geo = extrudeUnit(u, c.h);
+      if(!geo) return;
+      var tri = (geo.index ? geo.index.count : geo.attributes.position.count) / 3;   // triangle count
+      var bucket = byCat[u.cat] || (byCat[u.cat] = {geos:[], ranges:[], tri:0});
+      bucket.ranges.push({u:u, start:bucket.tri, count:tri});
+      bucket.geos.push(geo);
+      bucket.tri += tri;
+    }catch(err){ /* one bad polygon must never freeze the scene */ console.warn("unit skipped", u.id, err); }
+  });
+
+  var meshes = {};
+  Object.keys(byCat).forEach(function(k){
+    var bucket = byCat[k]; if(!bucket.geos.length) return;
+    var merged = bucket.geos.length === 1 ? bucket.geos[0]
+               : THREE.BufferGeometryUtils.mergeBufferGeometries(bucket.geos, false);
+    if(!merged) return;
+    var c = cat(k);
+    var mat = new THREE.MeshStandardMaterial({
+      color:c.c, roughness:0.62, metalness:0.08, flatShading:false, side:THREE.DoubleSide
+    });
+    var mesh = new THREE.Mesh(merged, mat);
+    mesh.castShadow = true; mesh.receiveShadow = true;
+    mesh.userData.ranges = bucket.ranges;
+    mesh.userData.catKey = k;
+    group.add(mesh);
+    meshes[k] = mesh;
+  });
+
+  /* orient: the plan is drawn in the XY plane (y-down). Rotating -90° about X
+     lays it flat on the ground (XZ) and sends the extrude axis (+Z) straight
+     up (+Y), so every block rises from y=0 and rests on the ground regardless
+     of height. (A pure rotation keeps the determinant +1, so face winding,
+     holes and normals all stay correct — no inside-out blocks.) */
+  group.rotation.x = -Math.PI/2;
+
+  /* one shared transform for every floor so switching never jumps */
+  if(!OFFSET){
+    var box = new THREE.Box3().setFromObject(group);
+    var ctr = box.getCenter(new THREE.Vector3());
+    var size = box.getSize(new THREE.Vector3());
+    OFFSET = {x:ctr.x, y:box.min.y, z:ctr.z};
+    MODEL = {w:size.x, d:size.z, h:size.y};
+  }
+  group.position.set(-OFFSET.x, -OFFSET.y, -OFFSET.z);
+  group.visible = false;
+  scene.add(group);
+  floorObjs[fkey] = {group:group, meshes:meshes};
+}
+
+function showFloor(fkey){
+  FLOOR_ORDER.forEach(function(f){ if(floorObjs[f]) floorObjs[f].group.visible = (f === fkey); });
+  curFloor = fkey;
+  deselect();
+  document.querySelectorAll("#floors button").forEach(function(b){
+    b.classList.toggle("active", b.dataset.f === fkey);
+  });
+  buildLegend();
+}
+
+/* -------- camera framing from the model size (aspect-aware, so the wide fan
+            fits on portrait phones as well as landscape desktops) -------- */
+function frameModel(initial){
+  if(!initial) return;
+  var R = 0.5 * Math.sqrt(MODEL.w*MODEL.w + MODEL.d*MODEL.d + MODEL.h*MODEL.h); // bounding sphere
+  var vFov = camera.fov * Math.PI/180;
+  var hFov = 2 * Math.atan(Math.tan(vFov/2) * camera.aspect);
+  var radius = (R / Math.sin(Math.min(vFov, hFov)/2)) * 1.08;   // fit the sphere in the tighter FOV
+  var dir = new THREE.Vector3(0.34, 0.8, 1).normalize();        // warm 3/4 golden-hour angle
+  var target = new THREE.Vector3(0, MODEL.h * 0.3, 0);
+  camera.position.copy(target).addScaledVector(dir, radius);
+  controls.target.copy(target);
+  controls.minDistance = R * 0.6;
+  controls.maxDistance = radius * 1.8;
+  scene.fog.near = radius * 0.55;
+  scene.fog.far  = radius * 2.4;
+  /* aim the sun's shadow camera to cover the whole model */
+  var m = Math.max(MODEL.w, MODEL.d) * 0.72;
+  var sc = window._key.shadow.camera;
+  sc.left = -m; sc.right = m; sc.top = m; sc.bottom = -m;
+  sc.near = 1; sc.far = radius*3; sc.updateProjectionMatrix();
+  window._key.target.position.set(0,0,0);
+  controls.update();
+}
+
+/* -------- UI: floor switcher -------- */
+function buildFloorSwitcher(){
+  var host = document.getElementById("floors");
+  host.innerHTML = "";
+  FLOOR_ORDER.forEach(function(f){
+    var b = document.createElement("button");
+    b.dataset.f = f;
+    b.innerHTML = '<span class="lvl">' + FLOOR_SHORT[f] + '</span><span class="nm">' + FLOOR_SUB[f] + '</span>';
+    b.title = FLOORS[f].name;
+    if(f === curFloor) b.classList.add("active");
+    b.addEventListener("click", function(){ if(f !== curFloor){ showFloor(f); } });
+    host.appendChild(b);
+  });
+}
+
+/* -------- UI: legend (toggle categories on/off) -------- */
+function buildLegend(){
+  var body = document.getElementById("lgBody");
+  body.innerHTML = "";
+  var fo = floorObjs[curFloor]; if(!fo) return;
+  var counts = {};
+  FLOORS[curFloor].units.forEach(function(u){ counts[u.cat] = (counts[u.cat]||0)+1; });
+  /* leasing first, then facilities; only categories actually present */
+  var keys = Object.keys(fo.meshes).sort(function(a,b){
+    var ga = cat(a).g === "lease" ? 0:1, gb = cat(b).g === "lease" ? 0:1;
+    if(ga !== gb) return ga - gb;
+    return (counts[b]||0) - (counts[a]||0);
+  });
+  keys.forEach(function(k){
+    var c = cat(k), mesh = fo.meshes[k];
+    var row = document.createElement("div");
+    row.className = "row" + (mesh.visible ? "" : " off");
+    row.innerHTML = '<span class="sw" style="background:#' + c.c.toString(16).padStart(6,"0") + '"></span>'
+      + '<span class="nm">' + c.l + '</span><span class="ct">' + (counts[k]||0) + '</span>';
+    row.addEventListener("click", function(){
+      mesh.visible = !mesh.visible;
+      row.classList.toggle("off", !mesh.visible);
+      if(selected && selected.mesh === mesh) deselect();
+    });
+    body.appendChild(row);
+  });
+}
+
+/* -------- tap / click picking -------- */
+function setupPicking(){
+  var el = renderer.domElement, down = null, activePts = 0;
+  el.addEventListener("pointerdown", function(e){
+    activePts++;
+    if(activePts === 1) down = {x:e.clientX, y:e.clientY, t:Date.now()};
+    else down = null;     // multi-touch gesture, not a tap
+  });
+  el.addEventListener("pointerup", function(e){
+    activePts = Math.max(0, activePts - 1);
+    if(!down) return;
+    var dx = e.clientX - down.x, dy = e.clientY - down.y;
+    if(Math.abs(dx) < 8 && Math.abs(dy) < 8 && (Date.now() - down.t) < 380) pick(e.clientX, e.clientY);
+    down = null;
+  });
+  el.addEventListener("pointercancel", function(){ activePts = Math.max(0, activePts-1); down = null; });
+}
+
+function pick(px, py){
+  var fo = floorObjs[curFloor]; if(!fo) return;
+  var r = renderer.domElement.getBoundingClientRect();
+  var ndc = new THREE.Vector2(((px-r.left)/r.width)*2-1, -((py-r.top)/r.height)*2+1);
+  raycaster.setFromCamera(ndc, camera);
+  var meshes = []; for(var k in fo.meshes){ if(fo.meshes[k].visible) meshes.push(fo.meshes[k]); }
+  var hits = raycaster.intersectObjects(meshes, false);
+  if(!hits.length){ deselect(); return; }
+  var hit = hits[0], mesh = hit.object, fi = hit.faceIndex, ranges = mesh.userData.ranges, unit = null;
+  for(var i=0;i<ranges.length;i++){ if(fi >= ranges[i].start && fi < ranges[i].start + ranges[i].count){ unit = ranges[i].u; break; } }
+  if(!unit){ deselect(); return; }
+  select(unit, mesh);
+}
+
+function select(u, mesh){
+  selected = {unit:u, mesh:mesh};
+  if(highlightMesh){ highlightMesh.parent.remove(highlightMesh); highlightMesh.geometry.dispose(); highlightMesh = null; }
+  var c = cat(u.cat);
+  try{
+    var geo = extrudeUnit(u, c.h + 0.9);
+    geo.translate(0, 0, -0.45);   // enclose the base block (no z-fighting), pop slightly above
+    var mat = new THREE.MeshStandardMaterial({color:c.c, emissive:0xffce86, emissiveIntensity:0.5, roughness:0.45, metalness:0.1, side:THREE.DoubleSide});
+    highlightMesh = new THREE.Mesh(geo, mat);
+    highlightMesh.castShadow = true;
+    floorObjs[curFloor].group.add(highlightMesh);
+  }catch(e){ /* ignore highlight build errors */ }
+  showCard(u);
+}
+
+function deselect(){
+  selected = null;
+  if(highlightMesh){ highlightMesh.parent.remove(highlightMesh); highlightMesh.geometry.dispose(); highlightMesh = null; }
+  document.getElementById("card").classList.remove("show");
+  document.getElementById("legend").classList.remove("cardopen");
+}
+
+/* -------- info card -------- */
+function showCard(u){
+  var c = cat(u.cat);
+  document.getElementById("cDot").style.background = "#" + c.c.toString(16).padStart(6,"0");
+  document.getElementById("cName").textContent = u.name && u.name.trim() ? u.name : c.l;
+  document.getElementById("cCat").textContent = c.l + " · " + FLOORS[curFloor].name;
+  var meta = document.getElementById("cMeta"); meta.innerHTML = "";
+  if(u.id) meta.appendChild(pill("Unit", u.id));
+  if(u.m2 && parseFloat(u.m2) > 0){
+    var m2 = parseFloat(u.m2);
+    meta.appendChild(pill("Area", Math.round(m2).toLocaleString() + " m²"));
+    meta.appendChild(pill("", Math.round(m2*10.7639).toLocaleString() + " ft²"));
+  }
+  document.getElementById("card").classList.add("show");
+  if(isMobile) document.getElementById("legend").classList.add("cardopen");
+}
+function pill(label, val){
+  var d = document.createElement("span"); d.className = "pill";
+  d.innerHTML = (label ? '<b>' + label + '</b> ' : '') + val;
+  return d;
+}
+
+/* -------- idle auto-rotate handling -------- */
+function onUserInteract(){
+  controls.autoRotate = false;
+  if(idleTimer) clearTimeout(idleTimer);
+  idleTimer = setTimeout(function(){ controls.autoRotate = true; }, 4500);
+}
+function revealHint(){
+  var h = document.getElementById("hint"); h.classList.add("show");
+  setTimeout(function(){ h.classList.remove("show"); }, 5200);
+}
+
+/* -------- loop & resize -------- */
+function animate(){
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+function onResize(){
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  isMobile = matchMedia("(max-width:760px)").matches;
+}
+function hideLoader(){ var l = document.getElementById("loader"); l.classList.add("hide"); setTimeout(function(){ l.style.display = "none"; }, 650); }
+</script>
+</body>
+</html>
