@@ -164,6 +164,52 @@
     background:rgba(34,40,54,.92); border-radius:999px; padding:10px 18px; box-shadow:var(--shadow); white-space:nowrap;}
   #toast.show{opacity:1; transform:translate(-50%,0);}
 
+  /* ---------- full-page directory (List) ---------- */
+  .directory{position:fixed; inset:0; z-index:16; display:flex; flex-direction:column;
+    background:radial-gradient(120% 80% at 80% 0%, rgba(255,240,210,.75), rgba(255,240,210,0) 46%),
+      linear-gradient(180deg, rgba(248,244,237,.97), rgba(245,234,217,.98));
+    backdrop-filter:blur(20px) saturate(140%); -webkit-backdrop-filter:blur(20px) saturate(140%);
+    opacity:0; pointer-events:none; transform:translateY(14px); transition:opacity .3s, transform .3s;}
+  .directory.open{opacity:1; pointer-events:auto; transform:none;}
+  .dir-head{display:flex; align-items:center; gap:12px; padding:calc(env(safe-area-inset-top,0px) + 16px) 18px 8px;}
+  .dir-icon-btn{width:40px;height:40px;flex:0 0 auto;display:grid;place-items:center;cursor:pointer; color:var(--ink);
+    border:1px solid var(--stroke); border-radius:12px; background:rgba(255,255,255,.55);}
+  .dir-icon-btn svg{width:20px;height:20px;}
+  .dir-back{display:none;}
+  .directory.in-group .dir-back{display:grid;}
+  .dir-titles{flex:1; min-width:0;}
+  .dir-titles h2{margin:0; font-size:21px; font-weight:700; letter-spacing:.01em;}
+  .dir-titles p{margin:1px 0 0; font-size:12.5px; color:var(--ink-soft);}
+  .dir-map-btn{display:flex; align-items:center; gap:7px; cursor:pointer; flex:0 0 auto; border:0; border-radius:12px;
+    padding:10px 15px; font:inherit; font-size:13px; font-weight:600; color:#fff; background:linear-gradient(135deg,#3f74c0,#2f5391);
+    box-shadow:0 4px 14px rgba(47,83,145,.3);}
+  .dir-map-btn svg{width:16px;height:16px;}
+  .dir-search{display:flex; align-items:center; gap:9px; margin:6px 18px 10px; padding:0 14px; color:var(--ink-soft);
+    background:rgba(255,255,255,.66); border:1px solid rgba(255,255,255,.7); border-radius:14px; box-shadow:0 6px 18px rgba(60,44,24,.08);}
+  .dir-search svg{width:17px;height:17px;flex:0 0 auto;}
+  .dir-search input{flex:1; min-width:0; border:0; background:transparent; outline:0; font:inherit; font-size:15px; color:var(--ink); padding:13px 0;}
+  .dir-body{flex:1; overflow-y:auto; padding:4px 16px calc(env(safe-area-inset-bottom,0px) + 24px); -webkit-overflow-scrolling:touch;}
+  .dir-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(152px,1fr)); gap:12px; padding:6px 2px;}
+  .dir-card{display:flex; flex-direction:column; gap:11px; padding:16px; cursor:pointer; border-radius:18px;
+    background:rgba(255,255,255,.62); border:1px solid rgba(255,255,255,.7); box-shadow:0 8px 22px rgba(60,44,24,.08);
+    transition:transform .16s, box-shadow .16s;}
+  .dir-card:hover{transform:translateY(-2px); box-shadow:0 12px 28px rgba(60,44,24,.14);}
+  .dir-card .ci{width:46px;height:46px;border-radius:13px;display:grid;place-items:center;color:#fff; box-shadow:inset 0 0 0 1px rgba(255,255,255,.25);}
+  .dir-card .ci svg{width:24px;height:24px;}
+  .dir-card .cl{font-size:14.5px; font-weight:700; line-height:1.2;}
+  .dir-card .cn{font-size:12px; color:var(--ink-soft); margin-top:-4px;}
+  .dir-fhead{font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-soft); font-weight:700; margin:18px 6px 7px;}
+  .dir-list{display:grid; grid-template-columns:repeat(auto-fill, minmax(258px,1fr)); gap:8px;}
+  .dir-item{display:flex; align-items:center; gap:12px; padding:12px 14px; cursor:pointer; border-radius:14px;
+    background:rgba(255,255,255,.55); border:1px solid rgba(255,255,255,.6); transition:.15s;}
+  .dir-item:hover{background:rgba(255,255,255,.82);}
+  .dir-item .di{width:34px;height:34px;border-radius:10px;flex:0 0 auto; box-shadow:inset 0 0 0 1px rgba(255,255,255,.5);}
+  .dir-item .dt{flex:1; min-width:0;}
+  .dir-item .dt b{display:block; font-size:14px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .dir-item .dt span{font-size:12px; color:var(--ink-soft);}
+  .dir-item .dc{font-size:11.5px; color:var(--ink-soft); text-align:right; flex:0 0 auto; font-variant-numeric:tabular-nums;}
+  .dir-empty{padding:54px 16px; text-align:center; color:var(--ink-soft); font-size:14px;}
+
   /* ---------- loader ---------- */
   #loader{
     position:fixed; inset:0; z-index:20; display:flex; flex-direction:column;
@@ -242,6 +288,18 @@
     </div>
   </div>
   <div id="toast"></div>
+
+  <!-- full-page directory (List) -->
+  <div class="directory" id="directory">
+    <div class="dir-head">
+      <button class="dir-icon-btn dir-back" id="dirBack" type="button" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <div class="dir-titles"><h2 id="dirTitle">Directory</h2><p id="dirSub">Browse by category</p></div>
+      <button class="dir-map-btn" id="dirClose" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></svg>Map</button>
+    </div>
+    <div class="dir-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg>
+      <input id="dirSearch" type="text" placeholder="Search shops, codes, categories…" autocomplete="off"/></div>
+    <div class="dir-body" id="dirBody"></div>
+  </div>
 
   <div id="loader">
     <div class="ring" id="spinner"></div>
@@ -415,7 +473,7 @@ function init(){
 
   /* transparent ground that only catches a soft contact shadow (CSS sky shows through) */
   ground = new THREE.Mesh(new THREE.PlaneGeometry(8000, 8000),
-                          new THREE.ShadowMaterial({color:0x36281a, opacity:0.34}));
+                          new THREE.ShadowMaterial({color:0x36281a, opacity:0.34, depthWrite:false}));
   ground.rotation.x = -Math.PI/2;
   ground.position.y = -0.02;
   ground.receiveShadow = true;
@@ -463,11 +521,10 @@ function init(){
   document.querySelectorAll("#seg button").forEach(function(b){
     b.addEventListener("click", function(){ setMode(b.dataset.mode); });
   });
-  var si = document.getElementById("search");
-  si.addEventListener("input", function(){
-    searchQ = si.value.toLowerCase().trim();
-    if(searchQ && panelMode !== "list"){ setMode("list"); } else { renderPanel(); }
-  });
+  document.getElementById("search").addEventListener("input", function(e){ setSearch(e.target.value); });
+  document.getElementById("dirSearch").addEventListener("input", function(e){ setSearch(e.target.value); });
+  document.getElementById("dirBack").addEventListener("click", function(){ dirGroup = null; renderDirectory(); });
+  document.getElementById("dirClose").addEventListener("click", function(){ clearSearch(); setMode("map"); });
 
   animate();
 }
@@ -586,8 +643,10 @@ function buildBasemap(){
         a.x,y,a.z,  d.x,y,d.z,  b.x,y,b.z,   b.x,y,b.z,  d.x,y,d.z,  cc.x,y,cc.z], 3));
       g.setAttribute("uv", new THREE.Float32BufferAttribute([0,1, 0,0, 1,1, 1,1, 0,0, 1,0], 2));
       var url = "https://basemaps.cartocdn.com/rastertiles/light_all/"+z+"/"+tx+"/"+ty+hi+".png";
-      var mat = new THREE.MeshBasicMaterial({color:0xfbf3e6, transparent:true, opacity:0.98, depthWrite:false});
-      (function(m){ loader.load(url, function(tex){ tex.encoding = THREE.sRGBEncoding; m.map = tex; m.needsUpdate = true; }, undefined, function(){}); })(mat);
+      /* DoubleSide so the ground shows regardless of quad winding; opaque light
+         fill stands in until the street tile loads */
+      var mat = new THREE.MeshBasicMaterial({color:0xede7da, side:THREE.DoubleSide});
+      (function(m){ loader.load(url, function(tex){ tex.encoding = THREE.sRGBEncoding; m.map = tex; m.color.setHex(0xffffff); m.needsUpdate = true; }, undefined, function(){}); })(mat);
       var mesh = new THREE.Mesh(g, mat);
       mesh.renderOrder = -1;                      // under everything
       basemapGroup.add(mesh);
@@ -729,22 +788,17 @@ function buildFloorSwitcher(){
   });
 }
 
-/* -------- UI: legend (toggle categories on/off) -------- */
-/* -------- left panel: Map (category toggles) / List (searchable directory) -------- */
+/* -------- left panel (Map): category toggles for the current floor -------- */
 var panelMode = "map", searchQ = "";
 function setMode(m){
   panelMode = m;
   document.querySelectorAll("#seg button").forEach(function(b){ b.classList.toggle("active", b.dataset.mode === m); });
-  renderPanel();
+  if(m === "list") openDirectory(); else closeDirectory();
 }
 function renderPanel(){
   var body = document.getElementById("panelBody");
   if(!body) return;
   body.innerHTML = "";
-  if(panelMode === "map") renderCategories(body);
-  else renderList(body);
-}
-function renderCategories(body){
   var fo = floorObjs[curFloor]; if(!fo) return;
   var counts = {};
   FLOORS[curFloor].units.forEach(function(u){ counts[u.cat] = (counts[u.cat]||0)+1; });
@@ -755,11 +809,8 @@ function renderCategories(body){
   });
   var head = document.createElement("div"); head.className = "p-head";
   head.textContent = FLOORS[curFloor].name + " · tap to toggle"; body.appendChild(head);
-  var shown = 0;
   keys.forEach(function(k){
     var c = cat(k), mesh = fo.meshes[k];
-    if(searchQ && c.l.toLowerCase().indexOf(searchQ) < 0) return;
-    shown++;
     var row = document.createElement("div");
     row.className = "row" + (mesh.visible ? "" : " off");
     row.innerHTML = '<span class="sw" style="background:' + hex6(c.c) + '"></span>'
@@ -771,33 +822,6 @@ function renderCategories(body){
     });
     body.appendChild(row);
   });
-  if(!shown){ var e = document.createElement("div"); e.className = "empty"; e.textContent = "No matching categories"; body.appendChild(e); }
-}
-function renderList(body){
-  var q = searchQ, any = false;
-  FLOOR_ORDER.forEach(function(f){
-    var matches = (FLOORS[f].units || []).filter(function(u){
-      if(!u.id) return false;
-      var c = cat(u.cat);
-      if(!q) return c.g === "lease";                       // default directory = shops & dining
-      var hay = ((u.name||"") + " " + u.id + " " + c.l + " " + (c.t||"")).toLowerCase();
-      return hay.indexOf(q) >= 0;
-    });
-    if(!matches.length) return;
-    any = true;
-    var head = document.createElement("div"); head.className = "p-head";
-    head.textContent = FLOORS[f].name + " · " + matches.length; body.appendChild(head);
-    matches.slice(0, 300).forEach(function(u){
-      var c = cat(u.cat);
-      var it = document.createElement("div"); it.className = "item";
-      it.innerHTML = '<span class="ic" style="background:' + hex6(c.c) + '"></span>'
-        + '<span class="tx"><b>' + (u.name && u.name.trim() ? u.name : c.l) + '</b><span>' + c.l + '</span></span>'
-        + '<span class="code">' + (u.id||"") + '</span>';
-      it.addEventListener("click", function(){ goToUnit(f, u); });
-      body.appendChild(it);
-    });
-  });
-  if(!any){ var e = document.createElement("div"); e.className = "empty"; e.textContent = q ? "No matches for “" + q + "”" : "Type to search shops"; body.appendChild(e); }
 }
 function goToUnit(f, u){
   if(f !== curFloor){ if(!floorObjs[f]) buildFloor(f); showFloor(f); }
@@ -805,6 +829,103 @@ function goToUnit(f, u){
   for(var k in fo.meshes){ var rs = fo.meshes[k].userData.ranges;
     for(var i=0;i<rs.length;i++){ if(rs[i].u.id === u.id){ select(rs[i].u, fo.meshes[k]); locateSelected(); break; } } }
   if(isMobile) document.getElementById("panel").classList.remove("open");
+}
+
+/* ======================= full-page directory (List) ======================= */
+/* high-level browse groups built from the map categories */
+var DIR_GROUPS = [
+  {k:"shops",   l:"Shops & Stores",  c:0x5e83bd, cats:["line-shop","anchor","mini-major"], icon:'<path d="M6 7h12l-1 13H7L6 7z"/><path d="M9 7a3 3 0 0 1 6 0"/>'},
+  {k:"dining",  l:"Dining & F&B",    c:0xd28e26, cats:["fnb","fnb-cafe","fnb-kiosk","food-court","food-village","fc-seating","fnb-seating","kiosk-seating","fc-kitchen","fv-kitchen"], icon:'<path d="M6 3v8a2 2 0 0 0 2 2v8M8 3v6M10 3v6"/><path d="M16 3c-1.4 1-2 3-2 5s.6 4 2 5v6"/>'},
+  {k:"hyper",   l:"Hypermarket",     c:0xbf9f53, cats:["hypermarket","hyper-store"], icon:'<circle cx="9" cy="20" r="1.3"/><circle cx="17" cy="20" r="1.3"/><path d="M3 4h2l2.2 11h10l1.8-8H6.2"/>'},
+  {k:"cinema",  l:"Cinema",          c:0x2b4d8c, cats:["cinema"], icon:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 4v16M17 4v16M3 10h4M17 10h4M3 14h4M17 14h4"/>'},
+  {k:"fun",     l:"Entertainment",   c:0x6a6fc0, cats:["fec"], icon:'<rect x="3" y="8" width="18" height="9" rx="4"/><path d="M7 12h3M8.5 10.5v3"/><circle cx="16" cy="12" r=".9"/><circle cx="18" cy="14" r=".9"/>'},
+  {k:"kiosk",   l:"Kiosks",          c:0xbd8528, cats:["kiosk"], icon:'<path d="M4 9h16l-1 3H5L4 9z"/><path d="M5 12v8h14v-8"/><path d="M4 9l1-4h14l1 4"/>'},
+  {k:"restroom",l:"Restrooms",       c:0x8fa3c0, cats:["toilet"], icon:'<path d="M7 22v-6M17 22v-6"/><circle cx="7" cy="5" r="2"/><circle cx="17" cy="5" r="2"/><path d="M5 16h4l-2-7-2 7zM15 16h4l-2-7-2 7z"/>'},
+  {k:"services",l:"Guest Services",  c:0xc2a874, cats:["customer-service","prayer-room","management-suite"], icon:'<circle cx="12" cy="8" r="3.2"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/>'},
+  {k:"facility",l:"Facilities",      c:0xa7a291, cats:["circulation","mep","boh","tenant-store"], icon:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/>'}
+];
+var dirGroup = null;
+function directoryOpen(){ return document.getElementById("directory").classList.contains("open"); }
+function openDirectory(){ dirGroup = null; document.getElementById("directory").classList.add("open"); renderDirectory(); }
+function closeDirectory(){ document.getElementById("directory").classList.remove("open"); }
+
+function unitsInGroup(g){
+  var set = {}; g.cats.forEach(function(c){ set[c] = 1; });
+  var out = [];
+  FLOOR_ORDER.forEach(function(f){ (FLOORS[f].units||[]).forEach(function(u){ if(u.id && set[u.cat]) out.push({u:u, floor:f}); }); });
+  return out;
+}
+function unitsMatching(q){
+  var out = [];
+  FLOOR_ORDER.forEach(function(f){ (FLOORS[f].units||[]).forEach(function(u){
+    if(!u.id) return; var c = cat(u.cat);
+    if((((u.name||"") + " " + u.id + " " + c.l + " " + (c.t||"")).toLowerCase()).indexOf(q) >= 0) out.push({u:u, floor:f});
+  }); });
+  return out;
+}
+function renderDirectory(){
+  var dir = document.getElementById("directory"), body = document.getElementById("dirBody");
+  var title = document.getElementById("dirTitle"), sub = document.getElementById("dirSub");
+  body.innerHTML = ""; body.scrollTop = 0;
+  if(searchQ){
+    dir.classList.remove("in-group");
+    title.textContent = "Search"; sub.textContent = "Results for “" + searchQ + "”";
+    renderDirShops(body, unitsMatching(searchQ));
+  } else if(dirGroup){
+    var g = DIR_GROUPS.filter(function(x){ return x.k === dirGroup; })[0];
+    dir.classList.add("in-group");
+    title.textContent = g.l; sub.textContent = "Tap a place to view it on the map";
+    renderDirShops(body, unitsInGroup(g));
+  } else {
+    dir.classList.remove("in-group");
+    title.textContent = "Directory"; sub.textContent = "Browse by category";
+    var grid = document.createElement("div"); grid.className = "dir-grid";
+    DIR_GROUPS.forEach(function(g){
+      var n = unitsInGroup(g).length; if(!n) return;
+      var card = document.createElement("div"); card.className = "dir-card";
+      card.innerHTML = '<span class="ci" style="background:' + hex6(g.c) + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' + g.icon + '</svg></span>'
+        + '<div class="cl">' + g.l + '</div><div class="cn">' + n + (n>1?" places":" place") + '</div>';
+      card.addEventListener("click", function(){ dirGroup = g.k; renderDirectory(); });
+      grid.appendChild(card);
+    });
+    body.appendChild(grid);
+  }
+}
+function renderDirShops(body, list){
+  if(!list.length){ var e = document.createElement("div"); e.className = "dir-empty"; e.textContent = "No places found"; body.appendChild(e); return; }
+  var byFloor = {}; list.forEach(function(it){ (byFloor[it.floor] = byFloor[it.floor] || []).push(it); });
+  FLOOR_ORDER.forEach(function(f){
+    var items = byFloor[f]; if(!items || !items.length) return;
+    items.sort(function(a,b){ return (a.u.name||cat(a.u.cat).l).localeCompare(b.u.name||cat(b.u.cat).l); });
+    var h = document.createElement("div"); h.className = "dir-fhead"; h.textContent = FLOORS[f].name + " · " + items.length; body.appendChild(h);
+    var grid = document.createElement("div"); grid.className = "dir-list";
+    items.slice(0, 600).forEach(function(it){
+      var u = it.u, c = cat(u.cat);
+      var row = document.createElement("div"); row.className = "dir-item";
+      row.innerHTML = '<span class="di" style="background:' + hex6(c.c) + '"></span>'
+        + '<span class="dt"><b>' + (u.name && u.name.trim() ? u.name : c.l) + '</b><span>' + c.l + '</span></span>'
+        + '<span class="dc">' + (u.id||"") + '</span>'
+        + '<svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
+      row.addEventListener("click", function(){ pickFromDirectory(it.floor, u); });
+      grid.appendChild(row);
+    });
+    body.appendChild(grid);
+  });
+}
+function pickFromDirectory(f, u){
+  clearSearch();
+  panelMode = "map";
+  document.querySelectorAll("#seg button").forEach(function(b){ b.classList.toggle("active", b.dataset.mode === "map"); });
+  closeDirectory();
+  goToUnit(f, u);
+}
+function clearSearch(){ searchQ = ""; var a=document.getElementById("search"), b=document.getElementById("dirSearch"); if(a)a.value=""; if(b)b.value=""; }
+function setSearch(q){
+  searchQ = (q||"").toLowerCase().trim();
+  var a = document.getElementById("search"), b = document.getElementById("dirSearch");
+  if(a && a.value !== q) a.value = q; if(b && b.value !== q) b.value = q;
+  if(searchQ && !directoryOpen()){ setMode("list"); }   /* searching from the map jumps to the directory */
+  else if(directoryOpen()){ dirGroup = null; renderDirectory(); }
 }
 
 /* -------- tap / click picking -------- */
