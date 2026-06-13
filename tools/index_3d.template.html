@@ -71,32 +71,53 @@
   }
   .hint.show{opacity:1;}
 
-  /* ---------- legend ---------- */
-  .legend{
-    position:fixed; left:12px; bottom:calc(env(safe-area-inset-bottom,0px) + 12px); z-index:6;
-    width:min(230px,72vw); border-radius:16px; overflow:hidden;
+  /* ---------- left panel (Map / List + search) ---------- */
+  .icon-btn{pointer-events:auto; width:42px;height:42px; display:grid; place-items:center; flex:0 0 auto;
+    border:1px solid var(--stroke); border-radius:13px; background:var(--glass); color:var(--ink); cursor:pointer;
+    backdrop-filter:blur(16px) saturate(130%); -webkit-backdrop-filter:blur(16px) saturate(130%); box-shadow:var(--shadow);}
+  .icon-btn svg{width:20px;height:20px;}
+  .menu-btn{display:none;}                       /* mobile only */
+  .panel{
+    position:fixed; left:12px; top:calc(env(safe-area-inset-top,0px) + 70px); z-index:9;
+    width:300px; max-width:84vw; max-height:calc(100dvh - env(safe-area-inset-top,0px) - 90px);
+    display:flex; flex-direction:column; border-radius:18px; overflow:hidden;
     background:var(--glass); border:1px solid var(--stroke);
-    backdrop-filter:blur(16px) saturate(130%); -webkit-backdrop-filter:blur(16px) saturate(130%);
-    box-shadow:var(--shadow); transition:.25s;
+    backdrop-filter:blur(18px) saturate(140%); -webkit-backdrop-filter:blur(18px) saturate(140%);
+    box-shadow:var(--shadow); transition:transform .3s cubic-bezier(.2,.8,.2,1), opacity .3s;
   }
-  .legend .lg-head{
-    display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none;
-    padding:11px 13px; font-weight:600; font-size:13px;
-  }
-  .legend .lg-head .chev{margin-left:auto; transition:.25s; opacity:.6;}
-  .legend.collapsed .lg-body{display:none;}
-  .legend.collapsed .lg-head .chev{transform:rotate(180deg);}
-  .legend.cardopen{transform:translateY(180%); opacity:0; pointer-events:none;}  /* mobile: yield to info card */
-  .legend .lg-body{max-height:42vh; overflow:auto; padding:2px 6px 8px;}
-  .legend .row{
-    display:flex; align-items:center; gap:9px; padding:7px 8px; border-radius:9px; cursor:pointer;
-    font-size:12.5px; transition:.15s;
-  }
-  .legend .row:hover{background:rgba(255,255,255,.28);}
-  .legend .row.off{opacity:.4;}
-  .legend .sw{width:13px;height:13px;border-radius:4px;flex:0 0 auto;box-shadow:inset 0 0 0 1px rgba(0,0,0,.06);}
-  .legend .row .nm{flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-  .legend .row .ct{color:var(--ink-soft); font-variant-numeric:tabular-nums; font-size:11.5px;}
+  .seg{display:flex; gap:4px; padding:10px 10px 8px;}
+  .seg button{flex:1; display:flex; align-items:center; justify-content:center; gap:7px; cursor:pointer;
+    border:0; border-radius:11px; padding:9px; font:inherit; font-size:13px; font-weight:600; color:var(--ink-soft);
+    background:rgba(255,255,255,.28); transition:.16s;}
+  .seg button svg{width:16px;height:16px;}
+  .seg button.active{background:#fff; color:var(--ink); box-shadow:0 3px 10px rgba(70,52,28,.14);}
+  .search{display:flex; align-items:center; gap:8px; margin:0 10px 8px; padding:0 12px; color:var(--ink-soft);
+    background:rgba(255,255,255,.42); border:1px solid rgba(255,255,255,.5); border-radius:12px;}
+  .search svg{width:16px;height:16px;flex:0 0 auto;}
+  .search input{flex:1; min-width:0; border:0; background:transparent; outline:0; font:inherit; font-size:13.5px; color:var(--ink); padding:11px 0;}
+  .panel-body{flex:1; overflow-y:auto; padding:2px 8px 10px; -webkit-overflow-scrolling:touch;}
+  .panel-body::-webkit-scrollbar{width:0;}
+  .p-head{font-size:11px; letter-spacing:.07em; text-transform:uppercase; color:var(--ink-soft); margin:11px 8px 4px; font-weight:700;}
+  .row{display:flex; align-items:center; gap:10px; padding:8px; border-radius:10px; cursor:pointer; font-size:12.5px; transition:.15s;}
+  .row:hover{background:rgba(255,255,255,.3);}
+  .row.off{opacity:.38;}
+  .row .sw{width:13px;height:13px;border-radius:4px;flex:0 0 auto;box-shadow:inset 0 0 0 1px rgba(0,0,0,.06);}
+  .row .nm{flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .row .ct{color:var(--ink-soft); font-variant-numeric:tabular-nums; font-size:11.5px;}
+  .item{display:flex; align-items:center; gap:11px; padding:9px 8px; border-radius:11px; cursor:pointer; transition:.15s;}
+  .item:hover{background:rgba(255,255,255,.32);}
+  .item .ic{width:30px;height:30px;border-radius:9px;flex:0 0 auto; box-shadow:inset 0 0 0 1px rgba(255,255,255,.5);}
+  .item .tx{flex:1; min-width:0;}
+  .item .tx b{display:block; font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .item .tx span{font-size:11.5px; color:var(--ink-soft);}
+  .item .code{font-size:11px; color:var(--ink-soft); font-variant-numeric:tabular-nums; flex:0 0 auto;}
+  .empty{padding:26px 12px; text-align:center; color:var(--ink-soft); font-size:13px;}
+  /* ---------- locate button (right edge) ---------- */
+  .locate-btn{position:fixed; right:14px; top:50%; transform:translateY(-50%); z-index:6;
+    width:46px;height:46px; display:grid; place-items:center; cursor:pointer; color:var(--ink);
+    border:1px solid var(--stroke); border-radius:14px; background:var(--glass);
+    backdrop-filter:blur(16px) saturate(130%); -webkit-backdrop-filter:blur(16px) saturate(130%); box-shadow:var(--shadow);}
+  .locate-btn svg{width:21px;height:21px;}
 
   /* ---------- info card ---------- */
   .card{
@@ -156,16 +177,23 @@
   #loader .lbl{font-size:13px; letter-spacing:.14em; text-transform:uppercase; color:#6a5636;}
   #loader .err{display:none; max-width:300px; text-align:center; font-size:13px; line-height:1.5; color:#7a3b2a;}
 
-  /* ---------- desktop refinements ---------- */
+  /* ---------- responsive ---------- */
   @media (min-width:760px){
     .brand b{font-size:17px;}
     .card{left:auto; right:18px; bottom:18px; width:360px;}
     .card .hero{height:168px;}
-    .legend{width:248px;}
     .hint{font-size:12.5px;}
   }
+  @media (max-width:759px){
+    .menu-btn{display:grid;}
+    .brand .mark{display:none;}
+    .panel{transform:translateX(-118%); opacity:0; pointer-events:none;
+      top:calc(env(safe-area-inset-top,0px) + 64px); width:min(330px,86vw);}
+    .panel.open{transform:none; opacity:1; pointer-events:auto;}
+    .locate-btn{top:auto; bottom:calc(env(safe-area-inset-bottom,0px) + 14px); transform:none;}
+  }
   @media (prefers-reduced-motion:reduce){
-    .card{transition:none;} .ring{animation-duration:2.4s;}
+    .card,.panel{transition:none;} .ring{animation-duration:2.4s;}
   }
 </style>
 </head>
@@ -173,17 +201,23 @@
   <div id="app"></div>
 
   <div class="topbar">
+    <button class="icon-btn menu-btn" id="menuBtn" aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
     <div class="brand"><span class="mark"></span><div><b>Tilal Mall</b><br><span>3D Plan</span></div></div>
     <div class="spacer"></div>
     <div class="floors" id="floors"></div>
   </div>
 
-  <div class="legend collapsed" id="legend">
-    <div class="lg-head" id="lgHead">Categories
-      <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg>
+  <div class="panel" id="panel">
+    <div class="seg" id="seg">
+      <button data-mode="map" class="active" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></svg>Map</button>
+      <button data-mode="list" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg>List</button>
     </div>
-    <div class="lg-body" id="lgBody"></div>
+    <div class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg>
+      <input id="search" type="text" placeholder="Search shops, codes, categories…" autocomplete="off"/></div>
+    <div class="panel-body" id="panelBody"></div>
   </div>
+
+  <button class="locate-btn" id="locateBtn" aria-label="My location" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.4"/><path d="M12 2v3.5M12 18.5V22M2 12h3.5M18.5 12H22"/></svg></button>
 
   <div class="hint" id="hint">Drag to orbit · pinch to zoom · tap a unit</div>
 
@@ -296,6 +330,8 @@ var ESCALATORS = {
   F1:[[1370,943],[1985,945],[1002,1022],[1918,1397],[2329,1011],[1704,1481],[2253,1245]]
 };
 var PLAN_SCALE = 0.11;   // must match tools/build_3d_data.py
+/* real-world georeference (matches the 2.5D map) — mall centre + footprint */
+var GEO = {lat:25.266544, lng:55.583265, mallWidthM:540, rotDeg:67};
 
 var FLOOR_ORDER = ["BL","G","F1"];
 var FLOOR_SHORT = {BL:"B", G:"G", F1:"1"};
@@ -405,7 +441,8 @@ function init(){
   buildFloor(curFloor);
   showFloor(curFloor);
   frameModel(true);
-  buildLegend();
+  buildBasemap();
+  renderPanel();
   hideLoader();
   revealHint();
   applyDeepLink();
@@ -419,8 +456,17 @@ function init(){
   document.getElementById("cClose").addEventListener("click", deselect);
   document.getElementById("cLocate").addEventListener("click", locateSelected);
   document.getElementById("cShare").addEventListener("click", shareSelected);
-  document.getElementById("lgHead").addEventListener("click", function(){
-    document.getElementById("legend").classList.toggle("collapsed");
+  document.getElementById("locateBtn").addEventListener("click", locateMe);
+  document.getElementById("menuBtn").addEventListener("click", function(){
+    document.getElementById("panel").classList.toggle("open");
+  });
+  document.querySelectorAll("#seg button").forEach(function(b){
+    b.addEventListener("click", function(){ setMode(b.dataset.mode); });
+  });
+  var si = document.getElementById("search");
+  si.addEventListener("input", function(){
+    searchQ = si.value.toLowerCase().trim();
+    if(searchQ && panelMode !== "list"){ setMode("list"); } else { renderPanel(); }
   });
 
   animate();
@@ -498,6 +544,81 @@ function buildEscalators(fkey, group){
   });
 }
 
+/* -------- real-world CARTO street basemap (georeferenced like the 2.5D map) ----
+   Tiles are placed as explicit world quads: geo -> plan (equirectangular, exactly
+   as the old map) -> rotate about the plan centre by GEO.rotDeg -> world, reusing
+   the same plan->world transform the floors use, so map + mall always align. ---- */
+function geoWorld(lat, lng){
+  var S = PLAN_SCALE;
+  var cx = OFFSET.x/S, cy = -OFFSET.z/S, planW = MODEL.w/S, mpu = GEO.mallWidthM/planW;
+  var E = (lng-GEO.lng)*111320*Math.cos(GEO.lat*Math.PI/180), N = (lat-GEO.lat)*110540;
+  var px = cx + E/mpu, py = cy - N/mpu;                       // plan, north-up
+  var R = GEO.rotDeg*Math.PI/180, dx = px-cx, dy = py-cy, co = Math.cos(R), si = Math.sin(R);
+  var rx = cx + dx*co - dy*si, ry = cy + dx*si + dy*co;        // rotate to building orientation
+  return new THREE.Vector3(rx*S - OFFSET.x, 0, -ry*S - OFFSET.z);
+}
+function _lon2tile(l,z){ return (l+180)/360*Math.pow(2,z); }
+function _lat2tile(a,z){ var r=a*Math.PI/180; return (1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*Math.pow(2,z); }
+function _tile2lon(x,z){ return x/Math.pow(2,z)*360-180; }
+function _tile2lat(y,z){ var n=Math.PI-2*Math.PI*y/Math.pow(2,z); return 180/Math.PI*Math.atan(0.5*(Math.exp(n)-Math.exp(-n))); }
+
+var basemapGroup = null;
+function buildBasemap(){
+  if(basemapGroup) return;
+  basemapGroup = new THREE.Group();
+  scene.add(basemapGroup);
+  var z = 17;                                   // ~300 m/tile at this latitude
+  var dLat = (GEO.mallWidthM*1.9)/110540, dLng = (GEO.mallWidthM*1.9)/(111320*Math.cos(GEO.lat*Math.PI/180));
+  var x0 = Math.floor(_lon2tile(GEO.lng-dLng, z)), x1 = Math.floor(_lon2tile(GEO.lng+dLng, z));
+  var y0 = Math.floor(_lat2tile(GEO.lat+dLat, z)), y1 = Math.floor(_lat2tile(GEO.lat-dLat, z));
+  var loader = new THREE.TextureLoader(); loader.setCrossOrigin("anonymous");
+  var hi = (window.devicePixelRatio > 1.4) ? "@2x" : "";
+  for(var tx=x0; tx<=x1; tx++){
+    for(var ty=y0; ty<=y1; ty++){
+      if((x1-x0+1)*(y1-y0+1) > 120) continue;   // safety cap
+      var a = geoWorld(_tile2lat(ty, z),   _tile2lon(tx, z)),     // NW
+          b = geoWorld(_tile2lat(ty, z),   _tile2lon(tx+1, z)),   // NE
+          cc= geoWorld(_tile2lat(ty+1, z), _tile2lon(tx+1, z)),   // SE
+          d = geoWorld(_tile2lat(ty+1, z), _tile2lon(tx, z));     // SW
+      var g = new THREE.BufferGeometry();
+      var y = -0.12;
+      g.setAttribute("position", new THREE.Float32BufferAttribute([
+        a.x,y,a.z,  d.x,y,d.z,  b.x,y,b.z,   b.x,y,b.z,  d.x,y,d.z,  cc.x,y,cc.z], 3));
+      g.setAttribute("uv", new THREE.Float32BufferAttribute([0,1, 0,0, 1,1, 1,1, 0,0, 1,0], 2));
+      var url = "https://basemaps.cartocdn.com/rastertiles/light_all/"+z+"/"+tx+"/"+ty+hi+".png";
+      var mat = new THREE.MeshBasicMaterial({color:0xfbf3e6, transparent:true, opacity:0.98, depthWrite:false});
+      (function(m){ loader.load(url, function(tex){ tex.encoding = THREE.sRGBEncoding; m.map = tex; m.needsUpdate = true; }, undefined, function(){}); })(mat);
+      var mesh = new THREE.Mesh(g, mat);
+      mesh.renderOrder = -1;                      // under everything
+      basemapGroup.add(mesh);
+    }
+  }
+}
+
+/* -------- live location ("you are here") via device GPS -------- */
+var youMarker = null, youPulse = 0;
+function youTexture(){
+  var cv=document.createElement("canvas"); cv.width=cv.height=128; var x=cv.getContext("2d");
+  x.beginPath(); x.arc(64,64,30,0,7); x.fillStyle="#2f74d0"; x.fill();
+  x.lineWidth=10; x.strokeStyle="#fff"; x.stroke();
+  var t=new THREE.CanvasTexture(cv); t.encoding=THREE.sRGBEncoding; return t;
+}
+function locateMe(){
+  if(!navigator.geolocation){ toast("Location not supported"); return; }
+  if(location.protocol === "file:"){ toast("Open over http(s) to use live location"); return; }
+  toast("Locating…");
+  navigator.geolocation.getCurrentPosition(function(pos){
+    var w = geoWorld(pos.coords.latitude, pos.coords.longitude);
+    if(!youMarker){
+      youMarker = new THREE.Sprite(new THREE.SpriteMaterial({map:youTexture(), transparent:true, depthTest:false, depthWrite:false}));
+      youMarker.renderOrder = 5; scene.add(youMarker);
+    }
+    youMarker.position.set(w.x, 1.5, w.z); youMarker.scale.set(6,6,1); youMarker.visible = true;
+    flyTo(new THREE.Vector3(w.x+40, 90, w.z+60), new THREE.Vector3(w.x, 2, w.z));
+    toast("You are here");
+  }, function(){ toast("Location permission denied"); }, {enableHighAccuracy:true, timeout:9000, maximumAge:30000});
+}
+
 /* -------- build a whole floor: one merged mesh per category -------- */
 function buildFloor(fkey){
   var data = FLOORS[fkey]; if(!data) return;
@@ -565,7 +686,7 @@ function showFloor(fkey){
   document.querySelectorAll("#floors button").forEach(function(b){
     b.classList.toggle("active", b.dataset.f === fkey);
   });
-  buildLegend();
+  renderPanel();
 }
 
 /* -------- camera framing from the model size (aspect-aware, so the wide fan
@@ -609,23 +730,39 @@ function buildFloorSwitcher(){
 }
 
 /* -------- UI: legend (toggle categories on/off) -------- */
-function buildLegend(){
-  var body = document.getElementById("lgBody");
+/* -------- left panel: Map (category toggles) / List (searchable directory) -------- */
+var panelMode = "map", searchQ = "";
+function setMode(m){
+  panelMode = m;
+  document.querySelectorAll("#seg button").forEach(function(b){ b.classList.toggle("active", b.dataset.mode === m); });
+  renderPanel();
+}
+function renderPanel(){
+  var body = document.getElementById("panelBody");
+  if(!body) return;
   body.innerHTML = "";
+  if(panelMode === "map") renderCategories(body);
+  else renderList(body);
+}
+function renderCategories(body){
   var fo = floorObjs[curFloor]; if(!fo) return;
   var counts = {};
   FLOORS[curFloor].units.forEach(function(u){ counts[u.cat] = (counts[u.cat]||0)+1; });
-  /* leasing first, then facilities; only categories actually present */
   var keys = Object.keys(fo.meshes).sort(function(a,b){
     var ga = cat(a).g === "lease" ? 0:1, gb = cat(b).g === "lease" ? 0:1;
     if(ga !== gb) return ga - gb;
     return (counts[b]||0) - (counts[a]||0);
   });
+  var head = document.createElement("div"); head.className = "p-head";
+  head.textContent = FLOORS[curFloor].name + " · tap to toggle"; body.appendChild(head);
+  var shown = 0;
   keys.forEach(function(k){
     var c = cat(k), mesh = fo.meshes[k];
+    if(searchQ && c.l.toLowerCase().indexOf(searchQ) < 0) return;
+    shown++;
     var row = document.createElement("div");
     row.className = "row" + (mesh.visible ? "" : " off");
-    row.innerHTML = '<span class="sw" style="background:#' + c.c.toString(16).padStart(6,"0") + '"></span>'
+    row.innerHTML = '<span class="sw" style="background:' + hex6(c.c) + '"></span>'
       + '<span class="nm">' + c.l + '</span><span class="ct">' + (counts[k]||0) + '</span>';
     row.addEventListener("click", function(){
       mesh.visible = !mesh.visible;
@@ -634,6 +771,40 @@ function buildLegend(){
     });
     body.appendChild(row);
   });
+  if(!shown){ var e = document.createElement("div"); e.className = "empty"; e.textContent = "No matching categories"; body.appendChild(e); }
+}
+function renderList(body){
+  var q = searchQ, any = false;
+  FLOOR_ORDER.forEach(function(f){
+    var matches = (FLOORS[f].units || []).filter(function(u){
+      if(!u.id) return false;
+      var c = cat(u.cat);
+      if(!q) return c.g === "lease";                       // default directory = shops & dining
+      var hay = ((u.name||"") + " " + u.id + " " + c.l + " " + (c.t||"")).toLowerCase();
+      return hay.indexOf(q) >= 0;
+    });
+    if(!matches.length) return;
+    any = true;
+    var head = document.createElement("div"); head.className = "p-head";
+    head.textContent = FLOORS[f].name + " · " + matches.length; body.appendChild(head);
+    matches.slice(0, 300).forEach(function(u){
+      var c = cat(u.cat);
+      var it = document.createElement("div"); it.className = "item";
+      it.innerHTML = '<span class="ic" style="background:' + hex6(c.c) + '"></span>'
+        + '<span class="tx"><b>' + (u.name && u.name.trim() ? u.name : c.l) + '</b><span>' + c.l + '</span></span>'
+        + '<span class="code">' + (u.id||"") + '</span>';
+      it.addEventListener("click", function(){ goToUnit(f, u); });
+      body.appendChild(it);
+    });
+  });
+  if(!any){ var e = document.createElement("div"); e.className = "empty"; e.textContent = q ? "No matches for “" + q + "”" : "Type to search shops"; body.appendChild(e); }
+}
+function goToUnit(f, u){
+  if(f !== curFloor){ if(!floorObjs[f]) buildFloor(f); showFloor(f); }
+  var fo = floorObjs[curFloor]; if(!fo) return;
+  for(var k in fo.meshes){ var rs = fo.meshes[k].userData.ranges;
+    for(var i=0;i<rs.length;i++){ if(rs[i].u.id === u.id){ select(rs[i].u, fo.meshes[k]); locateSelected(); break; } } }
+  if(isMobile) document.getElementById("panel").classList.remove("open");
 }
 
 /* -------- tap / click picking -------- */
@@ -693,7 +864,6 @@ function deselect(){
   selected = null;
   if(highlightMesh){ highlightMesh.parent.remove(highlightMesh); highlightMesh.geometry.dispose(); highlightMesh = null; }
   document.getElementById("card").classList.remove("show");
-  document.getElementById("legend").classList.remove("cardopen");
 }
 
 /* -------- info card -------- */
@@ -719,7 +889,6 @@ function showCard(u){
     meta.appendChild(pill("", Math.round(m2*10.7639).toLocaleString() + " ft²"));
   }
   document.getElementById("card").classList.add("show");
-  if(isMobile) document.getElementById("legend").classList.add("cardopen");
 }
 function pill(label, val){
   var d = document.createElement("span"); d.className = "pill";
