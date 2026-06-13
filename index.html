@@ -131,11 +131,11 @@ button{font-family:inherit;}
 /* warm the street map to the ivory tone of the design; cast one long soft
    building shadow toward the bottom-left (sun at top-right) */
 #stage3d>svg.basemap{filter:sepia(.10) saturate(1.15) brightness(.985);}
-#stage3d>svg.ext.shad{opacity:.5;filter:blur(7px);}
-/* phones: keep ONE soft shadow but a lighter blur so it stays smooth */
+#stage3d>svg.ext.shad{opacity:.6;filter:blur(5px);}
+/* phones: keep ONE soft contact shadow but a lighter blur so it stays smooth */
 @media (max-width:860px){
   #stage3d>svg.basemap{filter:none;}
-  #stage3d>svg.ext.shad{filter:blur(4px);opacity:.46;}
+  #stage3d>svg.ext.shad{filter:blur(3.5px);opacity:.55;}
 }
 .osm-credit{position:absolute;right:12px;bottom:5px;z-index:9;font-size:10px;color:rgba(255,255,255,.6);text-decoration:none;background:rgba(8,18,34,.45);padding:2px 7px;border-radius:6px;backdrop-filter:blur(4px);}
 .osm-credit:hover{color:#fff;}
@@ -2176,32 +2176,20 @@ a.row.tap:active{opacity:.6;}
       stage3d.insertBefore(L, svg);
       LAYERS.push(L);
     }
-    /* ---- BASE / floor slab ----------------------------------------------
-       The blocks were floating because their bases sit at z=-EXT_N·step but the
-       only floor (the street basemap) is 10 steps deeper — a big empty void
-       under every block. We lay a solid slab RIGHT under the block bases so the
-       buildings physically sit on something. This slab is the surface the side
-       shadows fall on; the street basemap stays far below as surrounding city. */
-    var BK=EXT_N+0.16;
-    var BASE=document.createElementNS(NS3,'svg');
-    BASE.setAttribute('viewBox',vbAttr);BASE.setAttribute('class','ext base');BASE.setAttribute('preserveAspectRatio','xMidYMid slice');
-    BASE.dataset.k=BK;BASE.style.transform='translateZ(-'+(BK*step)+'px)';
-    var bm=Math.max(planW,planH)*0.018, brx=Math.min(planW,planH)*0.03;
-    BASE.innerHTML='<rect x="'+(cMinX-bm).toFixed(1)+'" y="'+(cMinY-bm).toFixed(1)+'" width="'+(planW+2*bm).toFixed(1)+'" height="'+(planH+2*bm).toFixed(1)+'" rx="'+brx.toFixed(1)+'" fill="#eceae1"/>';
-    stage3d.insertBefore(BASE,svg);LAYERS.push(BASE);
-
-    /* ---- side shadow ON the slab ----------------------------------------
-       One soft layer, coplanar with the block base (just in front of the slab,
-       just behind the walls), nudged toward the lower-left (sun is top-right).
-       Because it shares the block-base plane it lies flat ON the floor at each
-       building's foot and reaches out to the SIDE — it is no longer below the
-       block. A blur makes it darkest at the wall, fading out. The walls render
-       in front and hide the core, leaving only the cast edge on the slab. */
+    /* ---- contact shadow (the grounding cue) -------------------------------
+       Every previous attempt floated because it was a DETACHED cast sitting in
+       the gap under the block. The fix real 2.5D maps use is a tight CONTACT
+       shadow: the footprint, barely offset, blurred so it bleeds outward only a
+       little and is darkest right AT the wall — an ambient-occlusion halo that
+       hugs the base. The walls render in front and cover the core, leaving just
+       that dark halo ringing each building's foot (a touch heavier to the
+       lower-left for the sun). A hugging shadow reads as planted; a detached one
+       floats. One layer, blurred — no stepped copies, no lag. */
     var SH=document.createElementNS(NS3,'svg');
     SH.setAttribute('viewBox',vbAttr);SH.setAttribute('class','ext shad');SH.setAttribute('preserveAspectRatio','xMidYMid slice');
-    SH.dataset.k=EXT_N+0.08;SH.style.transform='translateZ(-'+((EXT_N+0.08)*step)+'px)';
-    var SG=document.createElementNS(NS3,'g');SG.setAttribute('transform','translate(-22 17)');
-    SG.setAttribute('fill','#1c2334');
+    SH.dataset.k=EXT_N+0.12;SH.style.transform='translateZ(-'+((EXT_N+0.12)*step)+'px)';
+    var SG=document.createElementNS(NS3,'g');SG.setAttribute('transform','translate(-7 6)');
+    SG.setAttribute('fill','#161c2b');
     Array.prototype.forEach.call(units,function(p){
       var c=p.cloneNode(false);
       c.removeAttribute('class');c.removeAttribute('data-id');c.removeAttribute('data-cat');c.removeAttribute('data-base');
