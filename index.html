@@ -131,11 +131,11 @@ button{font-family:inherit;}
 /* warm the street map to the ivory tone of the design; cast one long soft
    building shadow toward the bottom-left (sun at top-right) */
 #stage3d>svg.basemap{filter:sepia(.10) saturate(1.15) brightness(.985);}
-#stage3d>svg.ext.shad{opacity:.6;filter:blur(5px);}
-/* phones: keep ONE soft contact shadow but a lighter blur so it stays smooth */
+#stage3d>svg.ext.shad{opacity:.5;filter:blur(3px);}
+/* phones: keep ONE tight drop shadow, lighter blur so it stays smooth */
 @media (max-width:860px){
   #stage3d>svg.basemap{filter:none;}
-  #stage3d>svg.ext.shad{filter:blur(3.5px);opacity:.55;}
+  #stage3d>svg.ext.shad{filter:blur(2.5px);opacity:.45;}
 }
 .osm-credit{position:absolute;right:12px;bottom:5px;z-index:9;font-size:10px;color:rgba(255,255,255,.6);text-decoration:none;background:rgba(8,18,34,.45);padding:2px 7px;border-radius:6px;backdrop-filter:blur(4px);}
 .osm-credit:hover{color:#fff;}
@@ -521,7 +521,7 @@ a.row.tap:active{opacity:.6;}
      primary actions (Directions / Locate / Share) sit right under the title and
      are always reachable; the verbose Location + Contact detail scrolls below.
      Drag the handle / scroll to reveal the rest — the card never buries the map. */
-  .card{top:auto;bottom:0;left:0;right:0;width:100%;max-width:100%;max-height:56vh;border-radius:22px 22px 0 0;
+  .card{top:auto;bottom:0;left:0;right:0;width:100%;max-width:100%;max-height:50vh;border-radius:22px 22px 0 0;
     transform:translateY(calc(100% + 8px));transition:transform .42s cubic-bezier(.22,1,.36,1),opacity .3s ease;
     padding-bottom:env(safe-area-inset-bottom);}
   .card.open{transform:translateY(0);}
@@ -2176,20 +2176,17 @@ a.row.tap:active{opacity:.6;}
       stage3d.insertBefore(L, svg);
       LAYERS.push(L);
     }
-    /* ---- contact shadow (the grounding cue) -------------------------------
-       Every previous attempt floated because it was a DETACHED cast sitting in
-       the gap under the block. The fix real 2.5D maps use is a tight CONTACT
-       shadow: the footprint, barely offset, blurred so it bleeds outward only a
-       little and is darkest right AT the wall — an ambient-occlusion halo that
-       hugs the base. The walls render in front and cover the core, leaving just
-       that dark halo ringing each building's foot (a touch heavier to the
-       lower-left for the sun). A hugging shadow reads as planted; a detached one
-       floats. One layer, blurred — no stepped copies, no lag. */
+    /* ---- tight contact / drop shadow -------------------------------------
+       A hugging drop shadow: the footprint with only a TINY bottom-right offset
+       and a tight blur, so it peeks out just enough on the bottom & right edges
+       to read as 'resting on the floor with a little thickness' — never a big
+       detached ghost. With the extrusion Z now fixed, this stays put at every
+       zoom and the buildings stay grounded. One layer, tight blur — no lag. */
     var SH=document.createElementNS(NS3,'svg');
     SH.setAttribute('viewBox',vbAttr);SH.setAttribute('class','ext shad');SH.setAttribute('preserveAspectRatio','xMidYMid slice');
     SH.dataset.k=EXT_N+0.12;SH.style.transform='translateZ(-'+((EXT_N+0.12)*step)+'px)';
-    var SG=document.createElementNS(NS3,'g');SG.setAttribute('transform','translate(-7 6)');
-    SG.setAttribute('fill','#161c2b');
+    var SG=document.createElementNS(NS3,'g');SG.setAttribute('transform','translate(5 5)');
+    SG.setAttribute('fill','#1a2030');
     Array.prototype.forEach.call(units,function(p){
       var c=p.cloneNode(false);
       c.removeAttribute('class');c.removeAttribute('data-id');c.removeAttribute('data-cat');c.removeAttribute('data-base');
@@ -2421,7 +2418,7 @@ a.row.tap:active{opacity:.6;}
     var ar=(r&&r.width>0&&r.height>0)?r.width/r.height:(bw/bh);
     var vbw=bw, vbh=bh;
     if(bw/bh>ar){ vbh=bw/ar; } else { vbw=bh*ar; }   /* grow the short side to match the screen */
-    var OUT=2.7;vbw*=OUT;vbh*=OUT;   /* open zoomed OUT: the mall in its neighbourhood, not filling the screen */
+    var OUT=1.2;vbw*=OUT;vbh*=OUT;   /* the locked home frame: the whole mall + a small margin, not endless desert */
     baseVB={x:cx-vbw/2,y:cy-vbh/2,w:vbw,h:vbh};
     vb=Object.assign({},baseVB);baseVBready=true;atHome=true;applyVB();
     setStageShift();}
@@ -2444,15 +2441,29 @@ a.row.tap:active{opacity:.6;}
   var _vbRAF=0,_lastW=-1;
   function applyVB(){if(_vbRAF)return;_vbRAF=requestAnimationFrame(_applyVBnow);}
   function _applyVBnow(){_vbRAF=0;
+    clampVB(vb);
     var s=vb.x+' '+vb.y+' '+vb.w+' '+vb.h;
     for(var i=0;i<LAYERS.length;i++){
       var B=parseFloat(LAYERS[i].dataset.bleed||0);
       if(B){LAYERS[i].setAttribute('viewBox',(vb.x-vb.w*B)+' '+(vb.y-vb.h*B)+' '+(vb.w*(1+2*B))+' '+(vb.h*(1+2*B)));}
       else LAYERS[i].setAttribute('viewBox',s);
     }
-    if(baseVB&&vb.w!==_lastW){_lastW=vb.w;var f=baseVB.w/vb.w;if(f>1.2)f=1.2;if(f<0.55)f=0.55;var step=EXT_H0/EXT_N*f;for(var j=0;j<LAYERS.length;j++){var k=LAYERS[j].dataset.k;if(k)LAYERS[j].style.transform='translateZ(-'+(k*step).toFixed(2)+'px)';}}
+    /* NB: the extrusion translateZ is FIXED (set once in build3D). It is NOT
+       scaled with zoom any more — scaling it was what pushed the layers apart
+       dynamically (the "floating island") and made the mall drift against the
+       street as you zoomed. Constant Z keeps the buildings grounded and locks
+       the mall to its real-world location at every zoom level. */
     clearTimeout(bmT);bmT=setTimeout(bmUpdate,160);   /* refresh street tiles for the new view */}
-  const MINW=function(){return baseVB.w/16;},MAXW=function(){return baseVB.w*15;};   /* same close-up reach as before; zoom out to city scale */
+  /* Keep the map LOCKED on the mall: never zoom out past the home frame, and
+     never pan off into empty desert — the viewBox is bounded to the home frame. */
+  function clampVB(v){
+    if(!baseVB)return;
+    if(v.w>baseVB.w){v.w=baseVB.w;v.h=baseVB.h;}
+    var maxx=baseVB.x+baseVB.w-v.w, maxy=baseVB.y+baseVB.h-v.h;
+    if(v.x<baseVB.x)v.x=baseVB.x; else if(v.x>maxx)v.x=maxx;
+    if(v.y<baseVB.y)v.y=baseVB.y; else if(v.y>maxy)v.y=maxy;
+  }
+  const MINW=function(){return baseVB.w/16;},MAXW=function(){return baseVB.w;};   /* zoom in close; zoom out only to the locked home frame */
   const mapWrap=document.getElementById('mapWrapper');
   function zoomCenter(fz){atHome=false;const mn=MINW(),mx=MAXW();let nw=vb.w*fz;if(nw<mn)nw=mn;if(nw>mx)nw=mx;const k=nw/vb.w;const cx=vb.x+vb.w/2,cy=vb.y+vb.h/2;vb.w=nw;vb.h=vb.h*k;vb.x=cx-vb.w/2;vb.y=cy-vb.h/2;applyVB();scheduleTenantPops();}
   function resetView(){atHome=true;animateVB(Object.assign({},baseVB));scheduleTenantPops();}
@@ -2684,19 +2695,21 @@ a.row.tap:active{opacity:.6;}
     card.classList.add('open');cardBack.classList.add('show');showMarker(s.cx,s.cy);
     nudgeForCard(s);
   }
-  /* mobile: frame the tapped shop in the upper map area, clear of the bottom
-     place-card. We FRAME it (reliable) rather than free-pan (the 3D tilt made a
-     raw pan throw the shop off the top), and add headroom at the bottom of the
-     viewBox so the shop lands in the upper third where it stays visible. */
+  /* mobile: the place-card covers the lower ~half of the screen, so frame the
+     tapped shop into the UPPER quarter where it stays visible. We zoom to the
+     shop (reliable) and place its centre near plan-fraction 0.22 from the top;
+     with the 3D tilt that lands it comfortably above the card. */
   function nudgeForCard(s){
     if(!window.matchMedia('(max-width:860px)').matches)return;
     atHome=false;
     var bb=s.el.getBBox();
     var cx=bb.x+bb.width/2, cy=bb.y+bb.height/2;
-    var m=Math.max(bb.width,bb.height)*2.4+260, w=m*2, h=m*2;
-    if(w<MINW()){var f=MINW()/w;w=MINW();h*=f;}
-    var extra=h*0.6;                       /* taller viewBox downward -> shop rides high */
-    animateVB({x:cx-w/2, y:cy-h/2, w:w, h:h+extra});
+    var r=mapWrap.getBoundingClientRect();
+    var ar=(r.width>0&&r.height>0)?r.height/r.width:1.6;     /* keep viewBox aspect = viewport */
+    var w=Math.max(bb.width,bb.height)*4.2+340;
+    if(w>baseVB.w)w=baseVB.w; if(w<MINW())w=MINW();
+    var h=w*ar;
+    animateVB({x:cx-w/2, y:cy-h*0.22, w:w, h:h});           /* shop high, clear of the card */
   }
   function deselect(){if(typeof routing!=='undefined'&&routing.active&&!routing.advancing){clearRoute();}if(selected)selected.el.classList.remove('selected');selected=null;card.classList.remove('open');cardBack.classList.remove('show');marker.style.display='none';}
   function showMarker(x,y){marker.setAttribute('transform','translate('+x+' '+y+')');marker.style.display='';}
