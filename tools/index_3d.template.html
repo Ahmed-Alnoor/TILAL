@@ -112,12 +112,31 @@
   .item .tx span{font-size:11.5px; color:var(--ink-soft);}
   .item .code{font-size:11px; color:var(--ink-soft); font-variant-numeric:tabular-nums; flex:0 0 auto;}
   .empty{padding:26px 12px; text-align:center; color:var(--ink-soft); font-size:13px;}
-  /* ---------- locate button (right edge) ---------- */
-  .locate-btn{position:fixed; right:14px; top:50%; transform:translateY(-50%); z-index:6;
-    width:46px;height:46px; display:grid; place-items:center; cursor:pointer; color:var(--ink);
-    border:1px solid var(--stroke); border-radius:14px; background:var(--glass);
-    backdrop-filter:blur(16px) saturate(130%); -webkit-backdrop-filter:blur(16px) saturate(130%); box-shadow:var(--shadow);}
-  .locate-btn svg{width:21px;height:21px;}
+  /* ---------- right-side control stack ---------- */
+  .controls{position:fixed; right:14px; top:50%; transform:translateY(-50%); z-index:8;
+    display:flex; flex-direction:column; gap:8px;}
+  .ctrl{width:46px;height:46px; display:grid; place-items:center; cursor:pointer; color:var(--ink);
+    border:1px solid var(--stroke); border-radius:13px; background:var(--glass);
+    backdrop-filter:blur(16px) saturate(130%); -webkit-backdrop-filter:blur(16px) saturate(130%); box-shadow:var(--shadow); transition:.15s;}
+  .ctrl:hover{background:rgba(255,255,255,.6);}
+  .ctrl:active{transform:scale(.94);}
+  .ctrl svg{width:21px;height:21px;}
+  #myLoc{color:#2f74d0;}
+  /* ---------- outside-the-mall location prompt ---------- */
+  .loc-prompt{position:fixed; left:50%; bottom:calc(env(safe-area-inset-bottom,0px) + 18px); transform:translate(-50%,140%);
+    z-index:11; display:flex; align-items:center; gap:13px; max-width:92vw; padding:12px 14px;
+    border-radius:16px; background:var(--glass-strong); border:1px solid var(--stroke);
+    backdrop-filter:blur(20px) saturate(140%); -webkit-backdrop-filter:blur(20px) saturate(140%);
+    box-shadow:var(--shadow); opacity:0; transition:transform .34s cubic-bezier(.2,.8,.2,1), opacity .34s;}
+  .loc-prompt.show{transform:translate(-50%,0); opacity:1;}
+  .loc-prompt .lp-txt{display:flex; flex-direction:column; min-width:0;}
+  .loc-prompt .lp-txt b{font-size:13px;}
+  .loc-prompt .lp-txt span{font-size:12px; color:var(--ink-soft);}
+  .loc-prompt .lp-go{display:flex; align-items:center; gap:7px; flex:0 0 auto; text-decoration:none; cursor:pointer;
+    border-radius:11px; padding:10px 13px; font-size:13px; font-weight:600; color:#fff; background:linear-gradient(135deg,#3f74c0,#2f5391);}
+  .loc-prompt .lp-go svg{width:15px;height:15px;}
+  .loc-prompt .lp-x{flex:0 0 auto; cursor:pointer; border:0; background:rgba(255,255,255,.4); color:var(--ink);
+    width:26px;height:26px; border-radius:50%; font-size:16px; line-height:1;}
 
   /* ---------- info card ---------- */
   .card{
@@ -236,7 +255,7 @@
     .panel{transform:translateX(-118%); opacity:0; pointer-events:none;
       top:calc(env(safe-area-inset-top,0px) + 64px); width:min(330px,86vw);}
     .panel.open{transform:none; opacity:1; pointer-events:auto;}
-    .locate-btn{top:auto; bottom:calc(env(safe-area-inset-bottom,0px) + 14px); transform:none;}
+    .controls{top:auto; bottom:calc(env(safe-area-inset-bottom,0px) + 14px); transform:none; flex-direction:column;}
   }
   @media (prefers-reduced-motion:reduce){
     .card,.panel{transition:none;} .ring{animation-duration:2.4s;}
@@ -263,7 +282,18 @@
     <div class="panel-body" id="panelBody"></div>
   </div>
 
-  <button class="locate-btn" id="locateBtn" aria-label="My location" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.4"/><path d="M12 2v3.5M12 18.5V22M2 12h3.5M18.5 12H22"/></svg></button>
+  <div class="controls" id="controls">
+    <button class="ctrl" id="zoomIn" aria-label="Zoom in" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+    <button class="ctrl" id="zoomOut" aria-label="Zoom out" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/></svg></button>
+    <button class="ctrl" id="myLoc" aria-label="My location" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2v3.4M12 18.6V22M2 12h3.4M18.6 12H22"/></svg></button>
+    <button class="ctrl" id="recenter" aria-label="Recenter" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9V5a2 2 0 0 1 2-2h4M15 3h4a2 2 0 0 1 2 2v4M21 15v4a2 2 0 0 1-2 2h-4M9 21H5a2 2 0 0 1-2-2v-4"/><circle cx="12" cy="12" r="2.4"/></svg></button>
+  </div>
+
+  <div class="loc-prompt" id="locPrompt">
+    <div class="lp-txt"><b>Outside the mall</b><span id="locPromptText">You're away from Tilal Mall.</span></div>
+    <a class="lp-go" id="locPromptLink" href="#" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>Google Maps</a>
+    <button class="lp-x" id="locPromptClose" aria-label="Dismiss" type="button">×</button>
+  </div>
 
   <div class="hint" id="hint">Drag to orbit · pinch to zoom · tap a unit</div>
 
@@ -471,7 +501,14 @@ function init(){
   fill.position.set(-120, 90, -110);
   scene.add(fill);
 
-  /* transparent ground that only catches a soft contact shadow (CSS sky shows through) */
+  /* large solid ground so the scene never looks "cut" — it extends past the
+     basemap tiles and fades into the fog/horizon instead of a hard edge */
+  var bigGround = new THREE.Mesh(new THREE.PlaneGeometry(40000, 40000),
+                                 new THREE.MeshBasicMaterial({color:0xe9e2d4}));
+  bigGround.rotation.x = -Math.PI/2; bigGround.position.y = -0.16; bigGround.renderOrder = -2;
+  scene.add(bigGround);
+
+  /* transparent ground that only catches a soft contact shadow */
   ground = new THREE.Mesh(new THREE.PlaneGeometry(8000, 8000),
                           new THREE.ShadowMaterial({color:0x36281a, opacity:0.34, depthWrite:false}));
   ground.rotation.x = -Math.PI/2;
@@ -510,11 +547,17 @@ function init(){
   }, 60);
 
   window.addEventListener("resize", onResize);
+  window.addEventListener("orientationchange", function(){ setTimeout(onResize, 250); });
+  if(window.visualViewport) window.visualViewport.addEventListener("resize", onResize);
+  setTimeout(onResize, 300);                      // settle after the mobile toolbar shows/hides
   setupPicking();
   document.getElementById("cClose").addEventListener("click", deselect);
   document.getElementById("cLocate").addEventListener("click", locateSelected);
   document.getElementById("cShare").addEventListener("click", shareSelected);
-  document.getElementById("locateBtn").addEventListener("click", locateMe);
+  document.getElementById("zoomIn").addEventListener("click", function(){ zoomBy(0.78); });
+  document.getElementById("zoomOut").addEventListener("click", function(){ zoomBy(1.28); });
+  document.getElementById("myLoc").addEventListener("click", myLocation);
+  document.getElementById("recenter").addEventListener("click", function(){ deselect(); defaultView(true); });
   document.getElementById("menuBtn").addEventListener("click", function(){
     document.getElementById("panel").classList.toggle("open");
   });
@@ -525,6 +568,7 @@ function init(){
   document.getElementById("dirSearch").addEventListener("input", function(e){ setSearch(e.target.value); });
   document.getElementById("dirBack").addEventListener("click", function(){ dirGroup = null; renderDirectory(); });
   document.getElementById("dirClose").addEventListener("click", function(){ clearSearch(); setMode("map"); });
+  document.getElementById("locPromptClose").addEventListener("click", hideLocPrompt);
 
   animate();
 }
@@ -654,29 +698,65 @@ function buildBasemap(){
   }
 }
 
-/* -------- live location ("you are here") via device GPS -------- */
-var youMarker = null, youPulse = 0;
+/* -------- live location ("you are here") via real device GPS -------- */
+var youMarker = null, youPulse = 0, locWatch = null, userLL = null, userWorld = null;
+var MALL_RADIUS_M = 320;   // treat the user as "in the mall" within this of the centre
 function youTexture(){
   var cv=document.createElement("canvas"); cv.width=cv.height=128; var x=cv.getContext("2d");
-  x.beginPath(); x.arc(64,64,30,0,7); x.fillStyle="#2f74d0"; x.fill();
-  x.lineWidth=10; x.strokeStyle="#fff"; x.stroke();
+  x.beginPath(); x.arc(64,64,26,0,7); x.fillStyle="#2f74d0"; x.fill();
+  x.lineWidth=9; x.strokeStyle="#fff"; x.stroke();
   var t=new THREE.CanvasTexture(cv); t.encoding=THREE.sRGBEncoding; return t;
 }
+function haversineM(la1,lo1,la2,lo2){
+  var R=6371000, p=Math.PI/180, dLa=(la2-la1)*p, dLo=(lo2-lo1)*p;
+  var a=Math.sin(dLa/2)*Math.sin(dLa/2)+Math.cos(la1*p)*Math.cos(la2*p)*Math.sin(dLo/2)*Math.sin(dLo/2);
+  return 2*R*Math.asin(Math.min(1,Math.sqrt(a)));
+}
+/* start continuous GPS tracking (real navigator.geolocation, no simulated coords) */
 function locateMe(){
   if(!navigator.geolocation){ toast("Location not supported"); return; }
-  if(location.protocol === "file:"){ toast("Open over http(s) to use live location"); return; }
+  if(location.protocol === "file:"){ toast("Open over http(s) for live location"); return; }
   toast("Locating…");
-  navigator.geolocation.getCurrentPosition(function(pos){
-    var w = geoWorld(pos.coords.latitude, pos.coords.longitude);
+  if(locWatch !== null) navigator.geolocation.clearWatch(locWatch);
+  locWatch = navigator.geolocation.watchPosition(onLocation,
+    function(e){ toast(e && e.code === 1 ? "Location permission denied" : "Location unavailable"); },
+    {enableHighAccuracy:true, timeout:12000, maximumAge:4000});
+}
+function onLocation(pos){
+  userLL = {lat:pos.coords.latitude, lng:pos.coords.longitude};
+  var dist = haversineM(userLL.lat, userLL.lng, GEO.lat, GEO.lng);
+  if(dist <= MALL_RADIUS_M){                  // inside / at the mall -> show the blue dot
+    hideLocPrompt();
+    userWorld = geoWorld(userLL.lat, userLL.lng);
     if(!youMarker){
       youMarker = new THREE.Sprite(new THREE.SpriteMaterial({map:youTexture(), transparent:true, depthTest:false, depthWrite:false}));
-      youMarker.renderOrder = 5; scene.add(youMarker);
+      youMarker.renderOrder = 6; scene.add(youMarker);
     }
-    youMarker.position.set(w.x, 1.5, w.z); youMarker.scale.set(6,6,1); youMarker.visible = true;
-    flyTo(new THREE.Vector3(w.x+40, 90, w.z+60), new THREE.Vector3(w.x, 2, w.z));
+    youMarker.position.set(userWorld.x, 2, userWorld.z); youMarker.visible = true;
+    flyToMarker();
     toast("You are here");
-  }, function(){ toast("Location permission denied"); }, {enableHighAccuracy:true, timeout:9000, maximumAge:30000});
+  } else {                                    // outside -> offer Google Maps directions
+    userWorld = null;
+    if(youMarker) youMarker.visible = false;
+    showLocPrompt(dist);
+  }
 }
+function flyToMarker(){
+  if(!userWorld) return;
+  var t = new THREE.Vector3(userWorld.x, 2, userWorld.z);
+  flyTo(t.clone().addScaledVector(viewDir(), 80), t);
+}
+function showLocPrompt(distM){
+  var el = document.getElementById("locPrompt");
+  var km = distM >= 1000 ? (distM/1000).toFixed(1) + " km" : Math.round(distM) + " m";
+  document.getElementById("locPromptText").textContent = "You're about " + km + " from Tilal Mall.";
+  document.getElementById("locPromptLink").href =
+    "https://www.google.com/maps/dir/?api=1&destination=" + GEO.lat + "," + GEO.lng;
+  el.classList.add("show");
+}
+function hideLocPrompt(){ document.getElementById("locPrompt").classList.remove("show"); }
+/* My-Location button: snap to the dot if we have it, else start tracking */
+function myLocation(){ if(userWorld && youMarker && youMarker.visible){ flyToMarker(); } else { locateMe(); } }
 
 /* -------- build a whole floor: one merged mesh per category -------- */
 function buildFloor(fkey){
@@ -748,30 +828,48 @@ function showFloor(fkey){
   renderPanel();
 }
 
-/* -------- camera framing from the model size (aspect-aware, so the wide fan
-            fits on portrait phones as well as landscape desktops) -------- */
-function frameModel(initial){
-  if(!initial) return;
-  var R = 0.5 * Math.sqrt(MODEL.w*MODEL.w + MODEL.d*MODEL.d + MODEL.h*MODEL.h); // bounding sphere
+/* -------- camera framing (aspect-aware so the wide fan fits portrait + desktop) -------- */
+function framingRadius(){
+  var R = 0.5 * Math.sqrt(MODEL.w*MODEL.w + MODEL.d*MODEL.d + MODEL.h*MODEL.h);
   var vFov = camera.fov * Math.PI/180;
   var hFov = 2 * Math.atan(Math.tan(vFov/2) * camera.aspect);
-  var radius = (R / Math.sin(Math.min(vFov, hFov)/2)) * 1.08;   // fit the sphere in the tighter FOV
-  var dir = new THREE.Vector3(0.34, 0.8, 1).normalize();        // warm 3/4 golden-hour angle
+  return (R / Math.sin(Math.min(vFov, hFov)/2)) * 1.08;
+}
+/* unit vector pointing to true north in world space (the plan is rotated 67°) */
+function worldNorth(){
+  var a = geoWorld(GEO.lat, GEO.lng), b = geoWorld(GEO.lat + 0.002, GEO.lng);
+  var v = new THREE.Vector3(b.x - a.x, 0, b.z - a.z);
+  return v.lengthSq() < 1e-9 ? new THREE.Vector3(0,0,-1) : v.normalize();
+}
+/* the "home" view: centred on the mall, north-up, subtle 3-D pitch */
+function defaultView(doFly){
+  var radius = framingRadius();
   var target = new THREE.Vector3(0, MODEL.h * 0.3, 0);
-  camera.position.copy(target).addScaledVector(dir, radius);
-  controls.target.copy(target);
-  controls.minDistance = R * 0.6;
-  controls.maxDistance = radius * 1.8;
-  scene.fog.near = radius * 0.55;
-  scene.fog.far  = radius * 2.4;
-  /* aim the sun's shadow camera to cover the whole model */
-  var m = Math.max(MODEL.w, MODEL.d) * 0.72;
-  var sc = window._key.shadow.camera;
+  var north = worldNorth();
+  var pitch = 40 * Math.PI/180;                                   // subtle tilt
+  var camPos = target.clone()
+    .addScaledVector(north, -radius * Math.cos(pitch))            // sit south of centre so north reads "up"
+    .add(new THREE.Vector3(0, radius * Math.sin(pitch), 0));
+  controls.minDistance = 20;
+  controls.maxDistance = radius * 2.0;
+  scene.fog.near = radius * 0.7; scene.fog.far = radius * 3.4;
+  var m = Math.max(MODEL.w, MODEL.d) * 0.72, sc = window._key.shadow.camera;
   sc.left = -m; sc.right = m; sc.top = m; sc.bottom = -m;
   sc.near = 1; sc.far = radius*3; sc.updateProjectionMatrix();
   window._key.target.position.set(0,0,0);
+  if(doFly){ flyTo(camPos, target); }
+  else { camera.position.copy(camPos); controls.target.copy(target); controls.update(); }
+}
+function frameModel(initial){ if(initial) defaultView(false); }
+
+/* zoom the camera in/out along its current view direction */
+function zoomBy(factor){
+  var dir = camera.position.clone().sub(controls.target);
+  var d = Math.max(controls.minDistance, Math.min(controls.maxDistance, dir.length() * factor));
+  camera.position.copy(controls.target).add(dir.setLength(d));
   controls.update();
 }
+
 
 /* -------- UI: floor switcher -------- */
 function buildFloorSwitcher(){
@@ -958,6 +1056,7 @@ function pick(px, py){
   for(var i=0;i<ranges.length;i++){ if(fi >= ranges[i].start && fi < ranges[i].start + ranges[i].count){ unit = ranges[i].u; break; } }
   if(!unit){ deselect(); return; }
   select(unit, mesh);
+  centerSelected();          // smoothly lock the tapped shop in the centre of the view
 }
 
 function select(u, mesh){
@@ -1023,17 +1122,29 @@ function shade(n, amt){
   return "#" + ((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);
 }
 
-/* fly the camera to frame the selected unit's world position */
+/* world-space centre of a unit (at half its height), for camera centring */
+function unitWorld(u){
+  var o = u.s[0].o, n = o.length/2, sx = 0, sy = 0;
+  for(var i=0;i<o.length;i+=2){ sx += o[i]; sy += o[i+1]; }
+  var p = new THREE.Vector3(sx/n, 0, sy/n).applyMatrix4(floorObjs[curFloor].group.matrixWorld);
+  p.y = cat(u.cat).h * 0.5;
+  return p;
+}
+function viewDir(){
+  var d = camera.position.clone().sub(controls.target);
+  return d.lengthSq() < 1e-6 ? new THREE.Vector3(0.3,0.85,1).normalize() : d.normalize();
+}
+/* gentle: pan so the tapped unit sits dead-centre, keeping the current distance/angle */
+function centerSelected(){
+  if(!selected) return;
+  var t = unitWorld(selected.unit), dist = camera.position.distanceTo(controls.target);
+  flyTo(t.clone().addScaledVector(viewDir(), dist), t);
+}
+/* zoom in and centre (from the Locate button / directory) */
 function locateSelected(){
   if(!selected) return;
-  var o = selected.unit.s[0].o, n = o.length/2, sx=0, sy=0;
-  for(var i=0;i<o.length;i+=2){ sx+=o[i]; sy+=o[i+1]; }
-  var wx = sx/n, wz = sy/n;                     // unit centre in local plan space
-  var p = new THREE.Vector3(wx, 0, wz);
-  p.applyMatrix4(floorObjs[curFloor].group.matrixWorld);   // -> world
-  var dist = Math.max(MODEL.w, MODEL.d) * 0.26;
-  var dir = new THREE.Vector3(0.3, 0.86, 1).normalize();
-  flyTo(p.clone().addScaledVector(dir, dist), new THREE.Vector3(p.x, cat(selected.unit.cat).h*0.5, p.z));
+  var t = unitWorld(selected.unit);
+  flyTo(t.clone().addScaledVector(viewDir(), 62), t);
 }
 var _fly = null;
 function flyTo(camPos, target){
@@ -1099,12 +1210,15 @@ function animate(){
   }
   controls.update();
   clampView();
+  if(youMarker && youMarker.visible){ youPulse += 0.06; var s = 6.5 + Math.sin(youPulse)*0.9; youMarker.scale.set(s, s, 1); }
   renderer.render(scene, camera);
 }
 function onResize(){
-  camera.aspect = window.innerWidth/window.innerHeight;
+  var w = (window.visualViewport ? window.visualViewport.width : window.innerWidth);
+  var h = (window.visualViewport ? window.visualViewport.height : window.innerHeight);
+  camera.aspect = w / h;
   camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setSize(w, h, true);
   isMobile = matchMedia("(max-width:760px)").matches;
 }
 function hideLoader(){ var l = document.getElementById("loader"); l.classList.add("hide"); setTimeout(function(){ l.style.display = "none"; }, 650); }
