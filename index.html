@@ -2176,17 +2176,32 @@ a.row.tap:active{opacity:.6;}
       stage3d.insertBefore(L, svg);
       LAYERS.push(L);
     }
-    /* Floor-cast SIDE shadow — ONE layer, soft fade (no stepped copies, no lag).
-       A single set of the footprints, laid on the floor plane (coplanar with the
-       wall base), nudged a touch toward the lower-left (sun is top-right). A CSS
-       blur turns it into a soft pool that is darkest right at the wall and fades
-       smoothly to nothing — the blocks render in front and hide the core, so only
-       the fading edge shows beside each building. */
+    /* ---- BASE / floor slab ----------------------------------------------
+       The blocks were floating because their bases sit at z=-EXT_N·step but the
+       only floor (the street basemap) is 10 steps deeper — a big empty void
+       under every block. We lay a solid slab RIGHT under the block bases so the
+       buildings physically sit on something. This slab is the surface the side
+       shadows fall on; the street basemap stays far below as surrounding city. */
+    var BK=EXT_N+0.16;
+    var BASE=document.createElementNS(NS3,'svg');
+    BASE.setAttribute('viewBox',vbAttr);BASE.setAttribute('class','ext base');BASE.setAttribute('preserveAspectRatio','xMidYMid slice');
+    BASE.dataset.k=BK;BASE.style.transform='translateZ(-'+(BK*step)+'px)';
+    var bm=Math.max(planW,planH)*0.018, brx=Math.min(planW,planH)*0.03;
+    BASE.innerHTML='<rect x="'+(cMinX-bm).toFixed(1)+'" y="'+(cMinY-bm).toFixed(1)+'" width="'+(planW+2*bm).toFixed(1)+'" height="'+(planH+2*bm).toFixed(1)+'" rx="'+brx.toFixed(1)+'" fill="#eceae1"/>';
+    stage3d.insertBefore(BASE,svg);LAYERS.push(BASE);
+
+    /* ---- side shadow ON the slab ----------------------------------------
+       One soft layer, coplanar with the block base (just in front of the slab,
+       just behind the walls), nudged toward the lower-left (sun is top-right).
+       Because it shares the block-base plane it lies flat ON the floor at each
+       building's foot and reaches out to the SIDE — it is no longer below the
+       block. A blur makes it darkest at the wall, fading out. The walls render
+       in front and hide the core, leaving only the cast edge on the slab. */
     var SH=document.createElementNS(NS3,'svg');
     SH.setAttribute('viewBox',vbAttr);SH.setAttribute('class','ext shad');SH.setAttribute('preserveAspectRatio','xMidYMid slice');
-    SH.dataset.k=EXT_N+0.3;SH.style.transform='translateZ(-'+((EXT_N+0.3)*step)+'px)';
-    var SG=document.createElementNS(NS3,'g');SG.setAttribute('transform','translate(-11 9)');
-    SG.setAttribute('fill','#222a3c');
+    SH.dataset.k=EXT_N+0.08;SH.style.transform='translateZ(-'+((EXT_N+0.08)*step)+'px)';
+    var SG=document.createElementNS(NS3,'g');SG.setAttribute('transform','translate(-22 17)');
+    SG.setAttribute('fill','#1c2334');
     Array.prototype.forEach.call(units,function(p){
       var c=p.cloneNode(false);
       c.removeAttribute('class');c.removeAttribute('data-id');c.removeAttribute('data-cat');c.removeAttribute('data-base');
