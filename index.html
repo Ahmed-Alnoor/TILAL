@@ -131,11 +131,11 @@ button{font-family:inherit;}
 /* warm the street map to the ivory tone of the design; cast one long soft
    building shadow toward the bottom-left (sun at top-right) */
 #stage3d>svg.basemap{filter:sepia(.10) saturate(1.15) brightness(.985);}
-#stage3d>svg.ext.shad{opacity:.9;filter:blur(2px);}
-/* phones: full-screen layer filters re-evaluate on every pan/zoom frame */
+#stage3d>svg.ext.shad{opacity:.5;filter:blur(7px);}
+/* phones: keep ONE soft shadow but a lighter blur so it stays smooth */
 @media (max-width:860px){
   #stage3d>svg.basemap{filter:none;}
-  #stage3d>svg.ext.shad{filter:none;opacity:.85;}
+  #stage3d>svg.ext.shad{filter:blur(4px);opacity:.46;}
 }
 .osm-credit{position:absolute;right:12px;bottom:5px;z-index:9;font-size:10px;color:rgba(255,255,255,.6);text-decoration:none;background:rgba(8,18,34,.45);padding:2px 7px;border-radius:6px;backdrop-filter:blur(4px);}
 .osm-credit:hover{color:#fff;}
@@ -314,7 +314,7 @@ a.row.tap:active{opacity:.6;}
 /* ===== white corner logo (top-right) ===== */
 .corner-logo{position:absolute;top:16px;right:26px;z-index:26;pointer-events:none;}
 .corner-logo img{height:62px;width:auto;display:block;filter:drop-shadow(0 2px 10px rgba(0,0,0,.45));}
-@media (max-width:860px){.corner-logo img{height:44px;}}
+@media (max-width:860px){.corner-logo{display:none;}}   /* keep the top clean for the slim search bar; brand shows on the basemap wordmark */
 /* ===== Wayfinding / route panel ===== */
 .route-panel{position:absolute;top:16px;right:16px;bottom:16px;width:364px;max-width:calc(100% - 32px);display:flex;flex-direction:column;gap:14px;background:rgba(255,255,255,.84);backdrop-filter:blur(20px) saturate(1.4);-webkit-backdrop-filter:blur(20px) saturate(1.4);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);padding:18px;z-index:52;transform:translateX(118%);opacity:0;pointer-events:none;transition:transform .42s cubic-bezier(.22,1,.36,1),opacity .3s;overflow-y:auto;}
 .route-panel.open{transform:none;opacity:1;pointer-events:auto;}
@@ -475,39 +475,53 @@ a.row.tap:active{opacity:.6;}
 @media (max-width:860px){
   /* respect notches / home indicators */
   .topbar{top:calc(12px + env(safe-area-inset-top));}
-  /* Zoom / reset live at the TOP-right on phones: the bottom edge is taken by
-     the sidebar, detail card and directions sheets, which previously hid these
-     controls. Top-right keeps them tappable in every state. */
-  .zoom-ctl{top:calc(72px + env(safe-area-inset-top));right:calc(12px + env(safe-area-inset-right));bottom:auto;z-index:30;}
+  /* MAP-FIRST: the map is full-bleed. Zoom / reset sit at the bottom-right (the
+     bottom edge is now free) where the thumb naturally rests. */
+  .zoom-ctl{top:auto;bottom:calc(22px + env(safe-area-inset-bottom));right:calc(12px + env(safe-area-inset-right));z-index:30;}
   .floor-tag{display:none;}   /* the top floor tabs already show the active floor */
-  /* While navigating: hide the menu bar, drop the zoom controls below the
-     turn-by-turn card so nothing overlaps. */
-  .body.nav-on .sidebar{transform:translateY(110%);pointer-events:none;}
-  .body.nav-on .zoom-ctl{top:calc(206px + env(safe-area-inset-top));}
 
-  /* ONE menu only: a compact bottom bar with the Map / List toggle + search.
-     The category filters are gone. The bar stays docked at the bottom in BOTH
-     views, so the map shows above it in Map view and the directory scrolls above
-     it in List view — there are never two overlapping menus. (Parking keeps its
-     panel: the bar grows and scrolls when that view is active.) */
-  .sidebar{top:auto;left:0;right:0;bottom:0;width:100%;max-width:100%;height:auto;max-height:72vh;overflow-y:auto;
-    border-radius:22px 22px 0 0;border-left:0;border-top:1px solid var(--line);
-    padding:14px 16px calc(14px + env(safe-area-inset-bottom));gap:12px;
-    box-shadow:0 -16px 44px -24px rgba(8,22,46,.45);z-index:40;transform:none;
-    transition:transform .42s cubic-bezier(.22,1,.36,1);}
-  .sidebar::before{display:none;}                 /* no grab handle / peek */
-  #mapPanel,#listPanel{display:none!important;}    /* drop category filters on mobile */
-  .body.nav-hidden .sidebar,.body.route-open .sidebar{transform:translateY(calc(100% + 6px));pointer-events:none;}
-  /* List view: floor tabs are map-only, and the directory clears the bottom bar */
+  /* ONE menu, mobile-first: a SLIM floating top bar — just the Map / List toggle
+     and search. It sits below the floor tabs and barely covers the map; the rest
+     of the screen is all map. No bottom sheet, no category filters, no big empty
+     panel. (Parking, basement-only, opens its own bottom sheet — see below.) */
+  .sidebar{flex-direction:row;align-items:center;gap:8px;
+    top:calc(58px + env(safe-area-inset-top));left:10px;right:10px;bottom:auto;
+    width:auto;max-width:none;height:auto;max-height:none;overflow:visible;
+    border:1px solid rgba(255,255,255,.6);border-radius:16px;border-top:0;
+    background:rgba(255,255,255,.88);backdrop-filter:blur(16px) saturate(1.4);-webkit-backdrop-filter:blur(16px) saturate(1.4);
+    padding:7px 8px;box-shadow:var(--shadow-sm);z-index:40;transform:none;
+    transition:transform .38s cubic-bezier(.22,1,.36,1),top .3s ease;}
+  .sidebar::before{display:none;}                          /* no grab handle */
+  #mapPanel,#listPanel{display:none!important;}            /* no category filters */
+  .sidebar .view-toggle{flex:none;padding:3px;gap:3px;}
+  .sidebar .vt-btn{flex-direction:row;gap:6px;padding:8px 11px;font-size:12.5px;}
+  .sidebar .vt-btn svg{width:16px;height:16px;}
+  .sidebar .search{flex:1;min-width:0;margin:0;padding:9px 12px;}
+  .sidebar .search input{font-size:13.5px;}
+  /* hide the bar only while turn-by-turn nav / the menu toggle owns the screen */
+  .body.nav-on .sidebar,.body.nav-hidden .sidebar{transform:translateY(-190%);pointer-events:none;}
+
+  /* List view: floor tabs are map-only, so the slim bar floats at the very top
+     and the directory is padded to clear it — one surface, nothing overlapping. */
   .body.view-list .topbar{display:none;}
-  .list-view{padding:18px 18px calc(154px + env(safe-area-inset-bottom));}
+  .body.view-list .sidebar{top:calc(12px + env(safe-area-inset-top));}
+  .list-view{padding:calc(120px + env(safe-area-inset-top)) 16px 40px;}
+  .body.view-list .list-view{padding-top:calc(76px + env(safe-area-inset-top));}
+
+  /* Parking (basement only) keeps its controls in a dedicated bottom sheet so it
+     never crowds the slim top bar. */
+  #parkingPanel{display:none;}
+  .body.view-parking #parkingPanel{display:flex!important;position:fixed;left:0;right:0;bottom:0;z-index:41;
+    background:rgba(255,255,255,.96);backdrop-filter:blur(14px) saturate(1.4);-webkit-backdrop-filter:blur(14px) saturate(1.4);
+    border-radius:20px 20px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom));
+    max-height:62vh;overflow-y:auto;box-shadow:0 -16px 44px -24px rgba(8,22,46,.45);gap:16px;}
 
   /* Shop detail card = compact place card (Apple/Google-Maps style): small,
      so the MAP STAYS VISIBLE above it. Header shows name + category; the
      primary actions (Directions / Locate / Share) sit right under the title and
      are always reachable; the verbose Location + Contact detail scrolls below.
      Drag the handle / scroll to reveal the rest — the card never buries the map. */
-  .card{top:auto;bottom:0;left:0;right:0;width:100%;max-width:100%;max-height:62vh;border-radius:22px 22px 0 0;
+  .card{top:auto;bottom:0;left:0;right:0;width:100%;max-width:100%;max-height:56vh;border-radius:22px 22px 0 0;
     transform:translateY(calc(100% + 8px));transition:transform .42s cubic-bezier(.22,1,.36,1),opacity .3s ease;
     padding-bottom:env(safe-area-inset-bottom);}
   .card.open{transform:translateY(0);}
@@ -2162,32 +2176,24 @@ a.row.tap:active{opacity:.6;}
       stage3d.insertBefore(L, svg);
       LAYERS.push(L);
     }
-    /* Floor-cast SIDE shadow. The old version was one dark slab pushed BELOW the
-       blocks, which made them look like they float. Instead we lay the shadow ON
-       the floor plane (coplanar with the wall base) and cast it toward the
-       lower-left (sun is top-right). It's a short stack of footprint copies
-       stepped toward the lower-left at low opacity each: where many copies
-       overlap — right at the wall — it is darkest, and it fades to nothing as it
-       reaches out, so it reads as a soft shadow dropping ON the floor from the
-       wall. No blur filter, so it stays smooth on mobile; the blocks render in
-       front and hide the core, leaving only the fading edge beside each building. */
-    var SN=window.matchMedia('(max-width:860px)').matches?4:7, sdx=-4.5, sdy=3.6;
+    /* Floor-cast SIDE shadow — ONE layer, soft fade (no stepped copies, no lag).
+       A single set of the footprints, laid on the floor plane (coplanar with the
+       wall base), nudged a touch toward the lower-left (sun is top-right). A CSS
+       blur turns it into a soft pool that is darkest right at the wall and fades
+       smoothly to nothing — the blocks render in front and hide the core, so only
+       the fading edge shows beside each building. */
     var SH=document.createElementNS(NS3,'svg');
     SH.setAttribute('viewBox',vbAttr);SH.setAttribute('class','ext shad');SH.setAttribute('preserveAspectRatio','xMidYMid slice');
     SH.dataset.k=EXT_N+0.3;SH.style.transform='translateZ(-'+((EXT_N+0.3)*step)+'px)';
-    for(var sI=SN;sI>=1;sI--){
-      var SG=document.createElementNS(NS3,'g');
-      SG.setAttribute('transform','translate('+(sdx*sI).toFixed(1)+' '+(sdy*sI).toFixed(1)+')');
-      SG.setAttribute('fill','#243049');SG.setAttribute('fill-opacity','0.13');
-      Array.prototype.forEach.call(units,function(p){
-        var c=p.cloneNode(false);
-        c.removeAttribute('class');c.removeAttribute('data-id');c.removeAttribute('data-cat');c.removeAttribute('data-base');
-        c.removeAttribute('fill');c.removeAttribute('stroke');
-        SG.appendChild(c);
-      });
-      SH.appendChild(SG);
-    }
-    stage3d.insertBefore(SH,svg);LAYERS.push(SH);
+    var SG=document.createElementNS(NS3,'g');SG.setAttribute('transform','translate(-11 9)');
+    SG.setAttribute('fill','#222a3c');
+    Array.prototype.forEach.call(units,function(p){
+      var c=p.cloneNode(false);
+      c.removeAttribute('class');c.removeAttribute('data-id');c.removeAttribute('data-cat');c.removeAttribute('data-base');
+      c.removeAttribute('fill');c.removeAttribute('stroke');
+      SG.appendChild(c);
+    });
+    SH.appendChild(SG);stage3d.insertBefore(SH,svg);LAYERS.push(SH);
     buildBasemap();
   }
   /* ---- gray ground / site podium so the mall sits on something ---- */
@@ -2604,24 +2610,8 @@ a.row.tap:active{opacity:.6;}
   /* --- mobile niceties ------------------------------------------------- */
   const isMobile=window.matchMedia('(max-width:860px)').matches;
 
-  /* The sidebar is a peeking bottom sheet on mobile: tap its grab-handle zone
-     to expand/collapse; focusing search expands; interacting with the map or
-     picking a category collapses it back to the peek. */
-  (function(){
-    if(!isMobile)return;
-    var sb=document.getElementById('sidebar');if(!sb)return;
-    var mq=window.matchMedia('(max-width:860px)');
-    function expand(){if(mq.matches)sb.classList.add('expanded');}
-    function collapse(){sb.classList.remove('expanded');}
-    sb.addEventListener('pointerdown',function(e){
-      if(!mq.matches)return;
-      if(e.clientY-sb.getBoundingClientRect().top<32){e.preventDefault();sb.classList.toggle('expanded');}
-    });
-    var si=document.getElementById('searchInput');
-    if(si)si.addEventListener('focus',expand);
-    if(svg)svg.addEventListener('pointerdown',collapse);
-    sb.addEventListener('click',function(e){if(e.target.closest('.chip,.vt-btn,.cat-nav button'))collapse();});
-  })();
+  /* (The mobile menu is now a slim, always-visible top bar — no peek/expand
+     bottom-sheet behaviour is needed.) */
 
   /* swipe the shop card down to dismiss (grab via its hero / handle area) */
   (function(){
@@ -2691,13 +2681,19 @@ a.row.tap:active{opacity:.6;}
     card.classList.add('open');cardBack.classList.add('show');showMarker(s.cx,s.cy);
     nudgeForCard(s);
   }
-  /* mobile: the place card occupies the lower part of the screen, so slide the
-     tapped shop up into the still-visible map area above it (pan only, no zoom
-     change — keeps it robust against the 3D tilt). */
+  /* mobile: frame the tapped shop in the upper map area, clear of the bottom
+     place-card. We FRAME it (reliable) rather than free-pan (the 3D tilt made a
+     raw pan throw the shop off the top), and add headroom at the bottom of the
+     viewBox so the shop lands in the upper third where it stays visible. */
   function nudgeForCard(s){
     if(!window.matchMedia('(max-width:860px)').matches)return;
     atHome=false;
-    animateVB({x:s.cx-vb.w/2,y:s.cy-vb.h*0.20,w:vb.w,h:vb.h});
+    var bb=s.el.getBBox();
+    var cx=bb.x+bb.width/2, cy=bb.y+bb.height/2;
+    var m=Math.max(bb.width,bb.height)*2.4+260, w=m*2, h=m*2;
+    if(w<MINW()){var f=MINW()/w;w=MINW();h*=f;}
+    var extra=h*0.6;                       /* taller viewBox downward -> shop rides high */
+    animateVB({x:cx-w/2, y:cy-h/2, w:w, h:h+extra});
   }
   function deselect(){if(typeof routing!=='undefined'&&routing.active&&!routing.advancing){clearRoute();}if(selected)selected.el.classList.remove('selected');selected=null;card.classList.remove('open');cardBack.classList.remove('show');marker.style.display='none';}
   function showMarker(x,y){marker.setAttribute('transform','translate('+x+' '+y+')');marker.style.display='';}
