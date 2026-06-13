@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#f3d3a6">
+<meta name="theme-color" content="#aec1da">
 <title>Tilal Mall — 3D Floor Plan</title>
 <style>
   /* ---- golden-hour background: soft blue sky fading to a warm peach horizon.
@@ -19,8 +19,8 @@
     margin:0; overflow:hidden; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     color:var(--ink); -webkit-font-smoothing:antialiased;
     background:
-      radial-gradient(120% 90% at 78% 6%, rgba(255,239,206,.55) 0%, rgba(255,239,206,0) 46%),
-      linear-gradient(180deg,#a7c1e4 0%, #bccbe2 26%, #e7d6c2 60%, #f6d3a4 84%, #f4c188 100%);
+      radial-gradient(130% 80% at 50% 108%, rgba(255,255,255,.55) 0%, rgba(255,255,255,0) 42%),
+      linear-gradient(180deg,#9fb6d6 0%, #bccbe0 40%, #d8e0ec 68%, #e9edf2 100%);
   }
   #app{position:fixed; inset:0;}
   canvas{display:block; touch-action:none;}
@@ -95,6 +95,22 @@
     background:rgba(255,255,255,.42); border:1px solid rgba(255,255,255,.5); border-radius:12px;}
   .search svg{width:16px;height:16px;flex:0 0 auto;}
   .search input{flex:1; min-width:0; border:0; background:transparent; outline:0; font:inherit; font-size:13.5px; color:var(--ink); padding:11px 0;}
+  /* inline search suggestions (no full-page list) */
+  .search-wrap{position:relative; padding:0 10px 8px; z-index:4;}
+  .search-wrap .search{margin:0;}
+  .suggest{position:absolute; left:10px; right:10px; top:calc(100% - 6px); z-index:6; display:none;
+    background:rgba(255,255,255,.97); border:1px solid var(--stroke); border-radius:14px; overflow:hidden auto;
+    max-height:54vh; box-shadow:0 16px 34px rgba(60,44,24,.2);}
+  .suggest.show{display:block;}
+  .sg-row{display:flex; align-items:center; gap:10px; padding:10px 12px; cursor:pointer; border-bottom:1px solid rgba(20,24,33,.05);}
+  .sg-row:last-child{border-bottom:0;}
+  .sg-row:hover{background:rgba(47,116,208,.08);}
+  .sg-sw{width:11px;height:11px;border-radius:3px;flex:0 0 auto;}
+  .sg-tx{flex:1;min-width:0;}
+  .sg-tx b{display:block;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .sg-tx span{font-size:11.5px;color:var(--ink-soft);}
+  .sg-code{font-size:11px;color:var(--ink-soft);font-variant-numeric:tabular-nums;flex:0 0 auto;}
+  .sg-empty{padding:18px;text-align:center;color:var(--ink-soft);font-size:13px;}
   .panel-body{flex:1; overflow-y:auto; padding:2px 8px 10px; -webkit-overflow-scrolling:touch;}
   .panel-body::-webkit-scrollbar{width:0;}
   .p-head{font-size:11px; letter-spacing:.07em; text-transform:uppercase; color:var(--ink-soft); margin:11px 8px 4px; font-weight:700;}
@@ -250,7 +266,7 @@
   #loader{
     position:fixed; inset:0; z-index:20; display:flex; flex-direction:column;
     align-items:center; justify-content:center; gap:16px;
-    background:linear-gradient(180deg,#bccbe2,#f4c188); transition:opacity .6s; color:var(--ink);
+    background:linear-gradient(180deg,#bccbe0,#e9edf2); transition:opacity .6s; color:var(--ink);
   }
   #loader.hide{opacity:0; pointer-events:none;}
   .ring{width:46px;height:46px;border-radius:50%;
@@ -294,8 +310,11 @@
       <button data-mode="map" class="active" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></svg>Map</button>
       <button data-mode="list" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg>List</button>
     </div>
-    <div class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg>
-      <input id="search" type="text" placeholder="Search shops, codes, categories…" autocomplete="off"/></div>
+    <div class="search-wrap">
+      <div class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg>
+        <input id="search" type="text" placeholder="Search shops, codes, categories…" autocomplete="off"/></div>
+      <div class="suggest" id="suggest"></div>
+    </div>
     <div class="panel-body" id="panelBody"></div>
   </div>
 
@@ -502,10 +521,12 @@ function init(){
   renderer.toneMappingExposure = 0.96;                 // warm filmic glow, but keep colours rich (not washed)
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;     // soft, no acne
+  renderer.shadowMap.autoUpdate = false;                // KEY PERF FIX: the scene/light are static,
+                                                        // so render the shadow only when something changes
   app.appendChild(renderer.domElement);
 
   scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(0xf3d6ad, 260, 720);        // warm depth haze
+  scene.fog = new THREE.Fog(0xe9edf2, 260, 720);        // light, cool haze (matches the sky horizon)
 
   camera = new THREE.PerspectiveCamera(46, window.innerWidth/window.innerHeight, 1, 4000);
 
@@ -516,7 +537,7 @@ function init(){
   var key = new THREE.DirectionalLight(0xffd29a, 2.05); // warm late-afternoon sun
   key.position.set(165, 150, 78);                       // lower in the sky -> long, defined golden-hour shadows
   key.castShadow = true;
-  key.shadow.mapSize.set(isMobile ? 2048 : 4096, isMobile ? 2048 : 4096);  // crisp, no grain
+  key.shadow.mapSize.set(2048, 2048);                   // crisp enough, far cheaper than 4096
   key.shadow.bias = -0.0004;
   key.shadow.normalBias = 0.8;
   key.shadow.radius = 3.2;                              // soft but readable penumbra
@@ -528,16 +549,17 @@ function init(){
   fill.position.set(-120, 90, -110);
   scene.add(fill);
 
-  /* large solid ground so the scene never looks "cut" — it extends past the
-     basemap tiles and fades into the fog/horizon instead of a hard edge */
+  /* large solid ground: extends past the basemap tiles and fades into the fog
+     horizon (no "cut"). Sat well below the tiles so the two planes never
+     z-fight / flicker when the camera moves. */
   var bigGround = new THREE.Mesh(new THREE.PlaneGeometry(40000, 40000),
-                                 new THREE.MeshBasicMaterial({color:0xe9e2d4}));
-  bigGround.rotation.x = -Math.PI/2; bigGround.position.y = -0.16; bigGround.renderOrder = -2;
+                                 new THREE.MeshBasicMaterial({color:0xeceadf, fog:true}));
+  bigGround.rotation.x = -Math.PI/2; bigGround.position.y = -1.2; bigGround.renderOrder = -2;
   scene.add(bigGround);
 
   /* transparent ground that only catches a soft contact shadow */
   ground = new THREE.Mesh(new THREE.PlaneGeometry(8000, 8000),
-                          new THREE.ShadowMaterial({color:0x36281a, opacity:0.34, depthWrite:false}));
+                          new THREE.ShadowMaterial({color:0x36281a, opacity:0.32, depthWrite:false}));
   ground.rotation.x = -Math.PI/2;
   ground.position.y = -0.02;
   ground.receiveShadow = true;
@@ -594,8 +616,9 @@ function init(){
   document.querySelectorAll("#seg button").forEach(function(b){
     b.addEventListener("click", function(){ setMode(b.dataset.mode); });
   });
-  document.getElementById("search").addEventListener("input", function(e){ setSearch(e.target.value); });
-  document.getElementById("dirSearch").addEventListener("input", function(e){ setSearch(e.target.value); });
+  document.getElementById("search").addEventListener("input", function(e){ renderSuggest(e.target.value); });
+  document.getElementById("dirSearch").addEventListener("input", function(e){ searchQ = e.target.value.toLowerCase().trim(); dirGroup = null; renderDirectory(); });
+  document.addEventListener("pointerdown", function(e){ var sw=e.target.closest&&e.target.closest(".search-wrap"); if(!sw){ var sg=document.getElementById("suggest"); if(sg)sg.classList.remove("show"); } });
   document.getElementById("dirBack").addEventListener("click", function(){ dirGroup = null; renderDirectory(); });
   document.getElementById("dirClose").addEventListener("click", function(){
     routePick = false; document.getElementById("directory").classList.remove("pick"); clearSearch(); setMode("map");
@@ -858,8 +881,13 @@ function showFloor(fkey){
     b.classList.toggle("active", b.dataset.f === fkey);
   });
   renderPanel();
+  markShadow();
   if(ROUTE.active){ drawRouteForFloor(); renderRouteBar(); }   // keep the route in sync across floors
 }
+
+/* re-render the (static) shadow map once after a discrete change, instead of
+   every frame — this is what keeps orbiting smooth and flicker-free */
+function markShadow(){ if(renderer) renderer.shadowMap.needsUpdate = true; }
 
 /* -------- camera framing (aspect-aware so the wide fan fits portrait + desktop) -------- */
 function framingRadius(){
@@ -977,7 +1005,7 @@ var DIR_GROUPS = [
 ];
 var dirGroup = null;
 function directoryOpen(){ return document.getElementById("directory").classList.contains("open"); }
-function openDirectory(){ dirGroup = null; document.getElementById("directory").classList.add("open"); renderDirectory(); }
+function openDirectory(){ dirGroup = null; searchQ = ""; var ds=document.getElementById("dirSearch"); if(ds)ds.value=""; document.getElementById("directory").classList.add("open"); renderDirectory(); }
 function closeDirectory(){ document.getElementById("directory").classList.remove("open"); }
 
 function unitsInGroup(g){
@@ -1051,13 +1079,31 @@ function pickFromDirectory(f, u){
   if(routePick){ routePick = false; document.getElementById("directory").classList.remove("pick"); setRouteStartShop(f, u); }
   else goToUnit(f, u);
 }
-function clearSearch(){ searchQ = ""; var a=document.getElementById("search"), b=document.getElementById("dirSearch"); if(a)a.value=""; if(b)b.value=""; }
-function setSearch(q){
-  searchQ = (q||"").toLowerCase().trim();
-  var a = document.getElementById("search"), b = document.getElementById("dirSearch");
-  if(a && a.value !== q) a.value = q; if(b && b.value !== q) b.value = q;
-  if(searchQ && !directoryOpen()){ setMode("list"); }   /* searching from the map jumps to the directory */
-  else if(directoryOpen()){ dirGroup = null; renderDirectory(); }
+function clearSearch(){
+  searchQ = "";
+  var a=document.getElementById("search"), b=document.getElementById("dirSearch"), sg=document.getElementById("suggest");
+  if(a)a.value=""; if(b)b.value=""; if(sg){ sg.classList.remove("show"); sg.innerHTML=""; }
+}
+/* inline autocomplete under the sidebar search — does NOT open the full list */
+function renderSuggest(q){
+  q=(q||"").toLowerCase().trim();
+  var el=document.getElementById("suggest"); if(!el) return;
+  if(!q){ el.classList.remove("show"); el.innerHTML=""; return; }
+  var matches=unitsMatching(q).slice(0,8); el.innerHTML="";
+  if(!matches.length){ el.innerHTML='<div class="sg-empty">No matches for “'+q+'”</div>'; el.classList.add("show"); return; }
+  matches.forEach(function(it){
+    var u=it.u, c=cat(u.cat), row=document.createElement("div"); row.className="sg-row";
+    row.innerHTML='<span class="sg-sw" style="background:'+hex6(c.c)+'"></span>'
+      +'<span class="sg-tx"><b>'+(u.name&&u.name.trim()?u.name:c.l)+'</b><span>'+c.l+' · '+FLOORS[it.floor].name+'</span></span>'
+      +'<span class="sg-code">'+(u.id||"")+'</span>';
+    row.addEventListener("click", function(){
+      document.getElementById("search").value=""; el.classList.remove("show"); el.innerHTML="";
+      if(isMobile) document.getElementById("panel").classList.remove("open");
+      goToUnit(it.floor, u);
+    });
+    el.appendChild(row);
+  });
+  el.classList.add("show");
 }
 
 /* ======================= WAYFINDING / ROUTING =======================
@@ -1218,30 +1264,68 @@ function clearRoute(){
   if(routeGroup){ scene.remove(routeGroup); routeGroup.traverse(function(o){ if(o.geometry)o.geometry.dispose(); }); routeGroup=null; }
   document.getElementById("routeBar").classList.remove("show");
 }
-function routeMarker(world, color, kind){
+/* end-point pin: a flat ring + dot, always drawn on top (overlay) */
+function routeMarker(world, color){
   var g=new THREE.Group();
-  var ring=new THREE.Mesh(new THREE.RingGeometry(2.2,3.4,28), new THREE.MeshBasicMaterial({color:color, side:THREE.DoubleSide, transparent:true, opacity:0.9, depthTest:false}));
-  ring.rotation.x=-Math.PI/2; ring.position.copy(world); ring.position.y=0.4; ring.renderOrder=4; g.add(ring);
-  var dot=new THREE.Mesh(new THREE.SphereGeometry(1.5,16,12), new THREE.MeshBasicMaterial({color:color, depthTest:false}));
-  dot.position.copy(world); dot.position.y=1.4; dot.renderOrder=5; g.add(dot);
+  var ring=new THREE.Mesh(new THREE.RingGeometry(2.6,4.0,30), new THREE.MeshBasicMaterial({color:color, side:THREE.DoubleSide, transparent:true, opacity:0.95, depthTest:false, depthWrite:false}));
+  ring.rotation.x=-Math.PI/2; ring.position.copy(world); ring.position.y=2.0; ring.renderOrder=20; g.add(ring);
+  var dot=new THREE.Mesh(new THREE.CircleGeometry(2.0,24), new THREE.MeshBasicMaterial({color:color, transparent:true, opacity:0.95, depthTest:false, depthWrite:false}));
+  dot.rotation.x=-Math.PI/2; dot.position.copy(world); dot.position.y=2.02; dot.renderOrder=21; g.add(dot);
   return g;
 }
+/* sample a polyline (world XZ) at fixed arc-length spacing */
+function samplePolyline(pts, step){
+  var out=[], carry=0;
+  for(var i=0;i<pts.length-1;i++){
+    var a=pts[i], b=pts[i+1], dx=b.x-a.x, dz=b.z-a.z, len=Math.hypot(dx,dz);
+    if(len<1e-6) continue; var ux=dx/len, uz=dz/len, d;
+    for(d=carry; d<len; d+=step){ out.push({x:a.x+ux*d, z:a.z+uz*d, dx:ux, dz:uz}); }
+    carry = d-len;
+  }
+  if(pts.length) { var last=pts[pts.length-1]; out.push({x:last.x, z:last.z, dx:0, dz:0}); }
+  return out;
+}
+/* a flat ">" chevron in the XZ plane pointing +X */
+function chevronGeo(){
+  var s=new THREE.Shape();
+  s.moveTo(-1.1,0.95); s.lineTo(0.25,0); s.lineTo(-1.1,-0.95); s.lineTo(-0.45,-0.95); s.lineTo(0.9,0); s.lineTo(-0.45,0.95); s.closePath();
+  var g=new THREE.ShapeGeometry(s); g.rotateX(-Math.PI/2); return g;   // lies flat, points +X
+}
+/* draw the route for the visible floor as a flat, Google-Maps-style dotted path:
+   dark-blue dots, a white direction chevron every 5th dot, always on top (2D overlay) */
 function drawRouteForFloor(){
-  if(routeGroup){ scene.remove(routeGroup); routeGroup=null; }
+  if(routeGroup){ scene.remove(routeGroup); routeGroup.traverse(function(o){ if(o.geometry)o.geometry.dispose(); }); routeGroup=null; }
   if(!ROUTE.route) return;
   var seg=null; ROUTE.route.segments.forEach(function(s){ if(s.floor===curFloor) seg=s; });
   routeGroup=new THREE.Group(); scene.add(routeGroup);
-  if(!seg){ return; }                       // route is on other floors only
-  var pts=seg.pts.map(function(p){ return vbToWorld(p[0],p[1],0.8); });
-  if(pts.length>=2){
-    var curve=new THREE.CatmullRomCurve3(pts,false,"catmullrom",0.4);
-    var tube=new THREE.Mesh(new THREE.TubeGeometry(curve, Math.max(8,pts.length*4), 0.7, 8, false),
-      new THREE.MeshStandardMaterial({color:0x2f74d0, emissive:0x2f74d0, emissiveIntensity:0.6, roughness:0.4, metalness:0}));
-    tube.renderOrder=3; routeGroup.add(tube);
+  if(!seg) return;                          // route is on other floors only
+  var wpts=seg.pts.map(function(p){ return vbToWorld(p[0],p[1],0); });
+  var samples=samplePolyline(wpts, 3.2), Y=2.0;
+  var dotGeos=[], arrowGeos=[], DOT=new THREE.CircleGeometry(0.95,16); DOT.rotateX(-Math.PI/2);
+  for(var i=0;i<samples.length;i++){
+    var s=samples[i];
+    if(i>0 && i%5===0 && (s.dx||s.dz)){
+      var ag=chevronGeo();
+      var q=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1,0,0), new THREE.Vector3(s.dx,0,s.dz));
+      ag.applyQuaternion(q); ag.translate(s.x, Y+0.05, s.z); arrowGeos.push(ag);
+    } else {
+      var dg=DOT.clone(); dg.translate(s.x, Y, s.z); dotGeos.push(dg);
+    }
   }
-  if(seg.oc) routeGroup.add(routeMarker(vbToWorld(seg.oc[0],seg.oc[1],0), 0x2fa15a, "origin"));
-  if(seg.esc) routeGroup.add(routeMarker(vbToWorld(seg.esc[0],seg.esc[1],0), 0xffb24d, "esc"));
-  if(seg.dc) routeGroup.add(routeMarker(vbToWorld(seg.dc[0],seg.dc[1],0), 0xd24d4d, "dest"));
+  var BU=THREE.BufferGeometryUtils;
+  if(dotGeos.length){
+    var dm=new THREE.Mesh(BU.mergeBufferGeometries(dotGeos,false),
+      new THREE.MeshBasicMaterial({color:0x12356e, transparent:true, opacity:0.96, depthTest:false, depthWrite:false}));
+    dm.renderOrder=18; routeGroup.add(dm);
+  }
+  if(arrowGeos.length){
+    var am=new THREE.Mesh(BU.mergeBufferGeometries(arrowGeos,false),
+      new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0.98, depthTest:false, depthWrite:false}));
+    am.renderOrder=19; routeGroup.add(am);
+  }
+  if(seg.oc) routeGroup.add(routeMarker(vbToWorld(seg.oc[0],seg.oc[1],0), 0x2fa15a));
+  if(seg.esc) routeGroup.add(routeMarker(vbToWorld(seg.esc[0],seg.esc[1],0), 0xffa023));
+  if(seg.dc) routeGroup.add(routeMarker(vbToWorld(seg.dc[0],seg.dc[1],0), 0xd24d4d));
 }
 function routeTotals(R){ var m=0; R.segments.forEach(function(s){ m+=rLen(s.pts); }); m/=UNITS_PER_M;
   var secs=m/WALK_MS+(R.cross?25:0); return {m:Math.round(m), min:Math.max(1,Math.round(secs/60))}; }
@@ -1341,7 +1425,7 @@ function select(u, mesh){
       side:THREE.DoubleSide, polygonOffset:true, polygonOffsetFactor:-4, polygonOffsetUnits:-4
     });
     highlightMesh = new THREE.Mesh(geo, mat);
-    highlightMesh.castShadow = true;
+    highlightMesh.castShadow = false;   // overlay only — keeps the static shadow map cached
     highlightMesh.renderOrder = 2;
     floorObjs[curFloor].group.add(highlightMesh);
   }catch(e){ /* ignore highlight build errors */ }
