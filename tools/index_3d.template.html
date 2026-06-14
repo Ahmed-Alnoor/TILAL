@@ -886,37 +886,57 @@ function hideLocPrompt(){ document.getElementById("locPrompt").classList.remove(
 /* My-Location button: snap to the dot if we have it, else start tracking */
 function myLocation(){ if(userWorld && youMarker && youMarker.visible){ flyToMarker(); } else { locateMe(); } }
 
-/* lit storefront ENTRANCES: a clean bright band of "shopfront light" across the
-   lower part of each leasing unit's facade (a glowing window strip just above the
-   floor) — F&B bright & warm, other shops a soft warm-white. No floor blobs. */
+/* soft warm radial glow used to "light up" the food storefronts (visible from
+   the top-down angle, unlike the hidden corridor-facing facades). */
+var _glowTex=null;
+function glowTex(){
+  if(_glowTex) return _glowTex;
+  var cv=document.createElement("canvas"); cv.width=cv.height=128; var x=cv.getContext("2d");
+  var g=x.createRadialGradient(64,64,0,64,64,64);
+  g.addColorStop(0,"rgba(255,224,165,0.95)"); g.addColorStop(0.45,"rgba(255,193,115,0.5)");
+  g.addColorStop(0.8,"rgba(255,170,80,0.14)"); g.addColorStop(1,"rgba(255,160,70,0)");
+  x.fillStyle=g; x.fillRect(0,0,128,128);
+  _glowTex=new THREE.CanvasTexture(cv); _glowTex.encoding=THREE.sRGBEncoding; return _glowTex;
+}
+/* lit storefronts: a clean bright band on each shop's lower facade PLUS a soft
+   warm glow over every food unit (the part you actually see from above). */
 function buildStorefronts(data, group){
-  var fbGeos=[], shopGeos=[];
+  var fbGeos=[], shopGeos=[], tex=glowTex();
   data.units.forEach(function(u){
     var c = cat(u.cat); if(c.g !== "lease") return;       // only shops get a lit front
     var food = !!GLOW_CATS[u.cat];
     var bot = 0.12, top = Math.min(c.h - 0.3, 2.6);        // lower storefront window band
-    if(top <= bot) return;
     u.s.forEach(function(sh){
-      var o=sh.o, n=o.length/2, cx=0, cy=0, i;
-      for(i=0;i<o.length;i+=2){ cx+=o[i]; cy+=o[i+1]; } cx/=n; cy/=n;
+      var o=sh.o, n=o.length/2, cx=0, cy=0, mnx=1e9,mny=1e9,mxx=-1e9,mxy=-1e9, i;
+      for(i=0;i<o.length;i+=2){ var px=o[i],py=o[i+1]; cx+=px; cy+=py;
+        if(px<mnx)mnx=px; if(px>mxx)mxx=px; if(py<mny)mny=py; if(py>mxy)mxy=py; }
+      cx/=n; cy/=n;
       try{
-        var ring=[]; for(i=0;i<o.length;i+=2) ring.push([cx+(o[i]-cx)*1.012, cy+(o[i+1]-cy)*1.012]);
-        var pos=[];
-        for(i=0;i<ring.length;i++){ var a=ring[i], b=ring[(i+1)%ring.length];
-          pos.push(a[0],a[1],bot, b[0],b[1],bot, b[0],b[1],top,  a[0],a[1],bot, b[0],b[1],top, a[0],a[1],top); }
-        var g=new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pos,3));
-        (food?fbGeos:shopGeos).push(g);
+        if(top>bot){
+          var ring=[]; for(i=0;i<o.length;i+=2) ring.push([cx+(o[i]-cx)*1.012, cy+(o[i+1]-cy)*1.012]);
+          var pos=[];
+          for(i=0;i<ring.length;i++){ var a=ring[i], b=ring[(i+1)%ring.length];
+            pos.push(a[0],a[1],bot, b[0],b[1],bot, b[0],b[1],top,  a[0],a[1],bot, b[0],b[1],top, a[0],a[1],top); }
+          var g=new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pos,3));
+          (food?fbGeos:shopGeos).push(g);
+        }
+        if(food){     // soft warm glow halo over the food unit
+          var sz=Math.max(mxx-mnx, mxy-mny), sp=new THREE.Sprite(new THREE.SpriteMaterial({
+            map:tex, blending:THREE.AdditiveBlending, transparent:true, depthWrite:false, depthTest:false, opacity:0.95}));
+          sp.position.set(cx, cy, 1.2);
+          sp.scale.set(sz*1.5+3, sz*1.5+3, 1); sp.renderOrder=4; group.add(sp);
+        }
       }catch(e){}
     });
   });
   if(fbGeos.length){
     var fm=new THREE.Mesh(THREE.BufferGeometryUtils.mergeBufferGeometries(fbGeos,false),
-      new THREE.MeshBasicMaterial({color:0xffca7a, side:THREE.DoubleSide, fog:true}));
+      new THREE.MeshBasicMaterial({color:0xffd49a, side:THREE.DoubleSide, fog:true}));
     fm.renderOrder=2; group.add(fm);
   }
   if(shopGeos.length){
     var sm=new THREE.Mesh(THREE.BufferGeometryUtils.mergeBufferGeometries(shopGeos,false),
-      new THREE.MeshBasicMaterial({color:0xe7eefc, side:THREE.DoubleSide, transparent:true, opacity:0.6, fog:true}));
+      new THREE.MeshBasicMaterial({color:0xe7eefc, side:THREE.DoubleSide, transparent:true, opacity:0.55, fog:true}));
     sm.renderOrder=2; group.add(sm);
   }
 }
