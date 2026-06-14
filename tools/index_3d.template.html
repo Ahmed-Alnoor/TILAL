@@ -291,13 +291,20 @@
   .dir-item .dc{font-size:11.5px; color:var(--ink-soft); text-align:right; flex:0 0 auto; font-variant-numeric:tabular-nums;}
   .dir-empty{padding:54px 16px; text-align:center; color:var(--ink-soft); font-size:14px;}
 
-  /* ---------- floating shop labels ---------- */
+  /* ---------- floating shop labels (Liquid Glass) ---------- */
   #labels{position:fixed; inset:0; z-index:5; pointer-events:none; overflow:hidden;}
-  .lbl{position:absolute; top:0; left:0; white-space:nowrap; font-size:11.5px; font-weight:700; letter-spacing:.01em;
-    color:var(--ink); background:rgba(255,255,255,.84); border:1px solid var(--stroke); border-radius:999px;
-    padding:4px 11px; box-shadow:0 4px 14px rgba(60,44,24,.16); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); will-change:transform;}
-  .lbl::after{content:""; position:absolute; left:50%; bottom:-5px; width:9px; height:9px; transform:translateX(-50%) rotate(45deg);
-    background:rgba(255,255,255,.84); border-right:1px solid var(--stroke); border-bottom:1px solid var(--stroke);}
+  .lbl{position:absolute; top:0; left:0; display:flex; align-items:center; gap:7px; white-space:nowrap;
+    font-size:12px; font-weight:600; letter-spacing:.01em; color:#1b2230;
+    padding:5px 13px 5px 6px; border-radius:999px;
+    background:linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,.28));
+    backdrop-filter:blur(22px) saturate(180%); -webkit-backdrop-filter:blur(22px) saturate(180%);
+    border:1px solid rgba(255,255,255,.65);
+    box-shadow:0 8px 24px rgba(30,36,54,.22), inset 0 1px 0 rgba(255,255,255,.85), inset 0 -6px 12px rgba(255,255,255,.18);
+    transition:opacity .6s ease; will-change:transform;}
+  .lbl.hide{opacity:0;}
+  .lbl .ic{width:23px;height:23px;flex:0 0 auto;border-radius:8px;display:grid;place-items:center;color:#fff;
+    background:linear-gradient(135deg,#4a7fcf,#2f5391); box-shadow:0 2px 7px rgba(47,83,145,.45), inset 0 1px 0 rgba(255,255,255,.4);}
+  .lbl .ic svg{width:14px;height:14px;}
 
   /* ---------- loader ---------- */
   #loader{
@@ -493,6 +500,8 @@ var CAT = {
   "fv-kitchen":{l:"Food Village",c:0x6e4718,h:5.5,g:"lease",t:"Food Village",d:"The food village."}
 };
 var DEF = {l:"Unit",c:0xcfd6df,h:5,g:"fac",t:"Unit",d:""};
+/* halve all extrude heights -> a flatter, more elegant low-relief model */
+for(var _hk in CAT){ CAT[_hk].h *= 0.5; } DEF.h *= 0.5;
 function cat(k){ return CAT[k] || DEF; }
 /* the actual food/retail OUTLETS get a glowing storefront facade — not the
    open seating areas (those stay matte). */
@@ -621,7 +630,7 @@ function init(){
 
   /* transparent ground that only catches a soft contact shadow */
   ground = new THREE.Mesh(new THREE.PlaneGeometry(8000, 8000),
-                          new THREE.ShadowMaterial({color:0x36281a, opacity:0.32, depthWrite:false}));
+                          new THREE.ShadowMaterial({color:0x1c1710, opacity:0.5, depthWrite:false}));   // darker, real shadow
   ground.rotation.x = -Math.PI/2;
   ground.position.y = -0.02;
   ground.receiveShadow = true;
@@ -955,28 +964,38 @@ function buildStorefronts(fkey, data, group){
   add(headS, new THREE.MeshBasicMaterial({color:0xeef4ff, side:THREE.DoubleSide, fog:true}));   // cool lit sign
 }
 
-/* -------- floating labels for the landmark destinations (what makes a map
-            instantly readable as a mall — like a directory). Projected from 3D
-            each frame; hidden when behind the camera or off-screen. -------- */
+/* -------- floating Liquid-Glass labels for the landmark destinations. Each is
+            a glass pill with a blue icon chip + the name. They show on entering
+            a floor and fade out after 6s (back only when you re-enter a floor). */
 var LANDMARK = {hypermarket:1, anchor:1, cinema:1, fec:1, "food-court":1, "mini-major":1};
-var labelObjs = [];
+var LANDMARK_ICON = {
+  anchor:'<path d="M6 7h12l-1 13H7L6 7z"/><path d="M9 7a3 3 0 0 1 6 0"/>',
+  "mini-major":'<path d="M6 7h12l-1 13H7L6 7z"/><path d="M9 7a3 3 0 0 1 6 0"/>',
+  cinema:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 4v16M17 4v16M3 10h4M17 10h4M3 14h4M17 14h4"/>',
+  hypermarket:'<circle cx="9" cy="20" r="1.3"/><circle cx="17" cy="20" r="1.3"/><path d="M3 4h2l2.2 11h10l1.8-8H6.2"/>',
+  fec:'<rect x="3" y="8" width="18" height="9" rx="4"/><path d="M7 12h3M8.5 10.5v3"/><circle cx="16" cy="12" r=".9"/><circle cx="18" cy="14" r=".9"/>',
+  "food-court":'<path d="M6 3v8a2 2 0 0 0 2 2v8M8 3v6M10 3v6"/><path d="M16 3c-1.4 1-2 3-2 5s.6 4 2 5v6"/>'
+};
+var labelObjs = [], labelTimer = 0, labelsHidden = false;
 function buildLabels(fkey){
   var host=document.getElementById("labels"); if(!host) return;
-  host.innerHTML=""; labelObjs=[];
+  host.innerHTML=""; labelObjs=[]; labelsHidden=false; clearTimeout(labelTimer);
   (FLOORS[fkey] ? FLOORS[fkey].units : []).forEach(function(u){
     if(!LANDMARK[u.cat]) return;
     var c=cat(u.cat), o=u.s[0].o, n=o.length/2, sx=0, sy=0;
     for(var i=0;i<o.length;i+=2){ sx+=o[i]; sy+=o[i+1]; }
-    var p=new THREE.Vector3((sx/n)-OFFSET.x, c.h+1.6, -(sy/n)-OFFSET.z);   // top-centre of the unit, in world
+    var p=new THREE.Vector3((sx/n)-OFFSET.x, c.h+1.4, -(sy/n)-OFFSET.z);   // top-centre of the unit, in world
     var el=document.createElement("div"); el.className="lbl";
-    el.textContent = (u.name && u.name.trim() && u.name!==c.l) ? u.name : c.l;
+    el.innerHTML='<span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'
+      +(LANDMARK_ICON[u.cat]||'')+'</svg></span><span>'+((u.name&&u.name.trim()&&u.name!==c.l)?u.name:c.l)+'</span>';
     host.appendChild(el);
     labelObjs.push({p:p, el:el});
   });
+  labelTimer=setTimeout(function(){ labelsHidden=true; labelObjs.forEach(function(o){ o.el.classList.add("hide"); }); }, 6000);
 }
 var _lv=null;
 function updateLabels(){
-  if(!labelObjs.length) return;
+  if(labelsHidden || !labelObjs.length) return;
   if(!_lv) _lv=new THREE.Vector3();
   var w=renderer.domElement.clientWidth, h=renderer.domElement.clientHeight;
   for(var i=0;i<labelObjs.length;i++){ var o=labelObjs[i];
@@ -1089,8 +1108,8 @@ function defaultView(doFly){
     .addScaledVector(north, -radius * Math.cos(pitch))            // sit south of centre so north reads "up"
     .add(new THREE.Vector3(0, radius * Math.sin(pitch), 0));
   controls.minDistance = 20;
-  controls.maxDistance = radius * 2.0;
-  scene.fog.near = radius * 0.7; scene.fog.far = radius * 3.4;
+  controls.maxDistance = radius * 1.85;
+  scene.fog.near = radius * 1.6; scene.fog.far = radius * 7;   // push fog far out so the model never fogs/goes vague when zoomed out
   var m = Math.max(MODEL.w, MODEL.d) * 0.95, sc = window._key.shadow.camera;   // wider, to catch the long shadows
   sc.left = -m; sc.right = m; sc.top = m; sc.bottom = -m;
   sc.near = 1; sc.far = radius*3; sc.updateProjectionMatrix();
