@@ -293,7 +293,7 @@
 
   /* ---------- floating shop labels (Liquid Glass) ---------- */
   #labels{position:fixed; inset:0; z-index:5; pointer-events:none; overflow:hidden;}
-  .lbl{position:absolute; top:0; left:0; display:flex; align-items:center; gap:7px; white-space:nowrap;
+  .lbl{position:absolute; top:0; left:0; display:flex; flex-direction:row; flex-wrap:nowrap; align-items:center; gap:7px; white-space:nowrap; width:max-content;
     font-size:12px; font-weight:600; letter-spacing:.01em; color:#1b2230;
     padding:5px 13px 5px 6px; border-radius:999px;
     background:linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,.28));
@@ -568,7 +568,7 @@ window.addEventListener("DOMContentLoaded", function(){ loadFrom(0); });
 
 /* ============================ the scene ==================================== */
 var renderer, scene, camera, controls, raycaster, ground;
-var floorObjs = {}, curFloor = "G", selected = null, highlightMesh = null;
+var floorObjs = {}, curFloor = "G", selected = null, highlightMesh = null, selectMarker = null, selectPulse = 0;
 var OFFSET = null, MODEL = {w:200, d:90, h:16};   // shared transform + size
 var idleTimer = null, isMobile = matchMedia("(max-width:760px)").matches;
 
@@ -725,24 +725,14 @@ function shapesFor(u){
   return out;
 }
 
-/* small units get a smaller bevel so the rounding never eats the footprint */
-function bevelFor(u){
-  var minx=1e9,miny=1e9,maxx=-1e9,maxy=-1e9, o=u.s[0].o;
-  for(var i=0;i<o.length;i+=2){ var x=o[i],y=o[i+1];
-    if(x<minx)minx=x; if(x>maxx)maxx=x; if(y<miny)miny=y; if(y>maxy)maxy=y; }
-  var md = Math.min(maxx-minx, maxy-miny);
-  return Math.max(0.12, Math.min(0.6, md*0.16));
-}
-
 function extrudeUnit(u, height){
   var shapes = shapesFor(u);
   if(!shapes.length) return null;
-  var b = bevelFor(u);
-  var geo = new THREE.ExtrudeGeometry(shapes, {
-    depth: height, bevelEnabled: true,
-    bevelThickness: b, bevelSize: b, bevelSegments: 2, steps: 1
-  });
-  geo.computeVertexNormals();   // smooth shading across the bevel
+  /* no bevel: on the simplified, often-jagged unit outlines a bevel
+     self-intersects into spiky artefacts. Flat, sharp-edged extrusion
+     reads as a clean architectural block. */
+  var geo = new THREE.ExtrudeGeometry(shapes, { depth: height, bevelEnabled: false, steps: 1 });
+  geo.computeVertexNormals();
   return geo;
 }
 
@@ -1578,7 +1568,6 @@ function pick(px, py){
   for(var i=0;i<ranges.length;i++){ if(fi >= ranges[i].start && fi < ranges[i].start + ranges[i].count){ unit = ranges[i].u; break; } }
   if(!unit){ deselect(); return; }
   select(unit, mesh);
-  centerSelected();          // smoothly lock the tapped shop in the centre of the view
 }
 
 function select(u, mesh){
@@ -1599,13 +1588,37 @@ function select(u, mesh){
     highlightMesh.renderOrder = 2;
     floorObjs[curFloor].group.add(highlightMesh);
   }catch(e){ /* ignore highlight build errors */ }
+  placeSelectMarker(u);
   showCard(u);
 }
 
 function deselect(){
   selected = null;
   if(highlightMesh){ highlightMesh.parent.remove(highlightMesh); highlightMesh.geometry.dispose(); highlightMesh = null; }
+  removeSelectMarker();
   document.getElementById("card").classList.remove("show");
+}
+
+/* -------- "you tapped here" marker: a dot + an expanding pulse ring,
+            hovering just above the selected shop's roof. Only shown on tap. */
+function removeSelectMarker(){
+  if(!selectMarker) return;
+  scene.remove(selectMarker);
+  selectMarker.traverse(function(o){ if(o.geometry) o.geometry.dispose(); });
+  selectMarker = null;
+}
+function placeSelectMarker(u){
+  removeSelectMarker();
+  var c = cat(u.cat), p = unitWorld(u); p.y = c.h + 0.7;
+  var g = new THREE.Group();
+  var dot = new THREE.Mesh(new THREE.CircleGeometry(1.3, 24), flatMat(0x2f74d0));
+  dot.rotation.x = -Math.PI/2; dot.position.copy(p); dot.renderOrder = 25; g.add(dot);
+  var ring = new THREE.Mesh(new THREE.RingGeometry(1.0, 1.5, 32), flatMat(0x2f74d0));
+  ring.rotation.x = -Math.PI/2; ring.position.copy(p); ring.position.y += 0.02; ring.renderOrder = 24; g.add(ring);
+  g.userData.ring = ring;
+  selectPulse = 0;
+  selectMarker = g;
+  scene.add(g);
 }
 
 /* -------- info card -------- */
@@ -1655,12 +1668,6 @@ function unitWorld(u){
 function viewDir(){
   var d = camera.position.clone().sub(controls.target);
   return d.lengthSq() < 1e-6 ? new THREE.Vector3(0.3,0.85,1).normalize() : d.normalize();
-}
-/* gentle: pan so the tapped unit sits dead-centre, keeping the current distance/angle */
-function centerSelected(){
-  if(!selected) return;
-  var t = unitWorld(selected.unit), dist = camera.position.distanceTo(controls.target);
-  flyTo(t.clone().addScaledVector(viewDir(), dist), t);
 }
 /* zoom in and centre (from the Locate button / directory) */
 function locateSelected(){
@@ -1735,6 +1742,12 @@ function animate(){
   updateEscScale();
   updateLabels();
   if(youMarker && youMarker.visible){ youPulse += 0.06; var s = 6.5 + Math.sin(youPulse)*0.9; youMarker.scale.set(s, s, 1); }
+  if(selectMarker){
+    selectPulse = (selectPulse + 0.018) % 1;
+    var ring = selectMarker.userData.ring, sc = 1 + selectPulse*4.5;
+    ring.scale.set(sc, sc, 1);
+    ring.material.opacity = Math.max(0, 0.85 * (1 - selectPulse));
+  }
   renderer.render(scene, camera);
 }
 function onResize(){
