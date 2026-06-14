@@ -366,8 +366,8 @@
   <div class="controls" id="controls">
     <button class="ctrl" id="zoomIn" aria-label="Zoom in" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
     <button class="ctrl" id="zoomOut" aria-label="Zoom out" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/></svg></button>
-    <button class="ctrl" id="myLoc" aria-label="My location" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2v3.4M12 18.6V22M2 12h3.4M18.6 12H22"/></svg></button>
-    <button class="ctrl" id="recenter" aria-label="Recenter" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9V5a2 2 0 0 1 2-2h4M15 3h4a2 2 0 0 1 2 2v4M21 15v4a2 2 0 0 1-2 2h-4M9 21H5a2 2 0 0 1-2-2v-4"/><circle cx="12" cy="12" r="2.4"/></svg></button>
+    <button class="ctrl" id="myLoc" aria-label="My location" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.6"/><circle cx="12" cy="12" r="1.05" fill="currentColor" stroke="none"/><path d="M12 2.4v3.3M12 18.3v3.3M2.4 12h3.3M18.3 12h3.3"/></svg></button>
+    <button class="ctrl" id="recenter" aria-label="Recenter" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5V5.5a1.5 1.5 0 0 1 1.5-1.5h3M15.5 4h3A1.5 1.5 0 0 1 20 5.5v3M20 15.5v3a1.5 1.5 0 0 1-1.5 1.5h-3M8.5 20h-3A1.5 1.5 0 0 1 4 18.5v-3"/><circle cx="12" cy="12" r="1.7" fill="currentColor" stroke="none"/></svg></button>
   </div>
 
   <div class="loc-prompt" id="locPrompt">
@@ -393,7 +393,7 @@
       <p class="desc" id="cDesc"></p>
       <div class="meta" id="cMeta"></div>
       <div class="actions">
-        <button class="act primary" id="cDir" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21.7 11.3 12.7 2.3a1 1 0 0 0-1.4 0l-9 9a1 1 0 0 0 0 1.4l9 9a1 1 0 0 0 1.4 0l9-9a1 1 0 0 0 0-1.4z"/><path d="M9 13v-2.5a1.5 1.5 0 0 1 1.5-1.5H15M15 9l-2.2-2.2M15 9l-2.2 2.2"/></svg>Directions</button>
+        <button class="act primary" id="cDir" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21.7 11.3 12.7 2.3a1 1 0 0 0-1.4 0l-9 9a1 1 0 0 0 0 1.4l9 9a1 1 0 0 0 1.4 0l9-9a1 1 0 0 0 0-1.4z"/><path d="M9 14.5V12a2 2 0 0 1 2-2h3.5"/><path d="M12.5 7.5 15 10l-2.5 2.5"/></svg>Directions</button>
         <button class="act" id="cLocate" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.3-7-11a7 7 0 0 1 14 0c0 4.7-7 11-7 11z"/><circle cx="12" cy="10" r="2.6"/></svg>Locate</button>
         <button class="act" id="cShare" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="M8.3 10.8l7.4-4.3M8.3 13.2l7.4 4.3"/></svg>Share</button>
       </div>
@@ -928,7 +928,7 @@ function updateLabels(){
   for(var i=0;i<labelObjs.length;i++){ var o=labelObjs[i];
     _lv.copy(o.p).project(camera);
     if(_lv.z>1 || _lv.x<-1.15 || _lv.x>1.15 || _lv.y<-1.15 || _lv.y>1.15){ o.el.style.display="none"; continue; }
-    o.el.style.display="block";
+    o.el.style.display="flex";   // keep the flex row (block would stack the grid icon onto its own line)
     o.el.style.transform="translate(-50%,-100%) translate("+((_lv.x*0.5+0.5)*w).toFixed(1)+"px,"+((-_lv.y*0.5+0.5)*h).toFixed(1)+"px)";
   }
 }
@@ -1661,7 +1661,10 @@ function shade(n, amt){
 function unitWorld(u){
   var o = u.s[0].o, n = o.length/2, sx = 0, sy = 0;
   for(var i=0;i<o.length;i+=2){ sx += o[i]; sy += o[i+1]; }
-  var p = new THREE.Vector3(sx/n, 0, sy/n).applyMatrix4(floorObjs[curFloor].group.matrixWorld);
+  /* footprint centroid lives in the group's local XY plane (z=0); the group's
+     -90° X rotation then maps plan-Y -> world depth. (Passing it as (x,0,y)
+     was the old bug that pinned every unit to the same world-Z line.) */
+  var p = new THREE.Vector3(sx/n, sy/n, 0).applyMatrix4(floorObjs[curFloor].group.matrixWorld);
   p.y = cat(u.cat).h * 0.5;
   return p;
 }
