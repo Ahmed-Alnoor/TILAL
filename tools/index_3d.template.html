@@ -886,59 +886,46 @@ function hideLocPrompt(){ document.getElementById("locPrompt").classList.remove(
 /* My-Location button: snap to the dot if we have it, else start tracking */
 function myLocation(){ if(userWorld && youMarker && youMarker.visible){ flyToMarker(); } else { locateMe(); } }
 
-/* soft warm radial glow used to "light up" the food storefronts (visible from
-   the top-down angle, unlike the hidden corridor-facing facades). */
-var _glowTex=null;
-function glowTex(){
-  if(_glowTex) return _glowTex;
-  var cv=document.createElement("canvas"); cv.width=cv.height=128; var x=cv.getContext("2d");
-  var g=x.createRadialGradient(64,64,0,64,64,64);
-  g.addColorStop(0,"rgba(255,224,165,0.95)"); g.addColorStop(0.45,"rgba(255,193,115,0.5)");
-  g.addColorStop(0.8,"rgba(255,170,80,0.14)"); g.addColorStop(1,"rgba(255,160,70,0)");
-  x.fillStyle=g; x.fillRect(0,0,128,128);
-  _glowTex=new THREE.CanvasTexture(cv); _glowTex.encoding=THREE.sRGBEncoding; return _glowTex;
+/* storefronts drawn INTO the map: an opaque coloured panel on the FRONT
+   (corridor-facing) face of each shop only. The front edge is the one whose
+   just-outside point lands on a walkable corridor cell. No lights, no glow,
+   depth-occluded so you never see a far shop's front through a near wall. */
+function isWalk(m, x, y){
+  var gx=Math.floor((x-m.ox)/m.CELL), gy=Math.floor((y-m.oy)/m.CELL);
+  if(gx<0||gy<0||gx>=m.cols||gy>=m.rows) return false;
+  return !!m.walkable[gy*m.cols+gx];
 }
-/* lit storefronts: a clean bright band on each shop's lower facade PLUS a soft
-   warm glow over every food unit (the part you actually see from above). */
-function buildStorefronts(data, group){
-  var fbGeos=[], shopGeos=[], tex=glowTex();
+function buildStorefronts(fkey, data, group){
+  var m=null; try{ m=buildMask(fkey); }catch(e){}
+  var fbGeos=[], shopGeos=[], S=PLAN_SCALE;
   data.units.forEach(function(u){
-    var c = cat(u.cat); if(c.g !== "lease") return;       // only shops get a lit front
-    var food = !!GLOW_CATS[u.cat];
-    var bot = 0.12, top = Math.min(c.h - 0.3, 2.6);        // lower storefront window band
+    var c=cat(u.cat); if(c.g!=="lease") return;
+    var food=!!GLOW_CATS[u.cat];
+    var bot=0.15, top=Math.min(c.h*0.92, 3.0); if(top<=bot) return;
     u.s.forEach(function(sh){
-      var o=sh.o, n=o.length/2, cx=0, cy=0, mnx=1e9,mny=1e9,mxx=-1e9,mxy=-1e9, i;
-      for(i=0;i<o.length;i+=2){ var px=o[i],py=o[i+1]; cx+=px; cy+=py;
-        if(px<mnx)mnx=px; if(px>mxx)mxx=px; if(py<mny)mny=py; if(py>mxy)mxy=py; }
-      cx/=n; cy/=n;
-      try{
-        if(top>bot){
-          var ring=[]; for(i=0;i<o.length;i+=2) ring.push([cx+(o[i]-cx)*1.012, cy+(o[i+1]-cy)*1.012]);
-          var pos=[];
-          for(i=0;i<ring.length;i++){ var a=ring[i], b=ring[(i+1)%ring.length];
-            pos.push(a[0],a[1],bot, b[0],b[1],bot, b[0],b[1],top,  a[0],a[1],bot, b[0],b[1],top, a[0],a[1],top); }
-          var g=new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pos,3));
-          (food?fbGeos:shopGeos).push(g);
-        }
-        if(food){     // soft warm glow halo over the food unit
-          var sz=Math.max(mxx-mnx, mxy-mny), sp=new THREE.Sprite(new THREE.SpriteMaterial({
-            map:tex, blending:THREE.AdditiveBlending, transparent:true, depthWrite:false, depthTest:false, opacity:0.95}));
-          sp.position.set(cx, cy, 1.2);
-          sp.scale.set(sz*1.5+3, sz*1.5+3, 1); sp.renderOrder=4; group.add(sp);
-        }
-      }catch(e){}
+      var o=sh.o, np=o.length/2, e;
+      for(e=0;e<np;e++){
+        var ax=o[e*2], ay=o[e*2+1], bx=o[((e+1)%np)*2], by=o[((e+1)%np)*2+1];
+        var dx=bx-ax, dy=by-ay, L=Math.hypot(dx,dy); if(L < 0.25) continue;   // skip tiny segments
+        var nx=dy/L, ny=-dx/L, mx=(ax+bx)/2, my=(ay+by)/2;                    // edge normal (world-scaled)
+        var sgn=0;
+        if(m){
+          var off=7*S;                                                       // 7 viewBox units, in world units
+          var w1=isWalk(m, (mx+nx*off)/S, (my+ny*off)/S), w2=isWalk(m, (mx-nx*off)/S, (my-ny*off)/S);
+          if(w1&&!w2) sgn=1; else if(w2&&!w1) sgn=-1; else continue;         // not a clear front face
+        } else { sgn=1; }
+        var ox=nx*sgn*0.3, oy=ny*sgn*0.3;                                    // sit just outside the wall
+        var Ax=ax+ox, Ay=ay+oy, Bx=bx+ox, By=by+oy;
+        var pos=[Ax,Ay,bot, Bx,By,bot, Bx,By,top,  Ax,Ay,bot, Bx,By,top, Ax,Ay,top];
+        var g=new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pos,3));
+        (food?fbGeos:shopGeos).push(g);
+      }
     });
   });
-  if(fbGeos.length){
-    var fm=new THREE.Mesh(THREE.BufferGeometryUtils.mergeBufferGeometries(fbGeos,false),
-      new THREE.MeshBasicMaterial({color:0xffd49a, side:THREE.DoubleSide, fog:true}));
-    fm.renderOrder=2; group.add(fm);
-  }
-  if(shopGeos.length){
-    var sm=new THREE.Mesh(THREE.BufferGeometryUtils.mergeBufferGeometries(shopGeos,false),
-      new THREE.MeshBasicMaterial({color:0xe7eefc, side:THREE.DoubleSide, transparent:true, opacity:0.55, fog:true}));
-    sm.renderOrder=2; group.add(sm);
-  }
+  if(fbGeos.length){ var fm=new THREE.Mesh(THREE.BufferGeometryUtils.mergeBufferGeometries(fbGeos,false),
+    new THREE.MeshBasicMaterial({color:0xf0deb4, side:THREE.DoubleSide, fog:true})); group.add(fm); }   // warm storefront
+  if(shopGeos.length){ var sm=new THREE.Mesh(THREE.BufferGeometryUtils.mergeBufferGeometries(shopGeos,false),
+    new THREE.MeshBasicMaterial({color:0xd9e4f5, side:THREE.DoubleSide, fog:true})); group.add(sm); } // cool storefront
 }
 
 
@@ -981,7 +968,7 @@ function buildFloor(fkey){
   });
 
   buildEscalators(fkey, group);
-  buildStorefronts(data, group);
+  buildStorefronts(fkey, data, group);
 
   /* orient: the plan is drawn in the XY plane (y-down). Rotating -90° about X
      lays it flat on the ground (XZ) and sends the extrude axis (+Z) straight
