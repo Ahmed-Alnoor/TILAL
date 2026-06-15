@@ -661,6 +661,7 @@ function init(){
   buildFloor(curFloor);
   showFloor(curFloor);
   frameModel(true);
+  buildBirds();
   buildBasemap();
   renderPanel();
   hideLoader();
@@ -732,6 +733,52 @@ function buildEnvironment(){
     scene.environment = pm.fromEquirectangular(tex).texture;
     pm.dispose(); tex.dispose();          // PMREM has consumed the source texture
   }catch(e){ scene.environment = tex; }   // fallback: raw equirect still tints the metal
+}
+
+/* -------- distant birds: a few drifting silhouettes high in the sky. They
+            flap (2-frame texture swap) and slowly cross, and fade out as you
+            zoom in (only present in the wide "from afar" view). -------- */
+var birdGroup = null, birds = [], _birdTex = null;
+function birdTexture(spread){
+  var cv = document.createElement("canvas"); cv.width = cv.height = 64;
+  var x = cv.getContext("2d");
+  x.strokeStyle = "rgba(42,48,62,0.92)"; x.lineWidth = 5; x.lineCap = "round"; x.lineJoin = "round";
+  x.beginPath();
+  if(spread){ x.moveTo(7,38); x.quadraticCurveTo(22,18,32,30); x.quadraticCurveTo(42,18,57,38); }  // wings up
+  else      { x.moveTo(10,30); x.quadraticCurveTo(22,40,32,31); x.quadraticCurveTo(42,40,54,30); }  // wings down
+  x.stroke();
+  var t = new THREE.CanvasTexture(cv); t.encoding = THREE.sRGBEncoding; return t;
+}
+function buildBirds(){
+  if(birdGroup || !MODEL) return;
+  _birdTex = [birdTexture(true), birdTexture(false)];
+  birdGroup = new THREE.Group(); scene.add(birdGroup);
+  var R = Math.max(MODEL.w, MODEL.d);
+  for(var i=0;i<12;i++){
+    var sp = new THREE.Sprite(new THREE.SpriteMaterial({
+      map:_birdTex[0], transparent:true, opacity:0, depthWrite:false, fog:true }));
+    var ang = Math.random()*Math.PI*2, rad = R*(0.65 + Math.random()*0.95);
+    sp.position.set(Math.cos(ang)*rad, MODEL.h*0.5 + R*(0.4 + Math.random()*0.45), Math.sin(ang)*rad);
+    var sc = 4 + Math.random()*3.5; sp.scale.set(sc, sc, 1);
+    var sp2 = 0.16 + Math.random()*0.12, dir = Math.random()*Math.PI*2;
+    sp.userData = {vx:Math.cos(dir)*sp2, vz:Math.sin(dir)*sp2, flap:Math.random()*6.28};
+    birdGroup.add(sp); birds.push(sp);
+  }
+}
+function updateBirds(){
+  if(!birds.length || !MODEL) return;
+  var R = Math.max(MODEL.w, MODEL.d), maxD = controls.maxDistance || R*2;
+  var dist = camera.position.distanceTo(controls.target);
+  var vis = Math.max(0, Math.min(1, (dist - maxD*0.30) / (maxD*0.35)));   // far -> visible, near -> gone
+  for(var i=0;i<birds.length;i++){
+    var b = birds[i], u = b.userData;
+    b.position.x += u.vx; b.position.z += u.vz;
+    if(Math.hypot(b.position.x, b.position.z) > R*2.4){ b.position.x = -b.position.x*0.9; b.position.z = -b.position.z*0.9; }
+    u.flap += 0.28;
+    b.material.map = _birdTex[Math.sin(u.flap) > 0 ? 0 : 1];
+    b.material.opacity = vis*0.6;
+    b.visible = vis > 0.02;
+  }
 }
 
 /* -------- build shapes for one unit (outer ring + holes) -------- */
@@ -991,14 +1038,15 @@ function buildFloor(fkey){
                : THREE.BufferGeometryUtils.mergeBufferGeometries(bucket.geos, false);
     if(!merged) return;
     var c = cat(k);
-    /* warm (amber/gold) tenants -> dramatic polished bronze; cool blues ->
-       brushed steel. The golden environment gives both something to reflect. */
+    /* warm (amber/gold) tenants -> dramatic polished bronze. cool blues stay
+       mostly matte: a metallic blue reflecting the warm sky turns muddy green,
+       so keep their metalness/envMap low and let the true colour read. */
     var rr = (c.c>>16)&255, bb = c.c&255, warm = rr > bb + 10;
     var mat = new THREE.MeshStandardMaterial({
       color:c.c, flatShading:false, side:THREE.DoubleSide,
-      metalness: warm ? 0.82 : 0.5,
-      roughness: warm ? 0.3  : 0.46,
-      envMapIntensity: warm ? 1.35 : 0.95
+      metalness: warm ? 0.82 : 0.12,
+      roughness: warm ? 0.3  : 0.62,
+      envMapIntensity: warm ? 1.35 : 0.32
     });
     var mesh = new THREE.Mesh(merged, mat);
     mesh.castShadow = true; mesh.receiveShadow = true;
@@ -1780,6 +1828,7 @@ function animate(){
   controls.update();
   clampView();
   updateEscScale();
+  updateBirds();
   updateLabels();
   if(youMarker && youMarker.visible){ youPulse += 0.06; var s = 6.5 + Math.sin(youPulse)*0.9; youMarker.scale.set(s, s, 1); }
   if(selectMarker){
