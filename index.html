@@ -782,14 +782,12 @@ function updateBirds(){
   }
 }
 
-/* -------- garden: a lush ring of palm trees, shrubs and flowering accents
-            around the mall footprint, planted on a soft green bed -- the
-            "jungle" the building sits in. Each species is one merged template
-            (trunk + fronds/canopy, vertex-coloured) rendered through a single
-            InstancedMesh, so the whole garden costs ~4 draw calls. -------- */
-var GREENS = [0x4f7a35, 0x5c8a3e, 0x3f6b2e, 0x6b9a46, 0x466b30];
-var BARK   = [0x6b4a30, 0x7a5536, 0x5e4226];
-var BLOOM  = [0xd6597a, 0xe0833a, 0xf2c14e];
+/* -------- garden: a lush grove of palms and leafy trees following the mall's
+            curved fan footprint, on a grass bed. Trees are 3-D (thin brown
+            trunk, full green crown); the grass is a tiled 2-D canvas texture
+            (it's only ever seen from above). Each species is one merged,
+            vertex-coloured template drawn through a single InstancedMesh. ---- */
+var GREENS = [0x4f8a39, 0x5fa047, 0x3f7a30, 0x6fb152, 0x468534];
 function randOf(arr){ return arr[(Math.random()*arr.length)|0]; }
 /* mergeBufferGeometries requires every part to be indexed, or none of them --
    IcosahedronGeometry is never indexed, Cylinder/Cone always are, so flatten
@@ -801,106 +799,189 @@ function paintGeo(g, hex){
   g.setAttribute("color", new THREE.BufferAttribute(arr, 3));
   return g;
 }
-/* a tapered trunk that curves toward local +X as it rises; a random per-tree
-   Y-rotation later points that lean in a random world direction */
-function leanTrunkGeo(rTop, rBot, h, lean, radial){
-  var g = nonIndexed(new THREE.CylinderGeometry(rTop, rBot, h, radial, 4, false));
+/* a thin, tall, slightly leaning trunk shaded dark-brown at the base ->
+   lighter brown under the crown (vertex colour, no texture needed) */
+function trunkGeo(rTop, rBot, h, lean){
+  var g = nonIndexed(new THREE.CylinderGeometry(rTop, rBot, h, 6, 5, false));
   g.translate(0, h/2, 0);
-  var pos = g.attributes.position;
-  for(var i=0;i<pos.count;i++){
-    var y = pos.getY(i), t = Math.max(0, y/h);
-    pos.setX(i, pos.getX(i) + lean*t*t);
+  var pos = g.attributes.position, n = pos.count, arr = new Float32Array(n*3);
+  var cb = new THREE.Color(0x4a3119), ct = new THREE.Color(0x7d5634);
+  for(var i=0;i<n;i++){
+    var y = pos.getY(i), t = Math.max(0, Math.min(1, y/h));
+    pos.setX(i, pos.getX(i) + lean*t*t);                 // bend the lean into the upper trunk
+    arr[i*3]=cb.r+(ct.r-cb.r)*t; arr[i*3+1]=cb.g+(ct.g-cb.g)*t; arr[i*3+2]=cb.b+(ct.b-cb.b)*t;
   }
-  pos.needsUpdate = true;
-  g.computeVertexNormals();
-  return paintGeo(g, randOf(BARK));
+  pos.needsUpdate = true; g.computeVertexNormals();
+  g.setAttribute("color", new THREE.BufferAttribute(arr, 3));
+  return g;
 }
-/* a flattened, tapered blade radiating outward + slightly up from the crown */
+/* a long, slim, drooping palm frond (a flattened blade) radiating from the crown */
 function frondGeo(len, droop, yaw, baseY){
-  var g = nonIndexed(new THREE.ConeGeometry(len*0.32, len, 4, 1, true));
+  var g = nonIndexed(new THREE.ConeGeometry(len*0.16, len, 4, 1, true));
   g.translate(0, len/2, 0);
-  g.scale(0.22, 1, 1);
-  g.rotateZ(droop);
+  g.scale(0.5, 1, 1);                  // flatten into a blade
+  g.rotateZ(droop);                    // arch outward + down
   g.translate(0, baseY, 0);
   g.rotateY(yaw);
   return paintGeo(g, randOf(GREENS));
 }
-function palmTemplate(trunkH, lean, fronds, frondLen){
-  var parts = [leanTrunkGeo(0.6, 1.15, trunkH, lean, 6)];
-  for(var i=0;i<fronds;i++){
-    var yaw = (i/fronds)*Math.PI*2 + Math.random()*0.5;
-    var droop = 0.95 + Math.random()*0.4;
-    parts.push(frondGeo(frondLen*(0.85+Math.random()*0.3), droop, yaw, trunkH*0.97));
+/* tall slim palm: brown trunk + a dense, drooping green crown */
+function palmTemplate(){
+  var h = 8.5 + Math.random()*3.5;
+  var parts = [ trunkGeo(0.26, 0.5, h, 1.0 + Math.random()*1.3) ];
+  var crownY = h*0.96;
+  for(var i=0;i<13;i++){                                  // outer drooping ring
+    var yaw = (i/13)*Math.PI*2 + Math.random()*0.35;
+    parts.push(frondGeo(4.0 + Math.random()*1.8, 1.18 + Math.random()*0.32, yaw, crownY));
+  }
+  for(i=0;i<6;i++){                                        // inner, more upright ring (fills the centre)
+    parts.push(frondGeo(2.4 + Math.random()*0.8, 0.55 + Math.random()*0.3, (i/6)*Math.PI*2 + 0.5, crownY + 0.4));
+  }
+  var core = nonIndexed(new THREE.IcosahedronGeometry(0.95, 0));   // hide the trunk top
+  core.translate(0, crownY, 0);
+  parts.push(paintGeo(core, randOf(GREENS)));
+  return THREE.BufferGeometryUtils.mergeBufferGeometries(parts, false);
+}
+/* rounded leafy tree: brown trunk + a clustered green canopy */
+function leafyTemplate(){
+  var h = 4.2 + Math.random()*2.4;
+  var parts = [ trunkGeo(0.22, 0.42, h, 0.4 + Math.random()*0.8) ];
+  var cy = h + 1.0;
+  for(var i=0;i<5;i++){
+    var r = 1.9 + Math.random()*1.3;
+    var g = nonIndexed(new THREE.IcosahedronGeometry(r, 1));
+    g.translate((Math.random()-0.5)*2.6, cy + (Math.random()-0.5)*1.8, (Math.random()-0.5)*2.6);
+    parts.push(paintGeo(g, randOf(GREENS)));
   }
   return THREE.BufferGeometryUtils.mergeBufferGeometries(parts, false);
 }
-function shrubTemplate(flowering){
-  var parts = [leanTrunkGeo(0.36, 0.58, 2.0, 0, 6)];
-  var blobs = 4 + ((Math.random()*2)|0);
-  for(var i=0;i<blobs;i++){
-    var g = nonIndexed(new THREE.IcosahedronGeometry(1.6 + Math.random()*1.5, 0));
-    g.translate((Math.random()-0.5)*2.5, 2.2 + Math.random()*2.0, (Math.random()-0.5)*2.5);
-    parts.push(paintGeo(g, (flowering && i===0) ? randOf(BLOOM) : randOf(GREENS)));
+
+/* a tiled, top-down grass texture: thousands of tiny blade strokes over a
+   mottled green base. Blades near an edge are duplicated on the opposite edge
+   so the tile repeats seamlessly. */
+var _grassTex = null;
+function grassTexture(){
+  if(_grassTex) return _grassTex;
+  var s = 512, cv = document.createElement("canvas"); cv.width = cv.height = s;
+  var x = cv.getContext("2d");
+  x.fillStyle = "#3f7a30"; x.fillRect(0, 0, s, s);
+  for(var i=0;i<28;i++){                                   // soft light/dark mottling
+    var g = x.createRadialGradient(Math.random()*s, Math.random()*s, 2, Math.random()*s, Math.random()*s, 60+Math.random()*90);
+    g.addColorStop(0, Math.random()>0.5 ? "rgba(120,180,80,0.45)" : "rgba(38,86,28,0.45)");
+    g.addColorStop(1, "rgba(0,0,0,0)");
+    x.fillStyle = g; x.fillRect(0, 0, s, s);
   }
-  return THREE.BufferGeometryUtils.mergeBufferGeometries(parts, false);
+  var greens = ["#5fa047","#6fb152","#478534","#3f7a30","#7cc15e"];
+  function blade(bx, by){
+    var len = 4+Math.random()*7, ang = -Math.PI/2 + (Math.random()-0.5)*1.1;
+    var mx = bx+Math.cos(ang-0.4)*len*0.6, my = by+Math.sin(ang-0.4)*len*0.6;
+    var ex = bx+Math.cos(ang)*len, ey = by+Math.sin(ang)*len;
+    x.strokeStyle = greens[(Math.random()*greens.length)|0];
+    x.lineWidth = 0.8+Math.random()*0.9; x.lineCap = "round";
+    x.beginPath(); x.moveTo(bx, by); x.quadraticCurveTo(mx, my, ex, ey); x.stroke();
+  }
+  for(i=0;i<9000;i++){
+    var bx = Math.random()*s, by = Math.random()*s; blade(bx, by);
+    if(bx<14) blade(bx+s, by); else if(bx>s-14) blade(bx-s, by);   // wrap for seamless tiling
+    if(by<14) blade(bx, by+s); else if(by>s-14) blade(bx, by-s);
+  }
+  var t = new THREE.CanvasTexture(cv);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.encoding = THREE.sRGBEncoding; t.anisotropy = 4;
+  _grassTex = t; return t;
 }
-/* a point just outside the footprint rectangle, walking its perimeter so the
-   planting reads as an even border rather than clumping in the corners */
-function gardenPoint(halfW, halfD, bandMin, bandMax){
-  var per = (halfW + halfD) * 2, t = Math.random()*per, off = bandMin + Math.random()*(bandMax-bandMin), x, z;
-  if(t < halfW*2)                   { x = -halfW + t;          z = -halfD - off; }
-  else if((t -= halfW*2) < halfD*2) { x =  halfW + off;        z = -halfD + t; }
-  else if((t -= halfD*2) < halfW*2) { x =  halfW - t;          z =  halfD + off; }
-  else                               { t -= halfW*2; x = -halfW - off; z = halfD - t; }
-  x += (Math.random()-0.5)*6; z += (Math.random()-0.5)*6;
-  return [x, z];
+
+/* convex hull (Andrew's monotone chain) of [x,z] points -> CCW ring. Used to
+   trace the mall's curved silhouette so the garden hugs it instead of a box. */
+function convexHull(pts){
+  pts = pts.slice().sort(function(a,b){ return a[0]-b[0] || a[1]-b[1]; });
+  if(pts.length < 3) return pts;
+  function cr(o,a,b){ return (a[0]-o[0])*(b[1]-o[1]) - (a[1]-o[1])*(b[0]-o[0]); }
+  var lo=[], up=[], i;
+  for(i=0;i<pts.length;i++){ while(lo.length>=2 && cr(lo[lo.length-2],lo[lo.length-1],pts[i])<=0) lo.pop(); lo.push(pts[i]); }
+  for(i=pts.length-1;i>=0;i--){ while(up.length>=2 && cr(up[up.length-2],up[up.length-1],pts[i])<=0) up.pop(); up.push(pts[i]); }
+  lo.pop(); up.pop(); return lo.concat(up);
 }
+function footprintHull(){
+  var pts = [];
+  FLOOR_ORDER.forEach(function(fk){
+    var fl = FLOORS[fk]; if(!fl) return;
+    fl.units.forEach(function(u){
+      for(var si=0; si<u.s.length; si++){
+        var o = u.s[si].o; if(!o) continue;
+        for(var i=0;i<o.length;i+=2) pts.push([o[i]-OFFSET.x, -o[i+1]-OFFSET.z]);   // -> world XZ
+      }
+    });
+  });
+  return convexHull(pts);
+}
+
 var gardenGroup = null;
 function buildGarden(){
   if(gardenGroup || !MODEL) return;
+  var hull = footprintHull(); if(hull.length < 3) return;
   gardenGroup = new THREE.Group(); scene.add(gardenGroup);
 
-  var halfW = MODEL.w/2 + 1.5, halfD = MODEL.d/2 + 1.5, band = 30;
+  var cx=0, cz=0, k;
+  for(k=0;k<hull.length;k++){ cx+=hull[k][0]; cz+=hull[k][1]; }
+  cx/=hull.length; cz/=hull.length;
+  var gap = 2, band = 24;                                  // grass starts 2u out, 24u deep
 
-  /* soft green garden bed framing the building, just above the contact-shadow
-     ground plane so the two never z-fight */
+  /* grass bed: a curved band hugging the silhouette (outer ring with the
+     building's outline punched out as a hole) */
+  function ring(dist){
+    return hull.map(function(p){ var dx=p[0]-cx, dz=p[1]-cz, L=Math.hypot(dx,dz)||1; return [p[0]+dx/L*dist, p[1]+dz/L*dist]; });
+  }
+  var inner = ring(gap), outer = ring(gap+band);
   var bed = new THREE.Shape();
-  bed.moveTo(-halfW-band, -halfD-band); bed.lineTo(halfW+band, -halfD-band);
-  bed.lineTo(halfW+band, halfD+band);   bed.lineTo(-halfW-band, halfD+band);
+  outer.forEach(function(p,i){ i ? bed.lineTo(p[0], -p[1]) : bed.moveTo(p[0], -p[1]); });   // shape XY; -z keeps it upright after the -90deg X rotation
   bed.closePath();
   var hole = new THREE.Path();
-  hole.moveTo(-halfW, -halfD); hole.lineTo(halfW, -halfD);
-  hole.lineTo(halfW, halfD);   hole.lineTo(-halfW, halfD);
+  inner.slice().reverse().forEach(function(p,i){ i ? hole.lineTo(p[0], -p[1]) : hole.moveTo(p[0], -p[1]); });
   hole.closePath();
   bed.holes.push(hole);
+  var grass = grassTexture(); grass.repeat.set(1/9, 1/9);
   var bedMesh = new THREE.Mesh(new THREE.ShapeGeometry(bed),
-    new THREE.MeshStandardMaterial({color:0x4f7a3a, roughness:0.95, metalness:0, side:THREE.DoubleSide}));
-  bedMesh.rotation.x = -Math.PI/2; bedMesh.position.y = 0.015;
+    new THREE.MeshStandardMaterial({map:grass, roughness:0.97, metalness:0, envMapIntensity:0.5, side:THREE.DoubleSide}));
+  bedMesh.rotation.x = -Math.PI/2; bedMesh.position.y = 0.05;
   bedMesh.receiveShadow = true;
   gardenGroup.add(bedMesh);
 
-  /* one shared material; the vertex colours baked into each template carry
-     the per-species look (bark vs. fronds vs. blooms) */
-  var mat = new THREE.MeshStandardMaterial({vertexColors:true, flatShading:true, roughness:0.85, metalness:0});
-  var templates = [
-    {geo:palmTemplate(9.4, 1.8, 7, 5.8), n:45, shadow:true},   // tall date/coconut palms
-    {geo:palmTemplate(6.8, 1.26, 6, 4.3), n:55, shadow:true},  // shorter fan palms
-    {geo:shrubTemplate(false), n:70, shadow:false},            // green shrubs
-    {geo:shrubTemplate(true), n:35, shadow:false}              // flowering accents
+  /* trees: walk the silhouette at even arc-length steps, push each out into the
+     band by a random depth (-> several natural rows), pick a species. */
+  var seg=[], total=0;
+  for(k=0;k<hull.length;k++){ var a=hull[k], b=hull[(k+1)%hull.length]; var len=Math.hypot(b[0]-a[0],b[1]-a[1]); seg.push({a:a,b:b,acc:total,len:len}); total+=len; }
+  function pointAt(d){ d=((d%total)+total)%total; for(var i=0;i<seg.length;i++){ if(d<=seg[i].acc+seg[i].len){ var f=(d-seg[i].acc)/(seg[i].len||1); return [seg[i].a[0]+(seg[i].b[0]-seg[i].a[0])*f, seg[i].a[1]+(seg[i].b[1]-seg[i].a[1])*f]; } } return hull[0]; }
+
+  var species = [
+    {geo:palmTemplate(),  list:[], shadow:true,  sMin:0.85, sVar:0.45},   // palm A
+    {geo:palmTemplate(),  list:[], shadow:true,  sMin:0.8,  sVar:0.5},    // palm B
+    {geo:leafyTemplate(), list:[], shadow:true,  sMin:0.85, sVar:0.55},   // leafy A
+    {geo:leafyTemplate(), list:[], shadow:true,  sMin:0.8,  sVar:0.6}     // leafy B
   ];
+  var N = 150;
+  for(k=0;k<N;k++){
+    var p = pointAt(((k + (Math.random()-0.5)*0.6)/N)*total);
+    var dx=p[0]-cx, dz=p[1]-cz, L=Math.hypot(dx,dz)||1; dx/=L; dz/=L;
+    var push = gap + 1 + Math.random()*(band-3);
+    var jit = (Math.random()-0.5)*7;
+    var X = p[0] + dx*push - dz*jit, Z = p[1] + dz*push + dx*jit;
+    var r = Math.random(), si = r<0.34 ? 0 : r<0.62 ? 1 : r<0.83 ? 2 : 3;
+    species[si].list.push([X, Z]);
+  }
+
   var m = new THREE.Matrix4(), q = new THREE.Quaternion(), pos = new THREE.Vector3(), scl = new THREE.Vector3(), yAxis = new THREE.Vector3(0,1,0);
-  templates.forEach(function(t){
-    var im = new THREE.InstancedMesh(t.geo, mat, t.n);
-    im.castShadow = t.shadow; im.receiveShadow = true;
-    for(var i=0;i<t.n;i++){
-      var xz = gardenPoint(halfW, halfD, 3, band-3);
+  species.forEach(function(sp){
+    if(!sp.list.length) return;
+    var im = new THREE.InstancedMesh(sp.geo, new THREE.MeshStandardMaterial({vertexColors:true, flatShading:true, roughness:0.85, metalness:0, envMapIntensity:0.45}), sp.list.length);
+    im.castShadow = sp.shadow; im.receiveShadow = true;
+    sp.list.forEach(function(xz, i){
       pos.set(xz[0], 0, xz[1]);
       q.setFromAxisAngle(yAxis, Math.random()*Math.PI*2);
-      var s = 0.8 + Math.random()*0.5;
-      scl.set(s, s*(0.85+Math.random()*0.35), s);
+      var s = sp.sMin + Math.random()*sp.sVar;
+      scl.set(s, s*(0.9+Math.random()*0.3), s);
       m.compose(pos, q, scl);
       im.setMatrixAt(i, m);
-    }
+    });
     im.instanceMatrix.needsUpdate = true;
     gardenGroup.add(im);
   });
