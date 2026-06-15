@@ -35,6 +35,7 @@ MIN_AREA  = 14.0    # drop rings smaller than this (viewBox units^2) — slivers
 INSET     = 1.1     # shrink outer rings inward (viewBox units) to de-coincide shared walls
 PLAN_SCALE = 0.11   # viewBox units -> world units (plan longest side ~= 205)
 DEC = 1             # output decimal places (after scaling)
+MIRROR_X = True     # mirror the plan left<->right (the source SVG is flipped vs reality)
 
 FLOOR_NAMES = {'BL': 'Basement', 'G': 'Ground Floor', 'F1': 'Level 1'}
 FLOOR_ORDER = ['BL', 'G', 'F1']
@@ -242,6 +243,11 @@ def inset_ring(ring, d):
         return ring          # would distort a thin unit — leave it
     return out
 
+def mirror_ring(ring):
+    """Reflect a ring across the plan's vertical axis (negate x). Orientation is
+    re-normalised afterwards by with_winding, so caps/holes stay correct."""
+    return [(-x, y) for (x, y) in ring] if MIRROR_X else ring
+
 def round_ring(r):
     return [round(v, DEC) for p in r for v in p]
 
@@ -263,9 +269,9 @@ def bake():
                     continue
                 packed = []
                 for sh in shapes:
-                    outer = with_winding(inset_ring(sh['o'], INSET), True)
+                    outer = with_winding(mirror_ring(inset_ring(sh['o'], INSET)), True)
                     o = [round(v*PLAN_SCALE, DEC) for p in outer for v in p]
-                    hs = [[round(v*PLAN_SCALE, DEC) for p in with_winding(hole, False) for v in p]
+                    hs = [[round(v*PLAN_SCALE, DEC) for p in with_winding(mirror_ring(hole), False) for v in p]
                           for hole in sh['h']]
                     packed.append({'o': o, 'h': hs} if hs else {'o': o})
                     nshapes += 1; nholes += len(hs)

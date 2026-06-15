@@ -531,6 +531,9 @@ var ESCALATORS = {
   G:[[1370,973],[1068,1081],[1372,1356],[1684,1279],[1995,1360],[2350,1017],[2031,1009],[1031,1275],[1693,1515],[2339,1275],[1315,1180],[2026,1169]],
   F1:[[1370,943],[1985,945],[1002,1022],[1918,1397],[2329,1011],[1704,1481],[2253,1245]]
 };
+/* the baked model is mirrored on X (see MIRROR_X in build_3d_data.py); mirror
+   the escalator coords to match so the pins + routing land on the right units. */
+for(var _ef in ESCALATORS){ ESCALATORS[_ef].forEach(function(p){ p[0] = -p[0]; }); }
 var PLAN_SCALE = 0.11;   // must match tools/build_3d_data.py
 /* real-world georeference (matches the 2.5D map) — mall centre + footprint */
 var GEO = {lat:25.266544, lng:55.583265, mallWidthM:540, rotDeg:67};
