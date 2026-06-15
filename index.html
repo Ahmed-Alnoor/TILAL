@@ -662,6 +662,7 @@ function init(){
   showFloor(curFloor);
   frameModel(true);
   buildBirds();
+  buildGarden();
   buildBasemap();
   renderPanel();
   hideLoader();
@@ -779,6 +780,131 @@ function updateBirds(){
     b.material.opacity = vis*0.6;
     b.visible = vis > 0.02;
   }
+}
+
+/* -------- garden: a lush ring of palm trees, shrubs and flowering accents
+            around the mall footprint, planted on a soft green bed -- the
+            "jungle" the building sits in. Each species is one merged template
+            (trunk + fronds/canopy, vertex-coloured) rendered through a single
+            InstancedMesh, so the whole garden costs ~4 draw calls. -------- */
+var GREENS = [0x4f7a35, 0x5c8a3e, 0x3f6b2e, 0x6b9a46, 0x466b30];
+var BARK   = [0x6b4a30, 0x7a5536, 0x5e4226];
+var BLOOM  = [0xd6597a, 0xe0833a, 0xf2c14e];
+function randOf(arr){ return arr[(Math.random()*arr.length)|0]; }
+/* mergeBufferGeometries requires every part to be indexed, or none of them --
+   IcosahedronGeometry is never indexed, Cylinder/Cone always are, so flatten
+   everything to non-indexed before merging */
+function nonIndexed(g){ return g.index ? g.toNonIndexed() : g; }
+function paintGeo(g, hex){
+  var c = new THREE.Color(hex), n = g.attributes.position.count, arr = new Float32Array(n*3);
+  for(var i=0;i<n;i++){ arr[i*3]=c.r; arr[i*3+1]=c.g; arr[i*3+2]=c.b; }
+  g.setAttribute("color", new THREE.BufferAttribute(arr, 3));
+  return g;
+}
+/* a tapered trunk that curves toward local +X as it rises; a random per-tree
+   Y-rotation later points that lean in a random world direction */
+function leanTrunkGeo(rTop, rBot, h, lean, radial){
+  var g = nonIndexed(new THREE.CylinderGeometry(rTop, rBot, h, radial, 4, false));
+  g.translate(0, h/2, 0);
+  var pos = g.attributes.position;
+  for(var i=0;i<pos.count;i++){
+    var y = pos.getY(i), t = Math.max(0, y/h);
+    pos.setX(i, pos.getX(i) + lean*t*t);
+  }
+  pos.needsUpdate = true;
+  g.computeVertexNormals();
+  return paintGeo(g, randOf(BARK));
+}
+/* a flattened, tapered blade radiating outward + slightly up from the crown */
+function frondGeo(len, droop, yaw, baseY){
+  var g = nonIndexed(new THREE.ConeGeometry(len*0.32, len, 4, 1, true));
+  g.translate(0, len/2, 0);
+  g.scale(0.22, 1, 1);
+  g.rotateZ(droop);
+  g.translate(0, baseY, 0);
+  g.rotateY(yaw);
+  return paintGeo(g, randOf(GREENS));
+}
+function palmTemplate(trunkH, lean, fronds, frondLen){
+  var parts = [leanTrunkGeo(0.6, 1.15, trunkH, lean, 6)];
+  for(var i=0;i<fronds;i++){
+    var yaw = (i/fronds)*Math.PI*2 + Math.random()*0.5;
+    var droop = 0.95 + Math.random()*0.4;
+    parts.push(frondGeo(frondLen*(0.85+Math.random()*0.3), droop, yaw, trunkH*0.97));
+  }
+  return THREE.BufferGeometryUtils.mergeBufferGeometries(parts, false);
+}
+function shrubTemplate(flowering){
+  var parts = [leanTrunkGeo(0.36, 0.58, 2.0, 0, 6)];
+  var blobs = 4 + ((Math.random()*2)|0);
+  for(var i=0;i<blobs;i++){
+    var g = nonIndexed(new THREE.IcosahedronGeometry(1.6 + Math.random()*1.5, 0));
+    g.translate((Math.random()-0.5)*2.5, 2.2 + Math.random()*2.0, (Math.random()-0.5)*2.5);
+    parts.push(paintGeo(g, (flowering && i===0) ? randOf(BLOOM) : randOf(GREENS)));
+  }
+  return THREE.BufferGeometryUtils.mergeBufferGeometries(parts, false);
+}
+/* a point just outside the footprint rectangle, walking its perimeter so the
+   planting reads as an even border rather than clumping in the corners */
+function gardenPoint(halfW, halfD, bandMin, bandMax){
+  var per = (halfW + halfD) * 2, t = Math.random()*per, off = bandMin + Math.random()*(bandMax-bandMin), x, z;
+  if(t < halfW*2)                   { x = -halfW + t;          z = -halfD - off; }
+  else if((t -= halfW*2) < halfD*2) { x =  halfW + off;        z = -halfD + t; }
+  else if((t -= halfD*2) < halfW*2) { x =  halfW - t;          z =  halfD + off; }
+  else                               { t -= halfW*2; x = -halfW - off; z = halfD - t; }
+  x += (Math.random()-0.5)*6; z += (Math.random()-0.5)*6;
+  return [x, z];
+}
+var gardenGroup = null;
+function buildGarden(){
+  if(gardenGroup || !MODEL) return;
+  gardenGroup = new THREE.Group(); scene.add(gardenGroup);
+
+  var halfW = MODEL.w/2 + 1.5, halfD = MODEL.d/2 + 1.5, band = 30;
+
+  /* soft green garden bed framing the building, just above the contact-shadow
+     ground plane so the two never z-fight */
+  var bed = new THREE.Shape();
+  bed.moveTo(-halfW-band, -halfD-band); bed.lineTo(halfW+band, -halfD-band);
+  bed.lineTo(halfW+band, halfD+band);   bed.lineTo(-halfW-band, halfD+band);
+  bed.closePath();
+  var hole = new THREE.Path();
+  hole.moveTo(-halfW, -halfD); hole.lineTo(halfW, -halfD);
+  hole.lineTo(halfW, halfD);   hole.lineTo(-halfW, halfD);
+  hole.closePath();
+  bed.holes.push(hole);
+  var bedMesh = new THREE.Mesh(new THREE.ShapeGeometry(bed),
+    new THREE.MeshStandardMaterial({color:0x4f7a3a, roughness:0.95, metalness:0, side:THREE.DoubleSide}));
+  bedMesh.rotation.x = -Math.PI/2; bedMesh.position.y = 0.015;
+  bedMesh.receiveShadow = true;
+  gardenGroup.add(bedMesh);
+
+  /* one shared material; the vertex colours baked into each template carry
+     the per-species look (bark vs. fronds vs. blooms) */
+  var mat = new THREE.MeshStandardMaterial({vertexColors:true, flatShading:true, roughness:0.85, metalness:0});
+  var templates = [
+    {geo:palmTemplate(9.4, 1.8, 7, 5.8), n:45, shadow:true},   // tall date/coconut palms
+    {geo:palmTemplate(6.8, 1.26, 6, 4.3), n:55, shadow:true},  // shorter fan palms
+    {geo:shrubTemplate(false), n:70, shadow:false},            // green shrubs
+    {geo:shrubTemplate(true), n:35, shadow:false}              // flowering accents
+  ];
+  var m = new THREE.Matrix4(), q = new THREE.Quaternion(), pos = new THREE.Vector3(), scl = new THREE.Vector3(), yAxis = new THREE.Vector3(0,1,0);
+  templates.forEach(function(t){
+    var im = new THREE.InstancedMesh(t.geo, mat, t.n);
+    im.castShadow = t.shadow; im.receiveShadow = true;
+    for(var i=0;i<t.n;i++){
+      var xz = gardenPoint(halfW, halfD, 3, band-3);
+      pos.set(xz[0], 0, xz[1]);
+      q.setFromAxisAngle(yAxis, Math.random()*Math.PI*2);
+      var s = 0.8 + Math.random()*0.5;
+      scl.set(s, s*(0.85+Math.random()*0.35), s);
+      m.compose(pos, q, scl);
+      im.setMatrixAt(i, m);
+    }
+    im.instanceMatrix.needsUpdate = true;
+    gardenGroup.add(im);
+  });
+  markShadow();
 }
 
 /* -------- build shapes for one unit (outer ring + holes) -------- */
