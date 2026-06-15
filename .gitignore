@@ -1,0 +1,4 @@
+# Local tooling used only for screenshot/verification — not part of the deliverable
+node_modules/
+package.json
+package-lock.json
