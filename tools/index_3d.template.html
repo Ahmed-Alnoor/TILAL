@@ -586,7 +586,7 @@ function init(){
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.outputEncoding = THREE.sRGBEncoding;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 0.9;                  // dimmer, so the dark luxury palette reads dark
+  renderer.toneMappingExposure = 1.0;                  // a touch brighter so the metallic golds pop
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;     // soft, no acne
   renderer.shadowMap.autoUpdate = false;                // KEY PERF FIX: the scene/light are static,
@@ -594,15 +594,15 @@ function init(){
   app.appendChild(renderer.domElement);
 
   scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(0xe9edf2, 260, 720);        // light, cool haze (matches the sky horizon)
+  scene.fog = new THREE.Fog(0xe9e1d2, 260, 720);        // light, warm golden-hour haze
 
   camera = new THREE.PerspectiveCamera(46, window.innerWidth/window.innerHeight, 1, 4000);
 
   /* ---- warm late-afternoon sun from the top-right, long soft shadows to the left ---- */
-  var hemi = new THREE.HemisphereLight(0xffe9d2, 0x4a4256, 0.34);  // gentle fill (kept low so blocks stay dark)
+  var hemi = new THREE.HemisphereLight(0xffe4ba, 0x4a4256, 0.34);  // gentle warm fill (kept low so blocks stay moody)
   scene.add(hemi);
 
-  var key = new THREE.DirectionalLight(0xffce8c, 2.1);  // warm golden sun (softened so the dark palette holds)
+  var key = new THREE.DirectionalLight(0xffc23a, 2.5);  // saturated golden-yellow sun
   key.position.set(300, 140, 70);                       // up and to the RIGHT, low elevation -> long shadows left
   key.castShadow = true;
   key.shadow.mapSize.set(2048, 2048);
@@ -616,6 +616,11 @@ function init(){
   var fill = new THREE.DirectionalLight(0xb9ccf2, 0.3);  // cool counter-fill so shadows aren't dead
   fill.position.set(-140, 90, -120);
   scene.add(fill);
+
+  /* warm image-based lighting so the metallic blocks have a golden studio to
+     reflect (a metal with no environment renders nearly black). Baked once
+     from a canvas gradient + a bright sun hotspot -> PMREM. */
+  buildEnvironment();
 
   /* large solid ground: extends past the basemap tiles and fades into the fog
      horizon (no "cut"). Sat well below the tiles so the two planes never
@@ -700,6 +705,30 @@ function init(){
   document.getElementById("locPromptClose").addEventListener("click", hideLocPrompt);
 
   animate();
+}
+
+/* -------- warm golden environment for metallic reflections -------- */
+function buildEnvironment(){
+  if(!renderer || !scene) return;
+  var cv = document.createElement("canvas"); cv.width = 512; cv.height = 256;
+  var x = cv.getContext("2d");
+  var g = x.createLinearGradient(0, 0, 0, 256);
+  g.addColorStop(0.00, "#ffedc2");   // warm zenith
+  g.addColorStop(0.42, "#f4c878");   // golden sky
+  g.addColorStop(0.50, "#eaa757");   // horizon glow
+  g.addColorStop(0.58, "#6f4f31");   // near ground
+  g.addColorStop(1.00, "#241a10");   // dark ground
+  x.fillStyle = g; x.fillRect(0, 0, 512, 256);
+  var sun = x.createRadialGradient(366, 58, 2, 366, 58, 96);   // bright sun -> a crisp specular hotspot
+  sun.addColorStop(0, "rgba(255,250,228,1)"); sun.addColorStop(1, "rgba(255,250,228,0)");
+  x.fillStyle = sun; x.beginPath(); x.arc(366, 58, 96, 0, 7); x.fill();
+  var tex = new THREE.CanvasTexture(cv);
+  tex.mapping = THREE.EquirectangularReflectionMapping; tex.encoding = THREE.sRGBEncoding;
+  try{
+    var pm = new THREE.PMREMGenerator(renderer);
+    scene.environment = pm.fromEquirectangular(tex).texture;
+    pm.dispose(); tex.dispose();          // PMREM has consumed the source texture
+  }catch(e){ scene.environment = tex; }   // fallback: raw equirect still tints the metal
 }
 
 /* -------- build shapes for one unit (outer ring + holes) -------- */
@@ -959,9 +988,14 @@ function buildFloor(fkey){
                : THREE.BufferGeometryUtils.mergeBufferGeometries(bucket.geos, false);
     if(!merged) return;
     var c = cat(k);
+    /* warm (amber/gold) tenants -> dramatic polished bronze; cool blues ->
+       brushed steel. The golden environment gives both something to reflect. */
+    var rr = (c.c>>16)&255, bb = c.c&255, warm = rr > bb + 10;
     var mat = new THREE.MeshStandardMaterial({
-      color:c.c, roughness:0.58, metalness:0.04, flatShading:false, side:THREE.DoubleSide
-      // no block emissive — true colours; storefront light is a separate facade glow
+      color:c.c, flatShading:false, side:THREE.DoubleSide,
+      metalness: warm ? 0.82 : 0.5,
+      roughness: warm ? 0.3  : 0.46,
+      envMapIntensity: warm ? 1.35 : 0.95
     });
     var mesh = new THREE.Mesh(merged, mat);
     mesh.castShadow = true; mesh.receiveShadow = true;
