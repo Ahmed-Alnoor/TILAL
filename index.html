@@ -12,6 +12,7 @@
     --ink:#2c2f38; --ink-soft:#5b606e;
     --glass:rgba(255,255,255,.16); --glass-strong:rgba(255,255,255,.30);
     --stroke:rgba(255,255,255,.45); --shadow:0 10px 34px rgba(60,44,24,.18);
+    --sheet:0px;   /* height of the open bottom sheet (card/dirform) so floating UI clears it */
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
   html,body{height:100%;}
@@ -139,20 +140,20 @@
   .ctrl svg{width:21px;height:21px;}
   #myLoc{color:#2f74d0;}
   /* ---------- outside-the-mall location prompt ---------- */
-  .loc-prompt{position:fixed; left:50%; bottom:calc(env(safe-area-inset-bottom,0px) + 18px); transform:translate(-50%,140%);
-    z-index:11; display:flex; align-items:center; gap:13px; max-width:92vw; padding:12px 14px;
-    border-radius:16px; background:var(--glass-strong); border:1px solid var(--stroke);
+  .loc-prompt{position:fixed; left:50%; bottom:calc(env(safe-area-inset-bottom,0px) + 18px + var(--sheet,0px)); transform:translate(-50%,160%);
+    z-index:11; display:flex; flex-direction:column; gap:11px; width:min(360px, calc(100vw - 24px)); padding:15px 16px 16px;
+    border-radius:18px; background:var(--glass-strong); border:1px solid var(--stroke);
     backdrop-filter:blur(20px) saturate(140%); -webkit-backdrop-filter:blur(20px) saturate(140%);
     box-shadow:var(--shadow); opacity:0; transition:transform .34s cubic-bezier(.2,.8,.2,1), opacity .34s;}
   .loc-prompt.show{transform:translate(-50%,0); opacity:1;}
-  .loc-prompt .lp-txt{display:flex; flex-direction:column; min-width:0;}
-  .loc-prompt .lp-txt b{font-size:13px;}
-  .loc-prompt .lp-txt span{font-size:12px; color:var(--ink-soft);}
-  .loc-prompt .lp-go{display:flex; align-items:center; gap:7px; flex:0 0 auto; text-decoration:none; cursor:pointer;
-    border-radius:11px; padding:10px 13px; font-size:13px; font-weight:600; color:#fff; background:linear-gradient(135deg,#3f74c0,#2f5391);}
-  .loc-prompt .lp-go svg{width:15px;height:15px;}
-  .loc-prompt .lp-x{flex:0 0 auto; cursor:pointer; border:0; background:rgba(255,255,255,.4); color:var(--ink);
-    width:26px;height:26px; border-radius:50%; font-size:16px; line-height:1;}
+  .loc-prompt .lp-txt{display:flex; flex-direction:column; gap:3px; padding-right:30px;}
+  .loc-prompt .lp-txt b{font-size:14.5px; font-weight:700;}
+  .loc-prompt .lp-txt span{font-size:12.5px; color:var(--ink-soft); line-height:1.45;}
+  .loc-prompt .lp-go{display:flex; align-items:center; justify-content:center; gap:8px; text-decoration:none; cursor:pointer;
+    border-radius:12px; padding:12px 14px; font-size:14px; font-weight:600; color:#fff; background:linear-gradient(135deg,#3f74c0,#2f5391);}
+  .loc-prompt .lp-go svg{width:16px;height:16px;}
+  .loc-prompt .lp-x{position:absolute; top:11px; right:11px; cursor:pointer; border:0; background:rgba(255,255,255,.5); color:var(--ink);
+    width:28px;height:28px; border-radius:50%; font-size:17px; line-height:1;}
 
   /* ---------- info card ---------- */
   .card{
@@ -328,11 +329,14 @@
   }
   @media (max-width:759px){
     .menu-btn{display:grid;}
-    .brand .mark{display:none;}
     .panel{transform:translateX(-118%); opacity:0; pointer-events:none;
       top:calc(env(safe-area-inset-top,0px) + 64px); width:min(330px,86vw);}
     .panel.open{transform:none; opacity:1; pointer-events:auto;}
-    .controls{top:auto; bottom:calc(env(safe-area-inset-bottom,0px) + 14px); transform:none; flex-direction:column;}
+    /* controls float above whatever bottom sheet is open so they never sit on the card */
+    .controls{top:auto; bottom:calc(env(safe-area-inset-bottom,0px) + 14px + var(--sheet,0px)); transform:none; flex-direction:column; transition:bottom .3s cubic-bezier(.2,.8,.2,1);}
+    /* the "outside the mall" notice becomes a top banner so it can't collide with the card/controls */
+    .loc-prompt{top:calc(env(safe-area-inset-top,0px) + 62px); bottom:auto; transform:translate(-50%,-170%);}
+    .loc-prompt.show{transform:translate(-50%,0);}
   }
   @media (prefers-reduced-motion:reduce){
     .card,.panel{transition:none;} .ring{animation-duration:2.4s;}
@@ -345,7 +349,6 @@
 
   <div class="topbar">
     <button class="icon-btn menu-btn" id="menuBtn" aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
-    <div class="brand"><span class="mark"></span><div><b>Tilal Mall</b><br><span>3D Plan</span></div></div>
     <div class="spacer"></div>
     <div class="floors" id="floors"></div>
   </div>
@@ -371,9 +374,9 @@
   </div>
 
   <div class="loc-prompt" id="locPrompt">
-    <div class="lp-txt"><b>Outside the mall</b><span id="locPromptText">You're away from Tilal Mall.</span></div>
-    <a class="lp-go" id="locPromptLink" href="#" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>Google Maps</a>
     <button class="lp-x" id="locPromptClose" aria-label="Dismiss" type="button">×</button>
+    <div class="lp-txt"><b>Outside the mall</b><span id="locPromptText">You're away from Tilal Mall.</span></div>
+    <a class="lp-go" id="locPromptLink" href="#" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>Open in Google Maps</a>
   </div>
 
   <div class="hint" id="hint">Drag to orbit · pinch to zoom · tap a unit</div>
@@ -1125,15 +1128,16 @@ function buildBasemap(){
   if(basemapGroup) return;
   basemapGroup = new THREE.Group();
   scene.add(basemapGroup);
-  var z = 17;                                   // ~300 m/tile at this latitude
-  var dLat = (GEO.mallWidthM*1.9)/110540, dLng = (GEO.mallWidthM*1.9)/(111320*Math.cos(GEO.lat*Math.PI/180));
+  var z = 16;                                   // one level out so arterial roads + surrounding blocks read (the immediate area is sparsely mapped)
+  var cover = GEO.mallWidthM * 3.2;             // wide context so the mall sits in a visible map, not a tiny patch fading to blank
+  var dLat = cover/110540, dLng = cover/(111320*Math.cos(GEO.lat*Math.PI/180));
   var x0 = Math.floor(_lon2tile(GEO.lng-dLng, z)), x1 = Math.floor(_lon2tile(GEO.lng+dLng, z));
   var y0 = Math.floor(_lat2tile(GEO.lat+dLat, z)), y1 = Math.floor(_lat2tile(GEO.lat-dLat, z));
   var loader = new THREE.TextureLoader(); loader.setCrossOrigin("anonymous");
   var hi = (window.devicePixelRatio > 1.4) ? "@2x" : "";
   for(var tx=x0; tx<=x1; tx++){
     for(var ty=y0; ty<=y1; ty++){
-      if((x1-x0+1)*(y1-y0+1) > 120) continue;   // safety cap
+      if((x1-x0+1)*(y1-y0+1) > 200) continue;   // safety cap
       var a = geoWorld(_tile2lat(ty, z),   _tile2lon(tx, z)),     // NW
           b = geoWorld(_tile2lat(ty, z),   _tile2lon(tx+1, z)),   // NE
           cc= geoWorld(_tile2lat(ty+1, z), _tile2lon(tx+1, z)),   // SE
@@ -1837,8 +1841,9 @@ function openDirForm(u){
   document.getElementById("dfField").classList.remove("has-origin");
   document.getElementById("dfSuggest").classList.remove("show");
   document.getElementById("dirForm").classList.add("show");
+  updateSheetOffset();
 }
-function closeDirForm(){ document.getElementById("dirForm").classList.remove("show"); if(selected) document.getElementById("card").classList.add("show"); }
+function closeDirForm(){ document.getElementById("dirForm").classList.remove("show"); if(selected) document.getElementById("card").classList.add("show"); updateSheetOffset(); }
 function dfRenderSuggest(q){
   q=(q||"").toLowerCase().trim();
   var el=document.getElementById("dfSuggest"); el.innerHTML="";
@@ -1923,11 +1928,20 @@ function select(u, mesh){
   showCard(u);
 }
 
+/* tell the floating UI (right controls + location notice) how tall the open
+   bottom sheet is, so they lift clear of it instead of overlapping. */
+function updateSheetOffset(){
+  var h = 0, ids = ["card","dirForm"], i, el;
+  for(i=0;i<ids.length;i++){ el = document.getElementById(ids[i]); if(el && el.classList.contains("show")) h = Math.max(h, el.offsetHeight); }
+  document.documentElement.style.setProperty("--sheet", h ? (h + 18) + "px" : "0px");
+}
+
 function deselect(){
   selected = null;
   if(highlightMesh){ highlightMesh.parent.remove(highlightMesh); highlightMesh.geometry.dispose(); highlightMesh = null; }
   removeSelectMarker();
   document.getElementById("card").classList.remove("show");
+  updateSheetOffset();
 }
 
 /* -------- "you tapped here" marker: a dot + an expanding pulse ring,
@@ -1975,6 +1989,7 @@ function showCard(u){
     meta.appendChild(pill("", Math.round(m2*10.7639).toLocaleString() + " ft²"));
   }
   document.getElementById("card").classList.add("show");
+  updateSheetOffset();
 }
 function pill(label, val){
   var d = document.createElement("span"); d.className = "pill";
@@ -2092,6 +2107,7 @@ function onResize(){
   camera.updateProjectionMatrix();
   renderer.setSize(w, h, true);
   isMobile = matchMedia("(max-width:760px)").matches;
+  updateSheetOffset();
 }
 function hideLoader(){ var l = document.getElementById("loader"); l.classList.add("hide"); setTimeout(function(){ l.style.display = "none"; }, 650); }
 </script>
