@@ -693,22 +693,17 @@ var THEMES = {
   },
   night: {
     metaColor:"#0a1228",
-    fog:0x12244a, ground:0x102347, shadowOpacity:0.24, exposure:1.06,
-    hemiSky:0x2b4878, hemiGround:0x0a1224, hemiInt:0.6,
+    fog:0x0e1b38, ground:0x0b1530, shadowOpacity:0.24, exposure:1.06,
+    hemiSky:0x2b4878, hemiGround:0x0a1224, hemiInt:0.72,
     keyColor:0xffe9c8, keyInt:1.05, fillColor:0x3a66ad, fillInt:0.68,
     env:[["#0b1730",0],["#16294d",0.45],["#27498a",0.5],["#0d1828",0.62],["#05080f",1]],
     sun:"rgba(160,200,255,0.65)", sunPos:[300,52,95],
-    matMetal:0.16, matRough:0.48, matEnv:0.78, matEmissiveInt:0.52,
-    nightMix:0.54,                       // pull block colour ~half-way to deep navy (keeps identity readable)
+    matMetal:0.22, matRough:0.42, matEnv:1.05, matEmissiveInt:0.65,
+    nightMix:0.54,
     grassTint:0x5f7866, treeTint:0x71866f, birdColor:"rgba(160,190,235,0.82)",
-    /* additive tiles so the streets glow blue over the dark-blue ground; the
-       dark background of the tiles adds ~nothing, only the roads/labels light up.
-       Black fallback adds nothing until a tile actually loads (no blue box). */
-    basemap:"dark_all", basemapFallback:0x000000, basemapBright:0x8fb4ff, basemapBlend:"additive",
-    /* route: glowing blue trail + haloed pins so it pops on the dark floors
-       (matches the night reference render) */
-    routeDot:0x4aa6ff, routeDotR:1.7, routeStep:2.6, routeHalo:true,
-    routeOrigin:0x3aa0ff, routeEsc:0xffb347, routeDest:0xff5a5a, markerScale:1.28
+    basemap:"dark_all", basemapFallback:0x071525, basemapBright:0x8fb4ff, basemapBlend:"additive",
+    routeDot:0x4aa6ff, routeDotR:0.75, routeStep:2.6, routeHalo:false,
+    routeOrigin:0x3aa0ff, routeEsc:0xffb347, routeDest:0xff5a5a, markerScale:1.0
   }
 };
 function curTheme(){ return THEMES[THEME]; }
@@ -1389,10 +1384,7 @@ function geoWorld(lat, lng){
   var px = cx + E/mpu, py = cy - N/mpu;                       // plan, north-up
   var R = GEO.rotDeg*Math.PI/180, dx = px-cx, dy = py-cy, co = Math.cos(R), si = Math.sin(R);
   var rx = cx + dx*co - dy*si, ry = cy + dx*si + dy*co;        // rotate to building orientation
-  /* the baked plan is mirrored on X (mirror_ring in build_3d_data.py negates X);
-     mirror the basemap the same way so streets + labels align with the mall and
-     read the right way round (not as a mirror image). */
-  return new THREE.Vector3(-rx*S - OFFSET.x, 0, -ry*S - OFFSET.z);
+  return new THREE.Vector3(rx*S - OFFSET.x, 0, -ry*S - OFFSET.z);
 }
 function _lon2tile(l,z){ return (l+180)/360*Math.pow(2,z); }
 function _lat2tile(a,z){ var r=a*Math.PI/180; return (1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*Math.pow(2,z); }
@@ -2017,47 +2009,39 @@ function computeRoute(origin, dest){
 var ROUTE = {active:false, route:null, origin:null, dest:null}, routeGroup=null;
 function clearRoute(){
   ROUTE.active=false; ROUTE.route=null; ROUTE.origin=null; ROUTE.dest=null;
-  if(routeGroup){ scene.remove(routeGroup); routeGroup.traverse(function(o){ if(o.geometry)o.geometry.dispose(); }); routeGroup=null; }
+  if(routeGroup){ scene.remove(routeGroup); routeGroup.traverse(function(o){ if(o.geometry)o.geometry.dispose(); if(o.material){ if(o.material.map)o.material.map.dispose(); o.material.dispose(); } }); routeGroup=null; }
   document.getElementById("routeBar").classList.remove("show");
 }
 /* end-point pin: a flat ring + dot, always drawn on top (overlay). At night it
    gains a white halo + centre highlight so it glows on the dark floors; by day
    it's the original clean ring + dot. */
 function flatMat(color){ return new THREE.MeshBasicMaterial({color:color, side:THREE.DoubleSide, transparent:true, opacity:0.98, depthTest:false, depthWrite:false}); }
+/* small coloured disc for mid-route waypoints (escalator) */
 function routeMarker(world, color){
-  var T=curTheme(), sc=T.markerScale, g=new THREE.Group();
-  if(T.routeHalo){
-    var halo=new THREE.Mesh(new THREE.CircleGeometry(5.4*sc,32), flatMat(0xffffff));
-    halo.material.opacity=0.58; halo.rotation.x=-Math.PI/2; halo.position.copy(world); halo.position.y=1.95; halo.renderOrder=19; g.add(halo);
-  }
-  var ring=new THREE.Mesh(new THREE.RingGeometry(2.6*sc,4.0*sc,32), flatMat(color));
-  ring.rotation.x=-Math.PI/2; ring.position.copy(world); ring.position.y=2.0; ring.renderOrder=20; g.add(ring);
-  var dot=new THREE.Mesh(new THREE.CircleGeometry(2.0*sc,28), flatMat(color));
-  dot.rotation.x=-Math.PI/2; dot.position.copy(world); dot.position.y=2.02; dot.renderOrder=21; g.add(dot);
-  if(T.routeHalo){
-    var ctr=new THREE.Mesh(new THREE.CircleGeometry(0.85*sc,20), flatMat(0xffffff));
-    ctr.material.opacity=0.85; ctr.rotation.x=-Math.PI/2; ctr.position.copy(world); ctr.position.y=2.04; ctr.renderOrder=22; g.add(ctr);
-  }
+  var g=new THREE.Group();
+  var dot=new THREE.Mesh(new THREE.CircleGeometry(1.8,24), flatMat(color));
+  dot.rotation.x=-Math.PI/2; dot.position.copy(world); dot.position.y=2.0; dot.renderOrder=20; g.add(dot);
   return g;
 }
-/* start "navigation puck": a blue disc with a modern white arrow pointing the
-   initial walking direction (haloed + scaled up at night) */
-function originMarker(world, dir){
-  var T=curTheme(), sc=T.markerScale, g=new THREE.Group();
-  if(T.routeHalo){
-    var halo=new THREE.Mesh(new THREE.CircleGeometry(6.4*sc,36), flatMat(0xffffff));
-    halo.material.opacity=0.5; halo.rotation.x=-Math.PI/2; halo.position.copy(world); halo.position.y=1.95; halo.renderOrder=18; g.add(halo);
-  }
-  var disc=new THREE.Mesh(new THREE.CircleGeometry(4.6*sc,36), flatMat(T.routeOrigin));
-  disc.rotation.x=-Math.PI/2; disc.position.copy(world); disc.position.y=2.0; disc.renderOrder=20; g.add(disc);
-  var ring=new THREE.Mesh(new THREE.RingGeometry(4.6*sc,5.4*sc,36), flatMat(0xffffff));
-  ring.material.opacity=0.88; ring.rotation.x=-Math.PI/2; ring.position.copy(world); ring.position.y=1.99; ring.renderOrder=19; g.add(ring);
-  var sh=new THREE.Shape(); sh.moveTo(0,2.3*sc); sh.lineTo(1.8*sc,-1.9*sc); sh.lineTo(0,-0.9*sc); sh.lineTo(-1.8*sc,-1.9*sc); sh.closePath();
-  var ag=new THREE.ShapeGeometry(sh); ag.rotateX(-Math.PI/2);   // points -Z after lay-flat
-  var d=new THREE.Vector3(dir.x,0,dir.z); if(d.lengthSq()<1e-6)d.set(0,0,-1); d.normalize();
-  ag.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,0,-1), d));
-  var arrow=new THREE.Mesh(ag, flatMat(0xffffff)); arrow.position.copy(world); arrow.position.y=2.05; arrow.renderOrder=22; g.add(arrow);
-  return g;
+/* Google-Maps-style drop pin sprite for start / end points */
+function pinMarker(world, color){
+  var can=document.createElement('canvas'); can.width=56; can.height=80;
+  var ctx=can.getContext('2d');
+  var cx=28, cy=26, r=22;
+  ctx.shadowColor='rgba(0,0,0,0.55)'; ctx.shadowBlur=7; ctx.shadowOffsetX=2; ctx.shadowOffsetY=3;
+  ctx.fillStyle='#'+('000000'+color.toString(16)).slice(-6);
+  ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(cx-r*0.55,cy+r*0.75); ctx.lineTo(cx,76); ctx.lineTo(cx+r*0.55,cy+r*0.75); ctx.closePath(); ctx.fill();
+  ctx.shadowColor='transparent';
+  ctx.fillStyle='rgba(255,255,255,0.88)';
+  ctx.beginPath(); ctx.arc(cx-3,cy-4,8,0,Math.PI*2); ctx.fill();
+  var tex=new THREE.CanvasTexture(can);
+  var mat=new THREE.SpriteMaterial({map:tex,depthTest:false,depthWrite:false,transparent:true});
+  var sp=new THREE.Sprite(mat);
+  var sw=9; sp.scale.set(sw,sw*(80/56),1);
+  sp.position.set(world.x, 2.0+sw*(80/56)*0.5, world.z);
+  sp.renderOrder=25;
+  return sp;
 }
 /* sample a polyline (world XZ) at fixed arc-length spacing */
 function samplePolyline(pts, step){
@@ -2082,7 +2066,7 @@ function chevronGeo(){
    trail reads on the dark floors (like the night reference render). A direction
    chevron every 5th dot; always drawn on top. */
 function drawRouteForFloor(){
-  if(routeGroup){ scene.remove(routeGroup); routeGroup.traverse(function(o){ if(o.geometry)o.geometry.dispose(); }); routeGroup=null; }
+  if(routeGroup){ scene.remove(routeGroup); routeGroup.traverse(function(o){ if(o.geometry)o.geometry.dispose(); if(o.material){ if(o.material.map)o.material.map.dispose(); o.material.dispose(); } }); routeGroup=null; }
   if(!ROUTE.route) return;
   var seg=null; ROUTE.route.segments.forEach(function(s){ if(s.floor===curFloor) seg=s; });
   routeGroup=new THREE.Group(); scene.add(routeGroup);
@@ -2121,10 +2105,9 @@ function drawRouteForFloor(){
       new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0.98, depthTest:false, depthWrite:false}));
     am.renderOrder=19; routeGroup.add(am);
   }
-  var dir0 = wpts.length>=2 ? new THREE.Vector3(wpts[1].x-wpts[0].x,0,wpts[1].z-wpts[0].z) : new THREE.Vector3(0,0,1);
-  if(seg.oc) routeGroup.add(originMarker(vbToWorld(seg.oc[0],seg.oc[1],0), dir0));   // puck + modern arrow
-  if(seg.esc) routeGroup.add(routeMarker(vbToWorld(seg.esc[0],seg.esc[1],0), T.routeEsc));   // escalator
-  if(seg.dc) routeGroup.add(routeMarker(vbToWorld(seg.dc[0],seg.dc[1],0), T.routeDest));   // destination
+  if(seg.oc) routeGroup.add(pinMarker(vbToWorld(seg.oc[0],seg.oc[1],0), T.routeOrigin));   // start pin
+  if(seg.esc) routeGroup.add(routeMarker(vbToWorld(seg.esc[0],seg.esc[1],0), T.routeEsc)); // escalator dot
+  if(seg.dc) routeGroup.add(pinMarker(vbToWorld(seg.dc[0],seg.dc[1],0), T.routeDest));     // end pin
 }
 function routeTotals(R){ var m=0; R.segments.forEach(function(s){ m+=rLen(s.pts); }); m/=UNITS_PER_M;
   var secs=m/WALK_MS+(R.cross?25:0); return {m:Math.round(m), min:Math.max(1,Math.round(secs/60))}; }
@@ -2314,7 +2297,14 @@ function showCard(u){
     meta.appendChild(pill("Area", Math.round(m2).toLocaleString() + " m²"));
     meta.appendChild(pill("", Math.round(m2*10.7639).toLocaleString() + " ft²"));
   }
-  document.getElementById("card").classList.add("show");
+  var _cd = document.getElementById("card");
+  _cd.classList.add("show");
+  /* prevent ghost clicks: on touch devices the browser fires a synthetic click
+     ~300 ms after pointerup at the same screen position. If the card slides in
+     to that position the click lands on a card button. Disable pointer events
+     briefly so that synthetic click is swallowed by the canvas instead. */
+  _cd.style.pointerEvents = "none";
+  setTimeout(function(){ _cd.style.pointerEvents = ""; }, 440);
   updateSheetOffset();
 }
 function pill(label, val){
