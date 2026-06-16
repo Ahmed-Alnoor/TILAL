@@ -77,7 +77,7 @@
     border:1px solid var(--stroke); border-radius:13px; background:var(--glass); color:var(--ink); cursor:pointer;
     backdrop-filter:blur(16px) saturate(130%); -webkit-backdrop-filter:blur(16px) saturate(130%); box-shadow:var(--shadow);}
   .icon-btn svg{width:20px;height:20px;}
-  .menu-btn{display:none;}                       /* mobile only */
+  .menu-btn{display:grid;}                       /* toggles the panel on every size */
   .panel{
     position:fixed; left:12px; top:calc(env(safe-area-inset-top,0px) + 70px); z-index:9;
     width:300px; max-width:84vw; max-height:calc(100dvh - env(safe-area-inset-top,0px) - 90px);
@@ -86,6 +86,9 @@
     backdrop-filter:blur(18px) saturate(140%); -webkit-backdrop-filter:blur(18px) saturate(140%);
     box-shadow:var(--shadow); transition:transform .3s cubic-bezier(.2,.8,.2,1), opacity .3s;
   }
+  /* hidden state — used on laptop/desktop (the menu button toggles it; mobile
+     uses .open instead, see the media query below) */
+  .panel.collapsed{transform:translateX(-118%); opacity:0; pointer-events:none;}
   .seg{display:flex; gap:4px; padding:10px 10px 8px;}
   .seg button{flex:1; display:flex; align-items:center; justify-content:center; gap:7px; cursor:pointer;
     border:0; border-radius:11px; padding:9px; font:inherit; font-size:13px; font-weight:600; color:var(--ink-soft);
@@ -689,7 +692,7 @@ var THEMES = {
     basemap:"voyager", basemapFallback:0xe9e7e2, basemapBright:0xffffff, basemapBlend:"normal",
     /* route: subtle navy dots on the light floors (the original look) */
     routeDot:0x12356e, routeDotR:0.95, routeStep:3.2, routeHalo:false,
-    routeOrigin:0x2f74d0, routeEsc:0xffa023, routeDest:0xd24d4d, markerScale:1.0
+    routeOrigin:0x123a99, routeEsc:0xffa023, routeDest:0x9e1414, markerScale:1.0
   },
   night: {
     metaColor:"#0a1228",
@@ -703,7 +706,7 @@ var THEMES = {
     grassTint:0x5f7866, treeTint:0x71866f, birdColor:"rgba(160,190,235,0.82)",
     basemap:"dark_all", basemapFallback:0x071525, basemapBright:0x8fb4ff, basemapBlend:"additive",
     routeDot:0x4aa6ff, routeDotR:0.75, routeStep:2.6, routeHalo:false,
-    routeOrigin:0x3aa0ff, routeEsc:0xffb347, routeDest:0xff5a5a, markerScale:1.0
+    routeOrigin:0x1e4fd0, routeEsc:0xffb347, routeDest:0xc62525, markerScale:1.0
   }
 };
 function curTheme(){ return THEMES[THEME]; }
@@ -858,7 +861,11 @@ function init(){
   document.getElementById("recenter").addEventListener("click", function(){ deselect(); defaultView(true); });
   document.getElementById("themeToggle").addEventListener("click", toggleTheme);
   document.getElementById("menuBtn").addEventListener("click", function(){
-    document.getElementById("panel").classList.toggle("open");
+    var p = document.getElementById("panel");
+    /* mobile slides the panel in/out with .open (hidden by default);
+       laptop/desktop shows it by default and hides it with .collapsed */
+    if(isMobile) p.classList.toggle("open");
+    else p.classList.toggle("collapsed");
   });
   document.querySelectorAll("#seg button").forEach(function(b){
     b.addEventListener("click", function(){ setMode(b.dataset.mode); });
@@ -2037,24 +2044,34 @@ function routeMarker(world, color){
   dot.rotation.x=-Math.PI/2; dot.position.copy(world); dot.position.y=2.0; dot.renderOrder=20; g.add(dot);
   return g;
 }
-/* Google-Maps-style drop pin sprite for start / end points */
+/* crisp SVG drop-pin sprite for start / end points. Rendered from vector at
+   high resolution so it stays sharp, then billboarded so the tip sits on the
+   location. Half the previous size. */
 function pinMarker(world, color){
-  var can=document.createElement('canvas'); can.width=56; can.height=80;
-  var ctx=can.getContext('2d');
-  var cx=28, cy=26, r=22;
-  ctx.shadowColor='rgba(0,0,0,0.55)'; ctx.shadowBlur=7; ctx.shadowOffsetX=2; ctx.shadowOffsetY=3;
-  ctx.fillStyle='#'+('000000'+color.toString(16)).slice(-6);
-  ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(cx-r*0.55,cy+r*0.75); ctx.lineTo(cx,76); ctx.lineTo(cx+r*0.55,cy+r*0.75); ctx.closePath(); ctx.fill();
-  ctx.shadowColor='transparent';
-  ctx.fillStyle='rgba(255,255,255,0.88)';
-  ctx.beginPath(); ctx.arc(cx-3,cy-4,8,0,Math.PI*2); ctx.fill();
-  var tex=new THREE.CanvasTexture(can);
-  var mat=new THREE.SpriteMaterial({map:tex,depthTest:false,depthWrite:false,transparent:true});
-  var sp=new THREE.Sprite(mat);
-  var sw=9; sp.scale.set(sw,sw*(80/56),1);
-  sp.position.set(world.x, 2.0+sw*(80/56)*0.5, world.z);
-  sp.renderOrder=25;
+  var hex = '#' + ('000000' + (color>>>0).toString(16)).slice(-6);
+  var VBW = 40, VBH = 52, ratio = VBH/VBW;
+  var px = Math.round(64 * (window.devicePixelRatio || 1));   // hi-res for clarity
+  var can = document.createElement('canvas'); can.width = px; can.height = Math.round(px*ratio);
+  var ctx = can.getContext('2d');
+  var sp = new THREE.Sprite(new THREE.SpriteMaterial({depthTest:false, depthWrite:false, transparent:true}));
+  var sw = 4.5;                                               // HALF of the old 9
+  sp.scale.set(sw, sw*ratio, 1);
+  sp.position.set(world.x, 2.0 + sw*ratio*0.5, world.z);      // tip ≈ at the floor point
+  sp.renderOrder = 25;
+  var svg =
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+VBW+' '+VBH+'">'
+    + '<ellipse cx="20" cy="49.5" rx="8.5" ry="2.4" fill="#000" opacity="0.18"/>'
+    + '<path d="M20 1.5C10.3 1.5 2.5 9.3 2.5 19c0 12.3 14.4 27.6 16.6 29.9a1.25 1.25 0 0 0 1.8 0C23.1 46.6 37.5 31.3 37.5 19 37.5 9.3 29.7 1.5 20 1.5Z" fill="'+hex+'" stroke="#ffffff" stroke-width="2.2"/>'
+    + '<circle cx="20" cy="18.5" r="6.6" fill="#ffffff"/>'
+    + '</svg>';
+  var img = new Image();
+  img.onload = function(){
+    ctx.clearRect(0,0,can.width,can.height);
+    ctx.drawImage(img,0,0,can.width,can.height);
+    var tex = new THREE.CanvasTexture(can); tex.anisotropy = 8; tex.needsUpdate = true;
+    sp.material.map = tex; sp.material.needsUpdate = true;
+  };
+  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
   return sp;
 }
 /* sample a polyline (world XZ) at fixed arc-length spacing */
@@ -2438,6 +2455,9 @@ function onResize(){
   camera.updateProjectionMatrix();
   renderer.setSize(w, h, true);
   isMobile = matchMedia("(max-width:760px)").matches;
+  /* drop both hide-states on a breakpoint change so the panel returns to its
+     default for the new layout (collapsed is laptop-only, open is mobile-only) */
+  document.getElementById("panel").classList.remove("collapsed", "open");
   updateSheetOffset();
 }
 function hideLoader(){ var l = document.getElementById("loader"); l.classList.add("hide"); setTimeout(function(){ l.style.display = "none"; }, 650); }
