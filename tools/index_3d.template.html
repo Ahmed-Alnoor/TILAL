@@ -686,22 +686,25 @@ var THEMES = {
     matMetal:0.0, matRough:0.7, matEnv:0.3, matEmissive:0x000000, matEmissiveInt:0,
     nightMix:0,                          // 0 = keep true category colour
     grassTint:0xffffff, treeTint:0xffffff, birdColor:"rgba(42,48,62,0.92)",
-    basemap:"voyager", basemapFallback:0xe9e7e2, basemapBright:0xffffff,
+    basemap:"voyager", basemapFallback:0xe9e7e2, basemapBright:0xffffff, basemapBlend:"normal",
     /* route: subtle navy dots on the light floors (the original look) */
     routeDot:0x12356e, routeDotR:0.95, routeStep:3.2, routeHalo:false,
     routeOrigin:0x2f74d0, routeEsc:0xffa023, routeDest:0xd24d4d, markerScale:1.0
   },
   night: {
     metaColor:"#0a1228",
-    fog:0x0b1830, ground:0x0a1426, shadowOpacity:0.24, exposure:1.06,
-    hemiSky:0x2b4878, hemiGround:0x06080f, hemiInt:0.6,
+    fog:0x12244a, ground:0x102347, shadowOpacity:0.24, exposure:1.06,
+    hemiSky:0x2b4878, hemiGround:0x0a1224, hemiInt:0.6,
     keyColor:0xffe9c8, keyInt:1.05, fillColor:0x3a66ad, fillInt:0.68,
     env:[["#0b1730",0],["#16294d",0.45],["#27498a",0.5],["#0d1828",0.62],["#05080f",1]],
     sun:"rgba(160,200,255,0.65)", sunPos:[300,52,95],
     matMetal:0.16, matRough:0.48, matEnv:0.78, matEmissiveInt:0.52,
     nightMix:0.54,                       // pull block colour ~half-way to deep navy (keeps identity readable)
     grassTint:0x5f7866, treeTint:0x71866f, birdColor:"rgba(160,190,235,0.82)",
-    basemap:"dark_all", basemapFallback:0x17263f, basemapBright:0xffffff,
+    /* additive tiles so the streets glow blue over the dark-blue ground; the
+       dark background of the tiles adds ~nothing, only the roads/labels light up.
+       Black fallback adds nothing until a tile actually loads (no blue box). */
+    basemap:"dark_all", basemapFallback:0x000000, basemapBright:0x8fb4ff, basemapBlend:"additive",
     /* route: glowing blue trail + haloed pins so it pops on the dark floors
        (matches the night reference render) */
     routeDot:0x4aa6ff, routeDotR:1.7, routeStep:2.6, routeHalo:true,
@@ -824,6 +827,7 @@ function init(){
   showFloor(curFloor);
   frameModel(true);
   buildBirds();
+  buildFireflies();
   buildGarden();
   buildBasemap();
   applyTheme(THEME, true);   // sync lights/fog/ground to the chosen theme (geometry already built in-theme)
@@ -950,6 +954,9 @@ function applyTheme(theme, initial){
     birds.forEach(function(b){ b.material.map = _birdTex[0]; b.material.needsUpdate = true; });
   }
 
+  /* fireflies only glow at night */
+  if(fireflyPts) fireflyPts.visible = (THEME === "night");
+
   /* basemap tile style (skip on first paint — it was already built in-theme) */
   if(!initial){ disposeBasemap(); buildBasemap(); }
 
@@ -1004,6 +1011,64 @@ function updateBirds(){
     b.material.opacity = vis*0.6;
     b.visible = vis > 0.02;
   }
+}
+
+/* -------- fireflies: a dense cloud of tiny glowing dots drifting over the mall
+            like insects. One THREE.Points cloud (cheap); each point wanders on
+            its own little orbit and twinkles via per-point brightness. Only lit
+            at night (they'd be invisible / odd by day). ---- */
+var fireflyPts = null, _ffBase = [], _ffTex = null, FF_N = 720;
+function fireflyTexture(){
+  if(_ffTex) return _ffTex;
+  var cv = document.createElement("canvas"); cv.width = cv.height = 32;
+  var x = cv.getContext("2d");
+  var g = x.createRadialGradient(16,16,0, 16,16,16);
+  g.addColorStop(0, "rgba(255,255,255,1)");
+  g.addColorStop(0.35, "rgba(255,246,200,0.9)");
+  g.addColorStop(1, "rgba(255,240,170,0)");
+  x.fillStyle = g; x.beginPath(); x.arc(16,16,16,0,7); x.fill();
+  _ffTex = new THREE.CanvasTexture(cv); _ffTex.encoding = THREE.sRGBEncoding;
+  return _ffTex;
+}
+function buildFireflies(){
+  if(fireflyPts || !MODEL) return;
+  var R = Math.max(MODEL.w, MODEL.d) * 0.62;
+  var pos = new Float32Array(FF_N*3), col = new Float32Array(FF_N*3);
+  for(var i=0;i<FF_N;i++){
+    var ang = Math.random()*Math.PI*2, rad = R*Math.sqrt(Math.random());   // even areal spread
+    var cx = Math.cos(ang)*rad, cz = Math.sin(ang)*rad;
+    var cy = 1.5 + Math.random()*(MODEL.h*1.4 + 8);
+    _ffBase.push({x:cx, y:cy, z:cz,
+      r:0.6 + Math.random()*2.4,              // wander radius
+      sp:0.25 + Math.random()*0.7,            // wander speed
+      ph:Math.random()*6.28,                  // wander phase
+      tw:Math.random()*6.28,                  // twinkle phase
+      ts:0.7 + Math.random()*1.8});           // twinkle speed
+    pos[i*3]=cx; pos[i*3+1]=cy; pos[i*3+2]=cz;
+    col[i*3]=1; col[i*3+1]=0.95; col[i*3+2]=0.7;
+  }
+  var geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute("color", new THREE.BufferAttribute(col, 3));
+  var mat = new THREE.PointsMaterial({
+    size:1.15, map:fireflyTexture(), vertexColors:true, transparent:true, opacity:0.95,
+    depthWrite:false, blending:THREE.AdditiveBlending, sizeAttenuation:true, fog:true });
+  fireflyPts = new THREE.Points(geo, mat);
+  fireflyPts.visible = (THEME === "night");
+  scene.add(fireflyPts);
+}
+function updateFireflies(t){
+  if(!fireflyPts || !fireflyPts.visible) return;
+  var pos = fireflyPts.geometry.attributes.position, col = fireflyPts.geometry.attributes.color;
+  for(var i=0;i<_ffBase.length;i++){
+    var f = _ffBase[i], a = f.ph + t*f.sp;
+    pos.array[i*3]   = f.x + Math.cos(a)*f.r;
+    pos.array[i*3+1] = f.y + Math.sin(a*0.7)*f.r*0.6;
+    pos.array[i*3+2] = f.z + Math.sin(a)*f.r;
+    var k = 0.35 + 0.65*Math.max(0, Math.sin(f.tw + t*f.ts));   // twinkle 0.35..1
+    col.array[i*3]=k; col.array[i*3+1]=k*0.95; col.array[i*3+2]=k*0.7;
+  }
+  pos.needsUpdate = true; col.needsUpdate = true;
 }
 
 /* -------- garden: a lush grove of palms and leafy trees following the mall's
@@ -1324,7 +1389,10 @@ function geoWorld(lat, lng){
   var px = cx + E/mpu, py = cy - N/mpu;                       // plan, north-up
   var R = GEO.rotDeg*Math.PI/180, dx = px-cx, dy = py-cy, co = Math.cos(R), si = Math.sin(R);
   var rx = cx + dx*co - dy*si, ry = cy + dx*si + dy*co;        // rotate to building orientation
-  return new THREE.Vector3(rx*S - OFFSET.x, 0, -ry*S - OFFSET.z);
+  /* the baked plan is mirrored on X (mirror_ring in build_3d_data.py negates X);
+     mirror the basemap the same way so streets + labels align with the mall and
+     read the right way round (not as a mirror image). */
+  return new THREE.Vector3(-rx*S - OFFSET.x, 0, -ry*S - OFFSET.z);
 }
 function _lon2tile(l,z){ return (l+180)/360*Math.pow(2,z); }
 function _lat2tile(a,z){ var r=a*Math.PI/180; return (1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*Math.pow(2,z); }
@@ -1347,30 +1415,40 @@ function buildBasemap(){
   var T = curTheme();
   basemapGroup = new THREE.Group();
   scene.add(basemapGroup);
-  var z = 16;                                   // one level out so arterial roads + surrounding blocks read (the immediate area is sparsely mapped)
-  var cover = GEO.mallWidthM * 3.2;             // wide context so the mall sits in a visible map, not a tiny patch fading to blank
+  var z = 16;                                   // arterial roads + surrounding blocks read clearly
+  var cover = GEO.mallWidthM * 5;               // wide enough that the map fills the view — no visible rectangular "box"
   var dLat = cover/110540, dLng = cover/(111320*Math.cos(GEO.lat*Math.PI/180));
   var x0 = Math.floor(_lon2tile(GEO.lng-dLng, z)), x1 = Math.floor(_lon2tile(GEO.lng+dLng, z));
   var y0 = Math.floor(_lat2tile(GEO.lat+dLat, z)), y1 = Math.floor(_lat2tile(GEO.lat-dLat, z));
   var loader = new THREE.TextureLoader(); loader.setCrossOrigin("anonymous");
   var hi = (window.devicePixelRatio > 1.4) ? "@2x" : "";
+  var additive = (T.basemapBlend === "additive");
+  /* radial fade: tiles dissolve into the ground toward the rim so the basemap
+     blends out smoothly instead of ending on a hard rectangular edge */
+  var m2w = MODEL.w / GEO.mallWidthM, coverW = cover * m2w;
+  var fadeEnd = coverW*0.92, fadeSpan = Math.max(1, fadeEnd - coverW*0.40);
   for(var tx=x0; tx<=x1; tx++){
     for(var ty=y0; ty<=y1; ty++){
-      if((x1-x0+1)*(y1-y0+1) > 200) continue;   // safety cap
+      if((x1-x0+1)*(y1-y0+1) > 260) continue;   // safety cap
       var a = geoWorld(_tile2lat(ty, z),   _tile2lon(tx, z)),     // NW
           b = geoWorld(_tile2lat(ty, z),   _tile2lon(tx+1, z)),   // NE
           cc= geoWorld(_tile2lat(ty+1, z), _tile2lon(tx+1, z)),   // SE
           d = geoWorld(_tile2lat(ty+1, z), _tile2lon(tx, z));     // SW
+      var cdx=(a.x+b.x+cc.x+d.x)/4, cdz=(a.z+b.z+cc.z+d.z)/4;      // tile centre (world)
+      var fop = Math.max(0, Math.min(1, (fadeEnd - Math.hypot(cdx,cdz)) / fadeSpan));
+      if(fop <= 0.02) continue;                  // drop fully-faded rim tiles (saves requests too)
       var g = new THREE.BufferGeometry();
       var y = -0.12;  // sits just under the ground plane
       g.setAttribute("position", new THREE.Float32BufferAttribute([
         a.x,y,a.z,  d.x,y,d.z,  b.x,y,b.z,   b.x,y,b.z,  d.x,y,d.z,  cc.x,y,cc.z], 3));
       g.setAttribute("uv", new THREE.Float32BufferAttribute([0,1, 0,0, 1,1, 1,1, 0,0, 1,0], 2));
       var url = "https://basemaps.cartocdn.com/rastertiles/"+T.basemap+"/"+z+"/"+tx+"/"+ty+hi+".png";   // voyager by day, dark_all at night
-      /* DoubleSide so the ground shows regardless of quad winding;
-         placeholder matches the theme so absent tiles still read as "map" */
       var bright = T.basemapBright;
-      var mat = new THREE.MeshBasicMaterial({color:T.basemapFallback, side:THREE.DoubleSide});
+      /* additive at night makes streets glow over the dark-blue ground; normal
+         (with the radial fade) at day. DoubleSide guards against quad winding. */
+      var mat = new THREE.MeshBasicMaterial({color:T.basemapFallback, side:THREE.DoubleSide,
+        transparent:true, opacity:fop, depthWrite:false,
+        blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending});
       (function(m){ loader.load(url, function(tex){ tex.encoding = THREE.sRGBEncoding; m.map = tex; m.color.setHex(bright); m.needsUpdate = true; }, undefined, function(){}); })(mat);
       var mesh = new THREE.Mesh(g, mat);
       mesh.renderOrder = -1;                      // under everything
@@ -2338,6 +2416,7 @@ function animate(){
   clampView();
   updateEscScale();
   updateBirds();
+  updateFireflies(performance.now()/1000);
   updateLabels();
   if(youMarker && youMarker.visible){ youPulse += 0.06; var s = 6.5 + Math.sin(youPulse)*0.9; youMarker.scale.set(s, s, 1); }
   if(selectMarker){
