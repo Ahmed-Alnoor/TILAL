@@ -320,8 +320,72 @@
   #loader .lbl{font-size:13px; letter-spacing:.14em; text-transform:uppercase; color:#6a5636;}
   #loader .err{display:none; max-width:300px; text-align:center; font-size:13px; line-height:1.5; color:#7a3b2a;}
 
-  /* ---------- responsive ---------- */
-  @media (min-width:760px){
+  /* ---------- NIGHT THEME ----------
+     A deep-navy "after dark" mood. Most surfaces use the CSS variables below,
+     so re-pointing those six does the bulk of the work; the rest are explicit
+     overrides for panels that hardcode a light fill. */
+  body.night{
+    --ink:#eaf0ff; --ink-soft:#9db0d6;
+    --glass:rgba(26,42,74,.52); --glass-strong:rgba(16,28,54,.80);
+    --stroke:rgba(120,155,225,.30); --shadow:0 12px 38px rgba(0,6,20,.6);
+    background:
+      radial-gradient(120% 75% at 50% -8%, rgba(48,92,170,.42) 0%, rgba(48,92,170,0) 46%),
+      radial-gradient(120% 90% at 50% 116%, rgba(22,58,128,.5) 0%, rgba(8,16,34,0) 52%),
+      linear-gradient(180deg,#060c1a 0%, #0a1228 46%, #0b1730 100%);
+  }
+  body.night .theme-toggle .ic-moon{display:none;}
+  body.night .theme-toggle .ic-sun{display:block;}
+  .theme-toggle .ic-sun{display:none;}
+  body.night #myLoc{color:#5fa8ff;}
+
+  /* floor switcher active pill */
+  body.night .floors button.active{background:rgba(90,140,225,.30); color:#fff; box-shadow:0 4px 12px rgba(0,10,30,.4);}
+  /* segmented Map/List */
+  body.night .seg button{background:rgba(120,160,230,.10); color:var(--ink-soft);}
+  body.night .seg button.active{background:rgba(90,140,225,.34); color:#fff; box-shadow:0 3px 10px rgba(0,10,30,.4);}
+  /* search field + suggestions */
+  body.night .search{background:rgba(120,160,230,.12); border-color:rgba(120,155,225,.28);}
+  body.night .suggest{background:rgba(16,26,50,.98); border-color:rgba(120,155,225,.28); box-shadow:0 16px 34px rgba(0,6,20,.6);}
+  body.night .sg-row{border-bottom-color:rgba(150,180,235,.10);}
+  body.night .sg-row:hover{background:rgba(90,140,225,.16);}
+  /* info card chips + pills + secondary buttons */
+  body.night .card .chip{background:rgba(225,235,255,.92); color:#16233f;}
+  body.night .card .pill{background:rgba(120,160,230,.14); border-color:rgba(120,155,225,.28);}
+  body.night .card .act{background:rgba(120,160,230,.14); border-color:rgba(120,155,225,.3);}
+  body.night .card .act:hover{background:rgba(120,160,230,.26);}
+  /* directions form */
+  body.night .dirform{background:rgba(14,24,48,.94); border-color:rgba(120,155,225,.32);}
+  body.night .df-icon{color:#6aa6ff;}
+  body.night .df-x{background:rgba(120,160,230,.18);}
+  body.night .df-field{background:rgba(120,160,230,.12); border-color:rgba(95,160,255,.7);}
+  body.night .df-suggest{background:rgba(16,26,50,.98); border-color:rgba(120,155,225,.28); box-shadow:0 16px 34px rgba(0,6,20,.6);}
+  body.night .df-dest{background:rgba(95,160,255,.14); border-color:rgba(95,160,255,.28);}
+  body.night .df-dest svg{color:#6aa6ff;}
+  body.night .df-clear{background:rgba(120,160,230,.12); border-color:rgba(120,155,225,.3);}
+  /* route info bar */
+  body.night .routebar{background:rgba(14,24,48,.94); border-color:rgba(120,155,225,.32);}
+  body.night .routebar .rb-x{background:rgba(120,160,230,.18);}
+  /* full-page directory */
+  body.night .directory{
+    background:radial-gradient(120% 80% at 80% 0%, rgba(48,92,170,.4), rgba(48,92,170,0) 46%),
+      linear-gradient(180deg, rgba(10,18,38,.98), rgba(8,16,34,.99));}
+  body.night .dir-icon-btn{background:rgba(120,160,230,.12);}
+  body.night .dir-search{background:rgba(120,160,230,.12); border-color:rgba(120,155,225,.28);}
+  body.night .dir-card{background:rgba(26,42,74,.5); border-color:rgba(120,155,225,.22); box-shadow:0 8px 22px rgba(0,6,20,.4);}
+  body.night .dir-card:hover{box-shadow:0 12px 28px rgba(0,6,20,.55);}
+  body.night .dir-item{background:rgba(26,42,74,.42); border-color:rgba(120,155,225,.2);}
+  body.night .dir-item:hover{background:rgba(90,140,225,.22);}
+  /* landmark / shop labels become dark glass with light text */
+  body.night .lbl{color:#eaf0ff;
+    background:linear-gradient(180deg, rgba(40,60,100,.62), rgba(20,34,64,.5));
+    border-color:rgba(140,175,240,.4);
+    box-shadow:0 8px 24px rgba(0,6,20,.5), inset 0 1px 0 rgba(180,205,255,.3), inset 0 -6px 12px rgba(60,100,180,.18);}
+  /* loader */
+  body.night #loader{background:linear-gradient(180deg,#0a1228,#0b1730);}
+  body.night #loader .lbl{color:#9db0d6; background:none; border:0; box-shadow:none; backdrop-filter:none; -webkit-backdrop-filter:none; padding:0;}
+  body.night .loc-prompt .lp-x{background:rgba(120,160,230,.18);}
+
+
     .brand b{font-size:17px;}
     .card{left:auto; right:18px; bottom:18px; width:360px;}
     .card .hero{height:168px;}
@@ -344,6 +408,15 @@
 </style>
 </head>
 <body>
+  <script>
+    /* pre-paint theme guard: set the night class before the loader renders so
+       night users never see a light flash (init() re-confirms this shortly). */
+    try{
+      var _t0 = localStorage.getItem("tilal-theme");
+      if(_t0 !== "night" && _t0 !== "day") _t0 = (window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches) ? "night" : "day";
+      if(_t0 === "night") document.body.classList.add("night");
+    }catch(e){}
+  </script>
   <div id="app"></div>
   <div id="labels"></div>
 
@@ -367,6 +440,10 @@
   </div>
 
   <div class="controls" id="controls">
+    <button class="ctrl theme-toggle" id="themeToggle" aria-label="Toggle day / night" type="button">
+      <svg class="ic-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.6 6.6 0 0 0 9.8 9.8z"/></svg>
+      <svg class="ic-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.6M12 18.9v2.6M4.6 4.6l1.9 1.9M17.5 17.5l1.9 1.9M2.5 12h2.6M18.9 12h2.6M4.6 19.4l1.9-1.9M17.5 6.5l1.9-1.9"/></svg>
+    </button>
     <button class="ctrl" id="zoomIn" aria-label="Zoom in" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
     <button class="ctrl" id="zoomOut" aria-label="Zoom out" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/></svg></button>
     <button class="ctrl" id="myLoc" aria-label="My location" type="button"><svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"><path d="M12 2.6 20 20.4a.9.9 0 0 1-1.25 1.1L12 18.2l-6.75 3.3A.9.9 0 0 1 4 20.4z"/></svg></button>
@@ -593,6 +670,61 @@ var floorObjs = {}, curFloor = "G", selected = null, highlightMesh = null, selec
 var OFFSET = null, MODEL = {w:200, d:90, h:16};   // shared transform + size
 var idleTimer = null, isMobile = matchMedia("(max-width:760px)").matches;
 
+/* ---- day / night themes ----
+   Everything that has two looks lives here so applyTheme() can re-skin the whole
+   scene (lights, fog, ground, building materials, environment, basemap, garden)
+   without rebuilding geometry. */
+var THEME = "day", _hemi=null, _key=null, _fill=null, _bigGround=null, _envTex=null;
+var THEMES = {
+  day: {
+    metaColor:"#aec1da",
+    fog:0xedebe7, ground:0xedebe7, shadowOpacity:0.5, exposure:0.95,
+    hemiSky:0xeaf0fb, hemiGround:0x6f6c64, hemiInt:0.34,
+    keyColor:0xfff6ec, keyInt:1.7, fillColor:0xdce6f5, fillInt:0.3,
+    env:[["#e7eefa",0],["#eef2f7",0.46],["#f7f8fa",0.5],["#c4c0b6",0.6],["#8a857b",1]],
+    sun:"rgba(255,255,255,0.95)", sunPos:[366,60,80],
+    matMetal:0.0, matRough:0.7, matEnv:0.3, matEmissive:0x000000, matEmissiveInt:0,
+    nightMix:0,                          // 0 = keep true category colour
+    grassTint:0xffffff, treeTint:0xffffff, birdColor:"rgba(42,48,62,0.92)",
+    basemap:"voyager", basemapFallback:0x9eb8cc, basemapBright:0xffffff
+  },
+  night: {
+    metaColor:"#0a1228",
+    fog:0x0b1830, ground:0x0a1426, shadowOpacity:0.24, exposure:1.06,
+    hemiSky:0x2b4878, hemiGround:0x06080f, hemiInt:0.6,
+    keyColor:0xffe9c8, keyInt:1.05, fillColor:0x3a66ad, fillInt:0.68,
+    env:[["#0b1730",0],["#16294d",0.45],["#27498a",0.5],["#0d1828",0.62],["#05080f",1]],
+    sun:"rgba(160,200,255,0.65)", sunPos:[300,52,95],
+    matMetal:0.16, matRough:0.48, matEnv:0.78, matEmissiveInt:0.52,
+    nightMix:0.54,                       // pull block colour ~half-way to deep navy (keeps identity readable)
+    grassTint:0x5f7866, treeTint:0x71866f, birdColor:"rgba(160,190,235,0.82)",
+    basemap:"dark_all", basemapFallback:0x17263f, basemapBright:0xffffff
+  }
+};
+function curTheme(){ return THEMES[THEME]; }
+/* per-channel linear blend of two 0xRRGGBB colours */
+function mixHex(a,b,t){
+  var ar=a>>16&255,ag=a>>8&255,ab=a&255, br=b>>16&255,bg=b>>8&255,bb=b&255;
+  return (Math.round(ar+(br-ar)*t)<<16)|(Math.round(ag+(bg-ag)*t)<<8)|Math.round(ab+(bb-ab)*t);
+}
+var NIGHT_NAVY = 0x0d1b34;
+/* set a building material to the look for the current theme, from its stored
+   base (day) colour. Night = darkened toward navy + a faint self-glow so each
+   block reads like a lit interior. */
+function applyMatTheme(mat){
+  var T=curTheme(), base=(mat.userData&&mat.userData.baseColor!=null)?mat.userData.baseColor:mat.color.getHex();
+  mat.metalness=T.matMetal; mat.roughness=T.matRough; mat.envMapIntensity=T.matEnv;
+  if(T.nightMix>0){
+    mat.color.setHex(mixHex(base, NIGHT_NAVY, T.nightMix));
+    mat.emissive.setHex(mixHex(base, 0x000000, 0.7));   // dim version of the identity colour
+    mat.emissiveIntensity=T.matEmissiveInt;
+  } else {
+    mat.color.setHex(base);
+    mat.emissive.setHex(0x000000); mat.emissiveIntensity=0;
+  }
+  mat.needsUpdate=true;
+}
+
 function boot(){
   if(typeof THREE === "undefined"){ showLoadError(); return; }
   try { init(); }
@@ -601,6 +733,11 @@ function boot(){
 
 function init(){
   var app = document.getElementById("app");
+
+  /* decide the theme up front so every build step paints in the right palette */
+  THEME = initialTheme();
+  document.body.classList.toggle("night", THEME === "night");
+  var _meta = document.querySelector('meta[name="theme-color"]'); if(_meta) _meta.setAttribute("content", curTheme().metaColor);
 
   renderer = new THREE.WebGLRenderer({antialias:true, alpha:true, powerPreference:"high-performance"});
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -620,23 +757,23 @@ function init(){
   camera = new THREE.PerspectiveCamera(46, window.innerWidth/window.innerHeight, 1, 4000);
 
   /* ---- warm late-afternoon sun from the top-right, long soft shadows to the left ---- */
-  var hemi = new THREE.HemisphereLight(0xeaf0fb, 0x6f6c64, 0.34);  // lower ambient -> shadow faces fall away (contrast = elegance), still neutral (no yellow)
-  scene.add(hemi);
+  _hemi = new THREE.HemisphereLight(0xeaf0fb, 0x6f6c64, 0.34);  // lower ambient -> shadow faces fall away (contrast = elegance), still neutral (no yellow)
+  scene.add(_hemi);
 
-  var key = new THREE.DirectionalLight(0xfff6ec, 1.7);  // crisp near-white daylight (a whisper warm, not yellow)
-  key.position.set(220, 210, 140);                      // high in the sky so it reads from every angle, not just a low raking one
-  key.castShadow = true;
-  key.shadow.mapSize.set(2048, 2048);
-  key.shadow.bias = -0.0004;
-  key.shadow.normalBias = 0.8;
-  key.shadow.radius = 4;                                // soft penumbra
-  scene.add(key);
-  scene.add(key.target);
-  window._key = key;
+  _key = new THREE.DirectionalLight(0xfff6ec, 1.7);  // crisp near-white daylight (a whisper warm, not yellow)
+  _key.position.set(220, 210, 140);                      // high in the sky so it reads from every angle, not just a low raking one
+  _key.castShadow = true;
+  _key.shadow.mapSize.set(2048, 2048);
+  _key.shadow.bias = -0.0004;
+  _key.shadow.normalBias = 0.8;
+  _key.shadow.radius = 4;                                // soft penumbra
+  scene.add(_key);
+  scene.add(_key.target);
+  window._key = _key;
 
-  var fill = new THREE.DirectionalLight(0xdce6f5, 0.3);  // gentle cool counter-fill so shadows stay readable, not dead
-  fill.position.set(-150, 120, -120);
-  scene.add(fill);
+  _fill = new THREE.DirectionalLight(0xdce6f5, 0.3);  // gentle cool counter-fill so shadows stay readable, not dead
+  _fill.position.set(-150, 120, -120);
+  scene.add(_fill);
 
   /* warm image-based lighting so the metallic blocks have a golden studio to
      reflect (a metal with no environment renders nearly black). Baked once
@@ -646,10 +783,10 @@ function init(){
   /* large solid ground: extends past the basemap tiles and fades into the fog
      horizon (no "cut"). Sat well below the tiles so the two planes never
      z-fight / flicker when the camera moves. */
-  var bigGround = new THREE.Mesh(new THREE.PlaneGeometry(40000, 40000),
+  _bigGround = new THREE.Mesh(new THREE.PlaneGeometry(40000, 40000),
                                  new THREE.MeshBasicMaterial({color:0xedebe7, fog:true}));
-  bigGround.rotation.x = -Math.PI/2; bigGround.position.y = -1.2; bigGround.renderOrder = -2;
-  scene.add(bigGround);
+  _bigGround.rotation.x = -Math.PI/2; _bigGround.position.y = -1.2; _bigGround.renderOrder = -2;
+  scene.add(_bigGround);
 
   /* transparent ground that only catches a soft contact shadow */
   ground = new THREE.Mesh(new THREE.PlaneGeometry(8000, 8000),
@@ -682,6 +819,7 @@ function init(){
   buildBirds();
   buildGarden();
   buildBasemap();
+  applyTheme(THEME, true);   // sync lights/fog/ground to the chosen theme (geometry already built in-theme)
   renderPanel();
   hideLoader();
   revealHint();
@@ -712,6 +850,7 @@ function init(){
   document.getElementById("zoomOut").addEventListener("click", function(){ zoomBy(1.28); });
   document.getElementById("myLoc").addEventListener("click", myLocation);
   document.getElementById("recenter").addEventListener("click", function(){ deselect(); defaultView(true); });
+  document.getElementById("themeToggle").addEventListener("click", toggleTheme);
   document.getElementById("menuBtn").addEventListener("click", function(){
     document.getElementById("panel").classList.toggle("open");
   });
@@ -730,29 +869,86 @@ function init(){
   animate();
 }
 
-/* -------- warm golden environment for metallic reflections -------- */
+/* -------- environment for metallic reflections (day: neutral sky; night: deep
+            navy with a cool moon-glow hotspot). Baked to PMREM. -------- */
 function buildEnvironment(){
   if(!renderer || !scene) return;
+  var T = curTheme();
+  if(_envTex){ _envTex.dispose(); _envTex = null; }   // release the previous bake
   var cv = document.createElement("canvas"); cv.width = 512; cv.height = 256;
   var x = cv.getContext("2d");
   var g = x.createLinearGradient(0, 0, 0, 256);
-  g.addColorStop(0.00, "#e7eefa");   // cool-white zenith
-  g.addColorStop(0.46, "#eef2f7");   // bright neutral sky
-  g.addColorStop(0.50, "#f7f8fa");   // horizon
-  g.addColorStop(0.60, "#c4c0b6");   // near ground (neutral)
-  g.addColorStop(1.00, "#8a857b");   // ground
+  T.env.forEach(function(s){ g.addColorStop(s[1], s[0]); });
   x.fillStyle = g; x.fillRect(0, 0, 512, 256);
-  var sun = x.createRadialGradient(366, 60, 2, 366, 60, 80);   // soft white sun -> a clean, neutral specular hotspot
-  sun.addColorStop(0, "rgba(255,255,255,0.95)"); sun.addColorStop(1, "rgba(255,255,255,0)");
-  x.fillStyle = sun; x.beginPath(); x.arc(366, 60, 80, 0, 7); x.fill();
+  var sp = T.sunPos;
+  var sun = x.createRadialGradient(sp[0], sp[1], 2, sp[0], sp[1], sp[2]);   // soft hotspot -> specular highlight
+  sun.addColorStop(0, T.sun); sun.addColorStop(1, "rgba(255,255,255,0)");
+  x.fillStyle = sun; x.beginPath(); x.arc(sp[0], sp[1], sp[2], 0, 7); x.fill();
   var tex = new THREE.CanvasTexture(cv);
   tex.mapping = THREE.EquirectangularReflectionMapping; tex.encoding = THREE.sRGBEncoding;
   try{
     var pm = new THREE.PMREMGenerator(renderer);
-    scene.environment = pm.fromEquirectangular(tex).texture;
+    _envTex = pm.fromEquirectangular(tex).texture;
+    scene.environment = _envTex;
     pm.dispose(); tex.dispose();          // PMREM has consumed the source texture
-  }catch(e){ scene.environment = tex; }   // fallback: raw equirect still tints the metal
+  }catch(e){ _envTex = tex; scene.environment = tex; }   // fallback: raw equirect still tints the metal
 }
+
+/* the theme to open with: an explicit saved choice wins; otherwise follow the
+   device's colour-scheme preference (defaults to day). */
+function initialTheme(){
+  try{ var s = localStorage.getItem("tilal-theme"); if(s === "night" || s === "day") return s; }catch(e){}
+  return (window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches) ? "night" : "day";
+}
+
+/* ---- re-skin the whole scene for day / night without rebuilding geometry ---- */
+function applyTheme(theme, initial){
+  THEME = (theme === "night") ? "night" : "day";
+  var T = curTheme();
+  document.body.classList.toggle("night", THEME === "night");
+  var meta = document.querySelector('meta[name="theme-color"]'); if(meta) meta.setAttribute("content", T.metaColor);
+  try{ localStorage.setItem("tilal-theme", THEME); }catch(e){}
+  if(!scene) return;
+
+  /* lights + exposure */
+  if(_hemi){ _hemi.color.setHex(T.hemiSky); _hemi.groundColor.setHex(T.hemiGround); _hemi.intensity = T.hemiInt; }
+  if(_key){ _key.color.setHex(T.keyColor); _key.intensity = T.keyInt; }
+  if(_fill){ _fill.color.setHex(T.fillColor); _fill.intensity = T.fillInt; }
+  if(renderer) renderer.toneMappingExposure = T.exposure;
+
+  /* sky / ground / fog */
+  if(scene.fog) scene.fog.color.setHex(T.fog);
+  if(_bigGround) _bigGround.material.color.setHex(T.ground);
+  if(ground) ground.material.opacity = T.shadowOpacity;
+
+  buildEnvironment();   // re-bake reflections for the new sky
+
+  /* building blocks across every built floor */
+  Object.keys(floorObjs).forEach(function(f){
+    var m = floorObjs[f].meshes;
+    Object.keys(m).forEach(function(k){ if(m[k].material) applyMatTheme(m[k].material); });
+  });
+
+  /* garden grass + trees */
+  if(gardenGroup) gardenGroup.traverse(function(o){
+    if(!o.material) return;
+    if(o.userData.gardenTint === "grass") o.material.color.setHex(T.grassTint);
+    else if(o.userData.gardenTint === "tree") o.material.color.setHex(T.treeTint);
+  });
+
+  /* birds re-skin to a visible silhouette colour */
+  if(_birdTex && _birdTex.length){
+    _birdTex[0].dispose(); _birdTex[1].dispose();
+    _birdTex = [birdTexture(true), birdTexture(false)];
+    birds.forEach(function(b){ b.material.map = _birdTex[0]; b.material.needsUpdate = true; });
+  }
+
+  /* basemap tile style (skip on first paint — it was already built in-theme) */
+  if(!initial){ disposeBasemap(); buildBasemap(); }
+
+  markShadow();
+}
+function toggleTheme(){ applyTheme(THEME === "day" ? "night" : "day"); }
 
 /* -------- distant birds: a few drifting silhouettes high in the sky. They
             flap (2-frame texture swap) and slowly cross, and fade out as you
@@ -761,7 +957,7 @@ var birdGroup = null, birds = [], _birdTex = null;
 function birdTexture(spread){
   var cv = document.createElement("canvas"); cv.width = cv.height = 64;
   var x = cv.getContext("2d");
-  x.strokeStyle = "rgba(42,48,62,0.92)"; x.lineWidth = 5; x.lineCap = "round"; x.lineJoin = "round";
+  x.strokeStyle = curTheme().birdColor; x.lineWidth = 5; x.lineCap = "round"; x.lineJoin = "round";
   x.beginPath();
   if(spread){ x.moveTo(7,38); x.quadraticCurveTo(22,18,32,30); x.quadraticCurveTo(42,18,57,38); }  // wings up
   else      { x.moveTo(10,30); x.quadraticCurveTo(22,40,32,31); x.quadraticCurveTo(42,40,54,30); }  // wings down
@@ -982,9 +1178,10 @@ function buildGarden(){
   bed.closePath();
   var grass = grassTexture(); grass.repeat.set(1/9, 1/9);
   var bedMesh = new THREE.Mesh(new THREE.ShapeGeometry(bed),
-    new THREE.MeshStandardMaterial({map:grass, roughness:0.97, metalness:0, envMapIntensity:0.5, side:THREE.DoubleSide}));
+    new THREE.MeshStandardMaterial({map:grass, color:curTheme().grassTint, roughness:0.97, metalness:0, envMapIntensity:0.5, side:THREE.DoubleSide}));
   bedMesh.rotation.x = -Math.PI/2; bedMesh.position.y = 0.05;
   bedMesh.receiveShadow = true;
+  bedMesh.userData.gardenTint = "grass";
   gardenGroup.add(bedMesh);
 
   /* trees: walk the arc at even steps, push each out into the band by a random
@@ -1013,8 +1210,9 @@ function buildGarden(){
   var m = new THREE.Matrix4(), q = new THREE.Quaternion(), pos = new THREE.Vector3(), scl = new THREE.Vector3(), yAxis = new THREE.Vector3(0,1,0);
   species.forEach(function(sp){
     if(!sp.list.length) return;
-    var im = new THREE.InstancedMesh(sp.geo, new THREE.MeshStandardMaterial({vertexColors:true, flatShading:true, roughness:0.85, metalness:0, envMapIntensity:0.45}), sp.list.length);
+    var im = new THREE.InstancedMesh(sp.geo, new THREE.MeshStandardMaterial({vertexColors:true, color:curTheme().treeTint, flatShading:true, roughness:0.85, metalness:0, envMapIntensity:0.45}), sp.list.length);
     im.castShadow = true; im.receiveShadow = true;
+    im.userData.gardenTint = "tree";
     sp.list.forEach(function(xz, i){
       pos.set(xz[0], 0, xz[1]);
       q.setFromAxisAngle(yAxis, Math.random()*Math.PI*2);
@@ -1124,8 +1322,19 @@ function _tile2lon(x,z){ return x/Math.pow(2,z)*360-180; }
 function _tile2lat(y,z){ var n=Math.PI-2*Math.PI*y/Math.pow(2,z); return 180/Math.PI*Math.atan(0.5*(Math.exp(n)-Math.exp(-n))); }
 
 var basemapGroup = null;
+/* throw away the current basemap (geometry + textures) so it can be rebuilt in
+   the other theme's tile style */
+function disposeBasemap(){
+  if(!basemapGroup) return;
+  basemapGroup.traverse(function(o){
+    if(o.geometry) o.geometry.dispose();
+    if(o.material){ if(o.material.map) o.material.map.dispose(); o.material.dispose(); }
+  });
+  scene.remove(basemapGroup); basemapGroup = null;
+}
 function buildBasemap(){
   if(basemapGroup) return;
+  var T = curTheme();
   basemapGroup = new THREE.Group();
   scene.add(basemapGroup);
   var z = 16;                                   // one level out so arterial roads + surrounding blocks read (the immediate area is sparsely mapped)
@@ -1147,11 +1356,12 @@ function buildBasemap(){
       g.setAttribute("position", new THREE.Float32BufferAttribute([
         a.x,y,a.z,  d.x,y,d.z,  b.x,y,b.z,   b.x,y,b.z,  d.x,y,d.z,  cc.x,y,cc.z], 3));
       g.setAttribute("uv", new THREE.Float32BufferAttribute([0,1, 0,0, 1,1, 1,1, 0,0, 1,0], 2));
-      var url = "https://basemaps.cartocdn.com/rastertiles/voyager/"+z+"/"+tx+"/"+ty+hi+".png";   // coloured, legible streets (light_all was washed out)
+      var url = "https://basemaps.cartocdn.com/rastertiles/"+T.basemap+"/"+z+"/"+tx+"/"+ty+hi+".png";   // voyager by day, dark_all at night
       /* DoubleSide so the ground shows regardless of quad winding;
-         placeholder is a clearly visible slate-blue so absent tiles still read as "map" */
-      var mat = new THREE.MeshBasicMaterial({color:0x9eb8cc, side:THREE.DoubleSide});
-      (function(m){ loader.load(url, function(tex){ tex.encoding = THREE.sRGBEncoding; m.map = tex; m.color.setHex(0xffffff); m.needsUpdate = true; }, undefined, function(){}); })(mat);
+         placeholder matches the theme so absent tiles still read as "map" */
+      var bright = T.basemapBright;
+      var mat = new THREE.MeshBasicMaterial({color:T.basemapFallback, side:THREE.DoubleSide});
+      (function(m){ loader.load(url, function(tex){ tex.encoding = THREE.sRGBEncoding; m.map = tex; m.color.setHex(bright); m.needsUpdate = true; }, undefined, function(){}); })(mat);
       var mesh = new THREE.Mesh(g, mat);
       mesh.renderOrder = -1;                      // under everything
       basemapGroup.add(mesh);
@@ -1288,13 +1498,15 @@ function buildFloor(fkey){
     if(!merged) return;
     var c = cat(k);
     /* clean, accurate tenant colours read crisp and premium -> no metallic
-       bronze sheen (that muddied the colours and swung with the view angle). */
+       bronze sheen (that muddied the colours and swung with the view angle).
+       The base (day) colour is stashed so applyTheme() can re-derive the
+       night look without losing the original. */
     var mat = new THREE.MeshStandardMaterial({
       color:c.c, flatShading:false, side:THREE.DoubleSide,
-      metalness: 0.0,
-      roughness: 0.7,
-      envMapIntensity: 0.3
+      metalness: 0.0, roughness: 0.7, envMapIntensity: 0.3
     });
+    mat.userData.baseColor = c.c;
+    applyMatTheme(mat);
     var mesh = new THREE.Mesh(merged, mat);
     mesh.castShadow = true; mesh.receiveShadow = true;
     mesh.userData.ranges = bucket.ranges;
