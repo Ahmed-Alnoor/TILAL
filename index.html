@@ -1382,15 +1382,18 @@ function geoWorld(lat, lng){
   var cx = OFFSET.x/S, cy = -OFFSET.z/S, planW = MODEL.w/S, mpu = GEO.mallWidthM/planW;
   var E = (lng-GEO.lng)*111320*Math.cos(GEO.lat*Math.PI/180), N = (lat-GEO.lat)*110540;
   var px = cx + E/mpu, py = cy - N/mpu;                       // plan, north-up
-  /* the baked floor plan is mirrored on X about the mall centre (MIRROR_X in
-     build_3d_data.py). Mirror the basemap in the SAME plan space — before the
-     building rotation — so the streets/labels register with the mirrored plan
-     (left<->right). dx flips; the centre (dx=0) is untouched, so the mall keeps
-     its exact location. Each tile's UVs stay bound to its geo corners, so the
-     tile texture flips left-right with it (not just repositioned). */
-  var R = GEO.rotDeg*Math.PI/180, dx = -(px-cx), dy = py-cy, co = Math.cos(R), si = Math.sin(R);
+  /* The baked floor plan is mirrored on X about the mall centre (MIRROR_X in
+     build_3d_data.py) — i.e. reflected across the WORLD X=0 plane after lay-flat.
+     The basemap must be mirrored across that SAME plane so streets + labels
+     register with the building and read the right way round. We do it by negating
+     the FINAL world X (not the pre-rotation dx): reflecting across world X=0 keeps
+     the +Z axis fixed, so the mall plot's flat edge stays exactly where the
+     building's flat edge is (no drift onto the roads), while the map un-mirrors
+     (Arabic reads correctly). Centre (rx=cx) maps to x=0, so the mall keeps its
+     exact location 25.266544, 55.583265. */
+  var R = GEO.rotDeg*Math.PI/180, dx = px-cx, dy = py-cy, co = Math.cos(R), si = Math.sin(R);
   var rx = cx + dx*co - dy*si, ry = cy + dx*si + dy*co;        // rotate to building orientation
-  return new THREE.Vector3(rx*S - OFFSET.x, 0, -ry*S - OFFSET.z);
+  return new THREE.Vector3(OFFSET.x - rx*S, 0, -ry*S - OFFSET.z);
 }
 function _lon2tile(l,z){ return (l+180)/360*Math.pow(2,z); }
 function _lat2tile(a,z){ var r=a*Math.PI/180; return (1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*Math.pow(2,z); }
