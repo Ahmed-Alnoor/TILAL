@@ -1619,14 +1619,6 @@ function buildFloor(fkey){
     MODEL = {w:size.x, d:size.z, h:size.y};
   }
   group.position.set(-OFFSET.x, -OFFSET.y, -OFFSET.z);
-  /* spin the flat plan about its centre (world origin = the geo location) so the
-     fan registers with the basemap, which is rotated by GEO.rotDeg. Premultiplying
-     in world space and rotating the position by the same yaw keeps the centre
-     pinned at the origin, so the mall stays on 25.266544, 55.583265. */
-  var _yaw = GEO.rotDeg * Math.PI/180;
-  var _qY = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), _yaw);
-  group.quaternion.premultiply(_qY);
-  group.position.applyQuaternion(_qY);
   group.visible = false;
   scene.add(group);
   floorObjs[fkey] = {group:group, meshes:meshes};
@@ -1662,14 +1654,19 @@ function worldNorth(){
   var v = new THREE.Vector3(b.x - a.x, 0, b.z - a.z);
   return v.lengthSq() < 1e-9 ? new THREE.Vector3(0,0,-1) : v.normalize();
 }
-/* the "home" view: centred on the mall, north-up, subtle 3-D pitch */
+/* the "home" view: centred on the mall, the mall's flat (diameter) side up,
+   subtle 3-D pitch. We frame to the MALL's own axis — not geographic north —
+   so the fan sits square to the screen exactly like the 2.5D reference. The
+   basemap is part of the same scene, so it rotates with the view and stays
+   registered with the building (no "mall in the middle of the roads"). The
+   flat-edge normal of the laid-flat plan (yaw 0) points world +Z. */
 function defaultView(doFly){
   var radius = framingRadius();
   var target = new THREE.Vector3(0, MODEL.h * 0.3, 0);
-  var north = worldNorth();
+  var north = new THREE.Vector3(0, 0, 1);                         // mall flat side = "up"
   var pitch = 40 * Math.PI/180;                                   // subtle tilt
   var camPos = target.clone()
-    .addScaledVector(north, -radius * Math.cos(pitch))            // sit south of centre so north reads "up"
+    .addScaledVector(north, -radius * Math.cos(pitch))            // sit on the arc side so the flat side reads "up"
     .add(new THREE.Vector3(0, radius * Math.sin(pitch), 0));
   controls.minDistance = 20;
   controls.maxDistance = radius * 1.85;
