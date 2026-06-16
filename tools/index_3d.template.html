@@ -1382,7 +1382,13 @@ function geoWorld(lat, lng){
   var cx = OFFSET.x/S, cy = -OFFSET.z/S, planW = MODEL.w/S, mpu = GEO.mallWidthM/planW;
   var E = (lng-GEO.lng)*111320*Math.cos(GEO.lat*Math.PI/180), N = (lat-GEO.lat)*110540;
   var px = cx + E/mpu, py = cy - N/mpu;                       // plan, north-up
-  var R = GEO.rotDeg*Math.PI/180, dx = px-cx, dy = py-cy, co = Math.cos(R), si = Math.sin(R);
+  /* the baked floor plan is mirrored on X about the mall centre (MIRROR_X in
+     build_3d_data.py). Mirror the basemap in the SAME plan space — before the
+     building rotation — so the streets/labels register with the mirrored plan
+     (left<->right). dx flips; the centre (dx=0) is untouched, so the mall keeps
+     its exact location. Each tile's UVs stay bound to its geo corners, so the
+     tile texture flips left-right with it (not just repositioned). */
+  var R = GEO.rotDeg*Math.PI/180, dx = -(px-cx), dy = py-cy, co = Math.cos(R), si = Math.sin(R);
   var rx = cx + dx*co - dy*si, ry = cy + dx*si + dy*co;        // rotate to building orientation
   return new THREE.Vector3(rx*S - OFFSET.x, 0, -ry*S - OFFSET.z);
 }
