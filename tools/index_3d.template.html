@@ -203,7 +203,7 @@
   /* ---------- route info bar ---------- */
   .routebar{position:fixed; left:50%; top:calc(env(safe-area-inset-top,0px) + 74px); transform:translate(-50%,-130%);
     z-index:10; display:flex; align-items:center; gap:14px; max-width:94vw; padding:10px 12px 10px 16px;
-    border-radius:16px; background:rgba(248,250,255,.97); border:1px solid rgba(180,200,240,.55);
+    border-radius:16px; background:var(--glass-strong); border:1px solid var(--stroke);
     backdrop-filter:blur(20px) saturate(140%); -webkit-backdrop-filter:blur(20px) saturate(140%);
     box-shadow:var(--shadow); opacity:0; transition:transform .34s cubic-bezier(.2,.8,.2,1), opacity .34s;}
   .routebar.show{transform:translate(-50%,0); opacity:1;}
@@ -213,37 +213,37 @@
   .routebar .rb-od{font-size:12.5px; color:var(--ink); max-width:40vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .routebar .rb-step{display:none; align-items:center; gap:6px; cursor:pointer; border:0; border-radius:11px;
     padding:9px 13px; font:inherit; font-size:12.5px; font-weight:600; color:#fff; background:linear-gradient(135deg,#d99e35,#c0892f);}
-  .routebar .rb-x{flex:0 0 auto; cursor:pointer; border:0; background:rgba(255,255,255,.82); color:var(--ink);
+  .routebar .rb-x{flex:0 0 auto; cursor:pointer; border:0; background:rgba(255,255,255,.4); color:var(--ink);
     width:30px;height:30px; border-radius:50%; font-size:18px; line-height:1;}
   @media (max-width:759px){ .routebar{flex-wrap:wrap; max-width:92vw;} .routebar .rb-od{max-width:60vw;} }
 
   /* ---------- directions form ---------- */
   .dirform{position:fixed; z-index:8; left:12px; right:12px; bottom:calc(env(safe-area-inset-bottom,0px) + 12px);
-    border-radius:22px; padding:16px 16px 18px; background:rgba(248,250,255,.97); border:1px solid rgba(180,200,240,.55);
+    border-radius:22px; padding:16px 16px 18px; background:var(--glass-strong); border:1px solid var(--stroke);
     backdrop-filter:blur(22px) saturate(150%); -webkit-backdrop-filter:blur(22px) saturate(150%); box-shadow:var(--shadow);
     transform:translateY(150%); opacity:0; transition:transform .36s cubic-bezier(.2,.8,.2,1), opacity .36s;}
   .dirform.show{transform:none; opacity:1;}
   .df-head{display:flex; align-items:center; gap:11px; margin-bottom:12px;}
-  .df-icon{color:#1a4fac;} .df-icon svg{width:22px;height:22px;}
-  .df-head h2{margin:0; font-size:20px; font-weight:700; flex:1; color:var(--ink);}
-  .df-x{cursor:pointer; border:0; background:rgba(220,225,240,.75); color:var(--ink); width:32px;height:32px;border-radius:50%;font-size:18px;line-height:1;}
-  .df-label{font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink); font-weight:700; margin:8px 2px 7px;}
+  .df-icon{color:#2f5391;} .df-icon svg{width:22px;height:22px;}
+  .df-head h2{margin:0; font-size:20px; font-weight:700; flex:1;}
+  .df-x{cursor:pointer; border:0; background:rgba(255,255,255,.45); color:var(--ink); width:32px;height:32px;border-radius:50%;font-size:18px;line-height:1;}
+  .df-label{font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-soft); font-weight:700; margin:8px 2px 7px;}
   .df-fieldwrap{position:relative;}
-  .df-field{display:flex; align-items:center; gap:10px; padding:0 14px; border:2px solid rgba(47,116,208,.85); border-radius:14px; background:rgba(255,255,255,.85);}
+  .df-field{display:flex; align-items:center; gap:10px; padding:0 14px; border:2px solid rgba(47,116,208,.55); border-radius:14px; background:rgba(255,255,255,.62);}
   .df-field input{flex:1; min-width:0; border:0; background:transparent; outline:0; font:inherit; font-size:15px; padding:13px 0; color:var(--ink);}
-  .df-fdot{width:14px;height:14px;border-radius:50%;background:#1a73e8;box-shadow:0 0 0 4px rgba(26,115,232,.35);flex:0 0 auto;display:none;}
+  .df-fdot{width:14px;height:14px;border-radius:50%;background:#2f74d0;box-shadow:0 0 0 3px rgba(47,116,208,.25);flex:0 0 auto;display:none;}
   .df-field.has-origin .df-fdot{display:block;}
   .df-suggest{position:absolute; left:0; right:0; top:calc(100% + 6px); z-index:6; display:none;
-    background:#fff; border:1px solid rgba(47,116,208,.25); border-radius:14px; overflow:hidden auto; max-height:42vh; box-shadow:0 16px 34px rgba(30,60,120,.18);}
+    background:#fff; border:1px solid var(--stroke); border-radius:14px; overflow:hidden auto; max-height:42vh; box-shadow:0 16px 34px rgba(60,44,24,.2);}
   .df-suggest.show{display:block;}
-  .df-dest{display:flex; align-items:center; gap:10px; padding:13px 14px; border-radius:14px; background:rgba(47,116,208,.12); color:var(--ink); border:1px solid rgba(47,116,208,.2);}
-  .df-dest svg{width:18px;height:18px;color:#1a4fac;flex:0 0 auto;}
+  .df-dest{display:flex; align-items:center; gap:10px; padding:13px 14px; border-radius:14px; background:rgba(20,40,80,.06); color:var(--ink);}
+  .df-dest svg{width:18px;height:18px;color:#2f5391;flex:0 0 auto;}
   .df-dest span{font-size:14.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .df-actions{display:flex; gap:10px; margin-top:16px;}
   .df-go{flex:1; display:flex; align-items:center; justify-content:center; gap:8px; cursor:pointer; border:0; border-radius:14px;
-    padding:14px; font:inherit; font-size:15px; font-weight:700; color:#fff; background:linear-gradient(135deg,#2a66d8,#1a4fac); box-shadow:0 6px 18px rgba(26,79,172,.4);}
+    padding:14px; font:inherit; font-size:15px; font-weight:700; color:#fff; background:linear-gradient(135deg,#3f74c0,#2f5391); box-shadow:0 6px 18px rgba(47,83,145,.3);}
   .df-go svg{width:18px;height:18px;}
-  .df-clear{cursor:pointer; border:1px solid rgba(180,190,215,.7); border-radius:14px; padding:14px 22px; font:inherit; font-size:15px; font-weight:600; color:var(--ink); background:rgba(220,225,240,.6);}
+  .df-clear{cursor:pointer; border:1px solid var(--stroke); border-radius:14px; padding:14px 22px; font:inherit; font-size:15px; font-weight:600; color:var(--ink); background:rgba(255,255,255,.5);}
   @media (min-width:760px){ .dirform{left:auto; right:18px; bottom:18px; width:380px;} }
 
   /* ---------- full-page directory (List) ---------- */
@@ -686,7 +686,10 @@ var THEMES = {
     matMetal:0.0, matRough:0.7, matEnv:0.3, matEmissive:0x000000, matEmissiveInt:0,
     nightMix:0,                          // 0 = keep true category colour
     grassTint:0xffffff, treeTint:0xffffff, birdColor:"rgba(42,48,62,0.92)",
-    basemap:"voyager", basemapFallback:0x9eb8cc, basemapBright:0xffffff
+    basemap:"voyager", basemapFallback:0xe9e7e2, basemapBright:0xffffff,
+    /* route: subtle navy dots on the light floors (the original look) */
+    routeDot:0x12356e, routeDotR:0.95, routeStep:3.2, routeHalo:false,
+    routeOrigin:0x2f74d0, routeEsc:0xffa023, routeDest:0xd24d4d, markerScale:1.0
   },
   night: {
     metaColor:"#0a1228",
@@ -698,7 +701,11 @@ var THEMES = {
     matMetal:0.16, matRough:0.48, matEnv:0.78, matEmissiveInt:0.52,
     nightMix:0.54,                       // pull block colour ~half-way to deep navy (keeps identity readable)
     grassTint:0x5f7866, treeTint:0x71866f, birdColor:"rgba(160,190,235,0.82)",
-    basemap:"dark_all", basemapFallback:0x17263f, basemapBright:0xffffff
+    basemap:"dark_all", basemapFallback:0x17263f, basemapBright:0xffffff,
+    /* route: glowing blue trail + haloed pins so it pops on the dark floors
+       (matches the night reference render) */
+    routeDot:0x4aa6ff, routeDotR:1.7, routeStep:2.6, routeHalo:true,
+    routeOrigin:0x3aa0ff, routeEsc:0xffb347, routeDest:0xff5a5a, markerScale:1.28
   }
 };
 function curTheme(){ return THEMES[THEME]; }
@@ -945,6 +952,9 @@ function applyTheme(theme, initial){
 
   /* basemap tile style (skip on first paint — it was already built in-theme) */
   if(!initial){ disposeBasemap(); buildBasemap(); }
+
+  /* re-draw an active route so its dots/pins pick up the new theme's style */
+  if(ROUTE.active && !initial) drawRouteForFloor();
 
   markShadow();
 }
@@ -1352,7 +1362,7 @@ function buildBasemap(){
           cc= geoWorld(_tile2lat(ty+1, z), _tile2lon(tx+1, z)),   // SE
           d = geoWorld(_tile2lat(ty+1, z), _tile2lon(tx, z));     // SW
       var g = new THREE.BufferGeometry();
-      var y = -0.06;  // raised from -0.12 so tiles sit closer to ground level
+      var y = -0.12;  // sits just under the ground plane
       g.setAttribute("position", new THREE.Float32BufferAttribute([
         a.x,y,a.z,  d.x,y,d.z,  b.x,y,b.z,   b.x,y,b.z,  d.x,y,d.z,  cc.x,y,cc.z], 3));
       g.setAttribute("uv", new THREE.Float32BufferAttribute([0,1, 0,0, 1,1, 1,1, 0,0, 1,0], 2));
@@ -1932,34 +1942,39 @@ function clearRoute(){
   if(routeGroup){ scene.remove(routeGroup); routeGroup.traverse(function(o){ if(o.geometry)o.geometry.dispose(); }); routeGroup=null; }
   document.getElementById("routeBar").classList.remove("show");
 }
-/* end-point pin: a flat ring + dot, always drawn on top (overlay) */
+/* end-point pin: a flat ring + dot, always drawn on top (overlay). At night it
+   gains a white halo + centre highlight so it glows on the dark floors; by day
+   it's the original clean ring + dot. */
 function flatMat(color){ return new THREE.MeshBasicMaterial({color:color, side:THREE.DoubleSide, transparent:true, opacity:0.98, depthTest:false, depthWrite:false}); }
 function routeMarker(world, color){
-  var g=new THREE.Group();
-  /* white halo behind pin so it reads on any floor color */
-  var halo=new THREE.Mesh(new THREE.CircleGeometry(5.8,32), flatMat(0xffffff));
-  halo.material.opacity=0.70; halo.rotation.x=-Math.PI/2; halo.position.copy(world); halo.position.y=1.95; halo.renderOrder=19; g.add(halo);
-  var ring=new THREE.Mesh(new THREE.RingGeometry(3.2,5.0,32), flatMat(color));
+  var T=curTheme(), sc=T.markerScale, g=new THREE.Group();
+  if(T.routeHalo){
+    var halo=new THREE.Mesh(new THREE.CircleGeometry(5.4*sc,32), flatMat(0xffffff));
+    halo.material.opacity=0.58; halo.rotation.x=-Math.PI/2; halo.position.copy(world); halo.position.y=1.95; halo.renderOrder=19; g.add(halo);
+  }
+  var ring=new THREE.Mesh(new THREE.RingGeometry(2.6*sc,4.0*sc,32), flatMat(color));
   ring.rotation.x=-Math.PI/2; ring.position.copy(world); ring.position.y=2.0; ring.renderOrder=20; g.add(ring);
-  var dot=new THREE.Mesh(new THREE.CircleGeometry(2.6,28), flatMat(color));
+  var dot=new THREE.Mesh(new THREE.CircleGeometry(2.0*sc,28), flatMat(color));
   dot.rotation.x=-Math.PI/2; dot.position.copy(world); dot.position.y=2.02; dot.renderOrder=21; g.add(dot);
-  /* white centre highlight so pin reads on dark floors too */
-  var ctr=new THREE.Mesh(new THREE.CircleGeometry(1.1,20), flatMat(0xffffff));
-  ctr.material.opacity=0.80; ctr.rotation.x=-Math.PI/2; ctr.position.copy(world); ctr.position.y=2.04; ctr.renderOrder=22; g.add(ctr);
+  if(T.routeHalo){
+    var ctr=new THREE.Mesh(new THREE.CircleGeometry(0.85*sc,20), flatMat(0xffffff));
+    ctr.material.opacity=0.85; ctr.rotation.x=-Math.PI/2; ctr.position.copy(world); ctr.position.y=2.04; ctr.renderOrder=22; g.add(ctr);
+  }
   return g;
 }
-/* start "navigation puck": a big blue disc with a modern white arrow pointing
-   the initial walking direction */
+/* start "navigation puck": a blue disc with a modern white arrow pointing the
+   initial walking direction (haloed + scaled up at night) */
 function originMarker(world, dir){
-  var g=new THREE.Group();
-  /* white halo makes the puck readable on any background */
-  var halo=new THREE.Mesh(new THREE.CircleGeometry(7.5,36), flatMat(0xffffff));
-  halo.material.opacity=0.65; halo.rotation.x=-Math.PI/2; halo.position.copy(world); halo.position.y=1.95; halo.renderOrder=18; g.add(halo);
-  var disc=new THREE.Mesh(new THREE.CircleGeometry(5.8,36), flatMat(0x1a73e8));
+  var T=curTheme(), sc=T.markerScale, g=new THREE.Group();
+  if(T.routeHalo){
+    var halo=new THREE.Mesh(new THREE.CircleGeometry(6.4*sc,36), flatMat(0xffffff));
+    halo.material.opacity=0.5; halo.rotation.x=-Math.PI/2; halo.position.copy(world); halo.position.y=1.95; halo.renderOrder=18; g.add(halo);
+  }
+  var disc=new THREE.Mesh(new THREE.CircleGeometry(4.6*sc,36), flatMat(T.routeOrigin));
   disc.rotation.x=-Math.PI/2; disc.position.copy(world); disc.position.y=2.0; disc.renderOrder=20; g.add(disc);
-  var ring=new THREE.Mesh(new THREE.RingGeometry(5.8,6.8,36), flatMat(0xffffff));
-  ring.material.opacity=0.90; ring.rotation.x=-Math.PI/2; ring.position.copy(world); ring.position.y=1.99; ring.renderOrder=19; g.add(ring);
-  var sh=new THREE.Shape(); sh.moveTo(0,2.8); sh.lineTo(2.1,-2.2); sh.lineTo(0,-1.1); sh.lineTo(-2.1,-2.2); sh.closePath();
+  var ring=new THREE.Mesh(new THREE.RingGeometry(4.6*sc,5.4*sc,36), flatMat(0xffffff));
+  ring.material.opacity=0.88; ring.rotation.x=-Math.PI/2; ring.position.copy(world); ring.position.y=1.99; ring.renderOrder=19; g.add(ring);
+  var sh=new THREE.Shape(); sh.moveTo(0,2.3*sc); sh.lineTo(1.8*sc,-1.9*sc); sh.lineTo(0,-0.9*sc); sh.lineTo(-1.8*sc,-1.9*sc); sh.closePath();
   var ag=new THREE.ShapeGeometry(sh); ag.rotateX(-Math.PI/2);   // points -Z after lay-flat
   var d=new THREE.Vector3(dir.x,0,dir.z); if(d.lengthSq()<1e-6)d.set(0,0,-1); d.normalize();
   ag.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,0,-1), d));
@@ -1984,19 +1999,23 @@ function chevronGeo(){
   s.moveTo(1.0,0); s.lineTo(-0.7,0.9); s.lineTo(-0.25,0); s.lineTo(-0.7,-0.9); s.closePath();
   var g=new THREE.ShapeGeometry(s); g.rotateX(-Math.PI/2); return g;   // lies flat, points +X
 }
-/* draw the route for the visible floor as a flat, Google-Maps-style dotted path:
-   vivid-blue dots with white outline rings, direction chevron every 5th dot, always on top */
+/* draw the route for the visible floor as a flat, Google-Maps-style dotted path.
+   Day: subtle navy dots. Night: glowing blue dots with white outline halos so the
+   trail reads on the dark floors (like the night reference render). A direction
+   chevron every 5th dot; always drawn on top. */
 function drawRouteForFloor(){
   if(routeGroup){ scene.remove(routeGroup); routeGroup.traverse(function(o){ if(o.geometry)o.geometry.dispose(); }); routeGroup=null; }
   if(!ROUTE.route) return;
   var seg=null; ROUTE.route.segments.forEach(function(s){ if(s.floor===curFloor) seg=s; });
   routeGroup=new THREE.Group(); scene.add(routeGroup);
   if(!seg) return;                          // route is on other floors only
+  var T=curTheme();
   var wpts=seg.pts.map(function(p){ return vbToWorld(p[0],p[1],0); });
-  var samples=samplePolyline(wpts, 2.5), Y=2.0;  // denser spacing than before
+  var samples=samplePolyline(wpts, T.routeStep), Y=2.0;
   var dotGeos=[], ringGeos=[], arrowGeos=[];
-  var DOT=new THREE.CircleGeometry(1.9,20); DOT.rotateX(-Math.PI/2);
-  var RING=new THREE.RingGeometry(2.0,2.8,20); RING.rotateX(-Math.PI/2);  // white halo around each dot
+  var DOT=new THREE.CircleGeometry(T.routeDotR,18); DOT.rotateX(-Math.PI/2);
+  var RING=null;
+  if(T.routeHalo){ RING=new THREE.RingGeometry(T.routeDotR*1.05, T.routeDotR*1.6, 18); RING.rotateX(-Math.PI/2); }
   for(var i=0;i<samples.length;i++){
     var s=samples[i];
     if(i>0 && i%5===0 && (s.dx||s.dz)){
@@ -2005,18 +2024,18 @@ function drawRouteForFloor(){
       ag.applyQuaternion(q); ag.translate(s.x, Y+0.05, s.z); arrowGeos.push(ag);
     } else {
       var dg=DOT.clone(); dg.translate(s.x, Y, s.z); dotGeos.push(dg);
-      var rg=RING.clone(); rg.translate(s.x, Y-0.02, s.z); ringGeos.push(rg);
+      if(RING){ var rg=RING.clone(); rg.translate(s.x, Y-0.02, s.z); ringGeos.push(rg); }
     }
   }
   var BU=THREE.BufferGeometryUtils;
   if(ringGeos.length){
     var rm=new THREE.Mesh(BU.mergeBufferGeometries(ringGeos,false),
-      new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0.90, depthTest:false, depthWrite:false}));
+      new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0.85, depthTest:false, depthWrite:false}));
     rm.renderOrder=16; routeGroup.add(rm);
   }
   if(dotGeos.length){
     var dm=new THREE.Mesh(BU.mergeBufferGeometries(dotGeos,false),
-      new THREE.MeshBasicMaterial({color:0x1967d2, transparent:true, opacity:0.98, depthTest:false, depthWrite:false}));
+      new THREE.MeshBasicMaterial({color:T.routeDot, transparent:true, opacity:0.97, depthTest:false, depthWrite:false}));
     dm.renderOrder=18; routeGroup.add(dm);
   }
   if(arrowGeos.length){
@@ -2025,9 +2044,9 @@ function drawRouteForFloor(){
     am.renderOrder=19; routeGroup.add(am);
   }
   var dir0 = wpts.length>=2 ? new THREE.Vector3(wpts[1].x-wpts[0].x,0,wpts[1].z-wpts[0].z) : new THREE.Vector3(0,0,1);
-  if(seg.oc) routeGroup.add(originMarker(vbToWorld(seg.oc[0],seg.oc[1],0), dir0));   // big puck + modern arrow
-  if(seg.esc) routeGroup.add(routeMarker(vbToWorld(seg.esc[0],seg.esc[1],0), 0xff7b00));  // vivid orange escalator
-  if(seg.dc) routeGroup.add(routeMarker(vbToWorld(seg.dc[0],seg.dc[1],0), 0xe62020));   // vivid red destination
+  if(seg.oc) routeGroup.add(originMarker(vbToWorld(seg.oc[0],seg.oc[1],0), dir0));   // puck + modern arrow
+  if(seg.esc) routeGroup.add(routeMarker(vbToWorld(seg.esc[0],seg.esc[1],0), T.routeEsc));   // escalator
+  if(seg.dc) routeGroup.add(routeMarker(vbToWorld(seg.dc[0],seg.dc[1],0), T.routeDest));   // destination
 }
 function routeTotals(R){ var m=0; R.segments.forEach(function(s){ m+=rLen(s.pts); }); m/=UNITS_PER_M;
   var secs=m/WALK_MS+(R.cross?25:0); return {m:Math.round(m), min:Math.max(1,Math.round(secs/60))}; }
