@@ -1619,6 +1619,14 @@ function buildFloor(fkey){
     MODEL = {w:size.x, d:size.z, h:size.y};
   }
   group.position.set(-OFFSET.x, -OFFSET.y, -OFFSET.z);
+  /* spin the flat plan about its centre (world origin = the geo location) so the
+     fan registers with the basemap, which is rotated by GEO.rotDeg. Premultiplying
+     in world space and rotating the position by the same yaw keeps the centre
+     pinned at the origin, so the mall stays on 25.266544, 55.583265. */
+  var _yaw = GEO.rotDeg * Math.PI/180;
+  var _qY = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), _yaw);
+  group.quaternion.premultiply(_qY);
+  group.position.applyQuaternion(_qY);
   group.visible = false;
   scene.add(group);
   floorObjs[fkey] = {group:group, meshes:meshes};
