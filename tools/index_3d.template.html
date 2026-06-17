@@ -324,6 +324,26 @@
   #loader .lbl{font-size:13px; letter-spacing:.14em; text-transform:uppercase; color:#6a5636;}
   #loader .err{display:none; max-width:300px; text-align:center; font-size:13px; line-height:1.5; color:#7a3b2a;}
 
+  /* ---------- intro splash (liquid water-reveal loading screen) ----------
+     The front image (logo) sits over the back image (the map); pointer motion
+     reveals the map through a watery lens, then at 5s the whole map washes in.
+     Three dots pulse at the foot of the screen, and at 10s it fades to the
+     viewer. Self-contained WebGL — runs before Three.js, removes itself if the
+     two images aren't present. */
+  #intro{position:fixed; inset:0; z-index:60; opacity:1; transition:opacity .85s ease;
+    background:radial-gradient(120% 100% at 50% 32%, #1b2740 0%, #0a1020 68%, #05070d 100%);}
+  #intro.gone{opacity:0; pointer-events:none;}
+  #intro canvas{position:absolute; inset:0; width:100%; height:100%; display:block; touch-action:none;}
+  #introDots{position:absolute; left:50%; bottom:calc(env(safe-area-inset-bottom,0px) + 30px);
+    transform:translateX(-50%); display:flex; gap:11px; z-index:2; pointer-events:none;}
+  #introDots i{width:9px; height:9px; border-radius:50%; background:rgba(255,255,255,.92);
+    box-shadow:0 2px 9px rgba(0,0,0,.5); animation:introDot 1.25s infinite ease-in-out;}
+  #introDots i:nth-child(2){animation-delay:.16s;}
+  #introDots i:nth-child(3){animation-delay:.32s;}
+  @keyframes introDot{0%,75%,100%{opacity:.28; transform:translateY(0) scale(.82);}
+    38%{opacity:1; transform:translateY(-6px) scale(1);}}
+  @media (max-width:759px){ #introDots{bottom:calc(env(safe-area-inset-bottom,0px) + 24px);} }
+
   /* ---------- NIGHT THEME ----------
      A deep-navy "after dark" mood. Most surfaces use the CSS variables below,
      so re-pointing those six does the bulk of the work; the rest are explicit
@@ -536,6 +556,11 @@
     <div class="err" id="loadErr">Couldn’t load the 3D engine. This viewer needs an internet connection the first time (it fetches Three.js from a CDN).</div>
   </div>
 
+  <div id="intro">
+    <canvas id="introCv"></canvas>
+    <div id="introDots"><i></i><i></i><i></i></div>
+  </div>
+
 <script>
 /* ============================================================================
    Tilal Mall — 3D floor-plan viewer (single file, classic <script>, file://-safe)
@@ -653,7 +678,7 @@ function loadFrom(hostIdx){
   var host = CDNS[hostIdx];
   var i = 0;
   (function next(){
-    if(i >= SCRIPTS.length){ boot(); return; }
+    if(i >= SCRIPTS.length){ _threeReady = true; maybeBoot(); return; }
     var s = document.createElement("script");
     s.src = host + SCRIPTS[i];
     s.onload = function(){ i++; next(); };
@@ -669,7 +694,207 @@ function showLoadError(){
   document.getElementById("loadLbl").style.display = "none";
   document.getElementById("loadErr").style.display = "block";
 }
-window.addEventListener("DOMContentLoaded", function(){ loadFrom(0); });
+/* The intro runs its own WebGL context. Mobile browsers (and the headless GPU)
+   cap how many live WebGL contexts exist, so we let Three.js DOWNLOAD during the
+   intro (network overlaps, no wasted time) but defer init() — which creates the
+   second context — until the intro hands off. Only one live context at a time. */
+var _threeReady = false, _introOver = false, _booted = false;
+function maybeBoot(){
+  if(_threeReady && _introOver && !_booted){ _booted = true; boot(); }
+}
+window.addEventListener("DOMContentLoaded", function(){ startIntro(); loadFrom(0); });
+
+/* ============================ intro / loading splash =======================
+   10-second branded loader. The front image (logo) sits over the back image
+   (the map). Moving the pointer reveals the map through a "liquid water" lens —
+   medium-sized ripples that heal after ~1.5s; at 5s the whole map washes into
+   view; three dots pulse at the foot of the page throughout; at 10s it fades to
+   the 3D viewer loading underneath. Pure self-contained WebGL — runs before
+   Three.js and quietly removes itself if the two images aren't present. */
+var INTRO = {
+  front: "images/Intro front.webp",   // logo (shown first)
+  back:  "images/intro back.webp",     // the map (revealed)
+  totalMs: 10000,                       // whole splash
+  revealAtMs: 5000,                     // when the full map washes in
+  revealDurMs: 1500,                    // how long that wash takes
+  rippleLife: 1.5,                      // seconds each pointer ripple lasts
+  rippleR: 0.17                         // medium radius (aspect-space; 0.5 = half screen height)
+};
+var INTRO_N = 20;                       // max simultaneous ripples (matches the shader)
+var _introGL = null, _introExt = null, _introRAF = 0, _introRips = [], _introStart = 0, _introResize = null;
+
+function startIntro(){
+  if(!document.getElementById("intro")){ _introOver = true; maybeBoot(); return; }
+  var front = new Image(), back = new Image(), n = 0, dead = false;
+  function fail(){ if(dead) return; dead = true; removeIntro(); }       // images missing -> skip the splash
+  function ok(){ if(dead) return; if(++n >= 2) runIntro(front, back); }
+  front.onload = ok; back.onload = ok;
+  front.onerror = fail; back.onerror = fail;
+  setTimeout(function(){ if(!dead && n < 2) fail(); }, 5000);
+  front.src = INTRO.front; back.src = INTRO.back;
+}
+function removeIntro(){
+  if(_introRAF) cancelAnimationFrame(_introRAF); _introRAF = 0;
+  if(_introResize){ window.removeEventListener("resize", _introResize); _introResize = null; }
+  if(_introExt){ try{ _introExt.loseContext(); }catch(e){} _introExt = null; }   // free the GL context BEFORE the 3D claims one
+  _introGL = null;
+  var host = document.getElementById("intro");
+  if(host && host.parentNode) host.parentNode.removeChild(host);
+  _introOver = true; maybeBoot();        // now safe to build the 3D (single live context)
+}
+var _introEnding = false;
+function endIntro(){
+  if(_introEnding) return; _introEnding = true;
+  var host = document.getElementById("intro");
+  if(!host){ removeIntro(); return; }
+  host.classList.add("gone");
+  setTimeout(removeIntro, 950);          // remove after the opacity fade
+}
+
+function runIntro(front, back){
+  var host = document.getElementById("intro"), cv = document.getElementById("introCv");
+  if(!host || !cv){ removeIntro(); return; }
+  var gl = cv.getContext("webgl", {alpha:false, antialias:true, premultipliedAlpha:false})
+        || cv.getContext("experimental-webgl", {alpha:false});
+  if(!gl){ removeIntro(); return; }      // no WebGL -> hand off to the normal loader underneath
+
+  var VS = "attribute vec2 aPos; varying vec2 vUv;" +
+           "void main(){ vUv = aPos*0.5 + 0.5; gl_Position = vec4(aPos,0.0,1.0); }";
+  var FS = [
+    "precision highp float;",
+    "#define N 20",
+    "varying vec2 vUv;",
+    "uniform vec2 uRes; uniform vec2 uImg; uniform float uTime; uniform float uReveal;",
+    "uniform vec2 uRip[N]; uniform float uAge[N]; uniform float uRipR; uniform float uLife;",
+    "uniform sampler2D uFront; uniform sampler2D uBack;",
+    "vec2 coverUV(vec2 uv){",
+    "  float rs = uRes.x/uRes.y, ri = uImg.x/uImg.y; vec2 st = uv;",
+    "  if(rs < ri){ st.x = uv.x*(rs/ri) + (1.0 - rs/ri)*0.5; }",
+    "  else       { st.y = uv.y*(ri/rs) + (1.0 - ri/rs)*0.5; }",
+    "  return st;",
+    "}",
+    "void main(){",
+    "  float aspect = uRes.x/uRes.y;",
+    "  vec2 p = (vUv - 0.5); p.x *= aspect;",                       // circular aspect space
+    "  float reveal = 0.0, sheen = 0.0; vec2 disp = vec2(0.0);",
+    "  disp += vec2(sin(vUv.y*40.0 + uTime*1.6), cos(vUv.x*40.0 + uTime*1.3)) * 0.0018;", // thin ambient shimmer
+    "  for(int i=0;i<N;i++){",
+    "    float a = uAge[i];",
+    "    if(a < 0.0 || a > uLife) continue;",
+    "    vec2 dir = p - uRip[i]; float d = length(dir); float tn = a/uLife;",
+    "    float env = smoothstep(0.0,0.10,tn) * (1.0 - smoothstep(0.5,1.0,tn));",
+    "    float blob = 1.0 - smoothstep(uRipR*0.35, uRipR, d);",
+    "    reveal += blob*env;",
+    "    float wave = sin(d*52.0 - a*20.0) * exp(-d*8.0);",
+    "    disp += normalize(dir + 1e-5) * wave * 0.012 * env * blob;",
+    "    sheen += max(0.0, wave) * env * blob;",
+    "  }",
+    "  if(uReveal > 0.0){",                                          // full-map wash from 5s
+    "    float dC = length(p);",
+    "    float wob = 0.05*sin(atan(p.y, p.x)*7.0 + uTime*2.2) + 0.03*sin(dC*18.0 - uTime*3.0);",
+    "    float edge = uReveal*1.7; float e = (dC - edge)*6.0; float ring = exp(-e*e);",
+    "    float g = smoothstep(edge+0.12, edge-0.04, dC + wob);",
+    "    disp += normalize(p + 1e-5) * ring * 0.02; sheen += ring*0.5;",
+    "    reveal = max(reveal, g);",
+    "  }",
+    "  reveal = max(reveal, step(0.999, uReveal));",
+    "  reveal = clamp(reveal, 0.0, 1.0);",
+    "  vec3 frontC = texture2D(uFront, coverUV(vUv + disp*0.5)).rgb;",
+    "  vec3 backC  = texture2D(uBack,  coverUV(vUv + disp)).rgb;",
+    "  vec3 col = mix(frontC, backC, reveal) + vec3(sheen)*0.22;",   // + wet sheen at crests
+    "  gl_FragColor = vec4(col, 1.0);",
+    "}"
+  ].join("\n");
+
+  function sh(type, src){
+    var s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+    if(!gl.getShaderParameter(s, gl.COMPILE_STATUS)){ console.warn("intro shader:", gl.getShaderInfoLog(s)); return null; }
+    return s;
+  }
+  var vs = sh(gl.VERTEX_SHADER, VS), fs = sh(gl.FRAGMENT_SHADER, FS);
+  if(!vs || !fs){ removeIntro(); return; }
+  var prog = gl.createProgram(); gl.attachShader(prog, vs); gl.attachShader(prog, fs); gl.linkProgram(prog);
+  if(!gl.getProgramParameter(prog, gl.LINK_STATUS)){ console.warn("intro link:", gl.getProgramInfoLog(prog)); removeIntro(); return; }
+  gl.useProgram(prog);
+
+  var buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1,  -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
+  var aPos = gl.getAttribLocation(prog, "aPos");
+  gl.enableVertexAttribArray(aPos); gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+  function mkTex(img, unit){
+    var t = gl.createTexture(); gl.activeTexture(gl.TEXTURE0 + unit); gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, img);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    return t;
+  }
+  mkTex(front, 0); mkTex(back, 1);
+  var U = {};
+  ["uRes","uImg","uTime","uReveal","uRip","uAge","uRipR","uLife","uFront","uBack"].forEach(function(k){ U[k] = gl.getUniformLocation(prog, k); });
+  gl.uniform1i(U.uFront, 0); gl.uniform1i(U.uBack, 1);
+  gl.uniform2f(U.uImg, front.naturalWidth || 1, front.naturalHeight || 1);
+  gl.uniform1f(U.uRipR, INTRO.rippleR); gl.uniform1f(U.uLife, INTRO.rippleLife);
+  _introGL = gl; _introExt = gl.getExtension("WEBGL_lose_context");
+
+  function resize(){
+    var dpr = Math.min(window.devicePixelRatio || 1, 1.75);
+    cv.width = Math.round(cv.clientWidth * dpr); cv.height = Math.round(cv.clientHeight * dpr);
+    gl.viewport(0, 0, cv.width, cv.height);
+    gl.uniform2f(U.uRes, cv.width, cv.height);
+  }
+  _introResize = resize; window.addEventListener("resize", resize); resize();
+
+  /* ripples: each is {x,y in 0..1 uv, t0 ms}. Pointer motion (mouse, touch, pen)
+     spawns them, throttled; a slow auto-path keeps the water alive when idle / on
+     touch where there's no hover. */
+  _introRips = [];
+  function spawn(ux, uy){
+    _introRips.push({x:ux, y:uy, t0: performance.now()});
+    if(_introRips.length > INTRO_N) _introRips.shift();
+  }
+  var lastMove = 0, lastX = 0, lastY = 0;
+  function ptr(e){
+    var now = performance.now(); if(now - lastMove < 45) return;
+    var r = cv.getBoundingClientRect();
+    var ux = (e.clientX - r.left) / r.width, uy = 1.0 - (e.clientY - r.top) / r.height;
+    if(ux < 0 || ux > 1 || uy < 0 || uy > 1) return;
+    if(Math.abs(ux-lastX) + Math.abs(uy-lastY) < 0.008) return;
+    lastMove = now; lastX = ux; lastY = uy; spawn(ux, uy);
+  }
+  cv.addEventListener("pointermove", ptr);
+  cv.addEventListener("pointerdown", ptr);
+
+  var ages = new Float32Array(INTRO_N), rips = new Float32Array(INTRO_N * 2), lastAuto = 0;
+  _introStart = performance.now();
+  setTimeout(endIntro, INTRO.totalMs + 60);   // hard backstop: end on time even if the RAF loop is ever interrupted
+  function frame(){
+    var t = performance.now() - _introStart, ts = t / 1000;
+    var aspect = cv.width / cv.height;
+    if(t < INTRO.revealAtMs && t - lastAuto > 680){      // gentle auto-ripple so it's never static
+      lastAuto = t; var ph = ts;
+      spawn(0.5 + 0.32*Math.sin(ph*0.9), 0.5 + 0.26*Math.sin(ph*1.7 + 1.0));
+    }
+    for(var i=0;i<INTRO_N;i++){
+      var rp = _introRips[i];
+      if(rp){ ages[i] = (performance.now() - rp.t0)/1000; rips[i*2] = (rp.x-0.5)*aspect; rips[i*2+1] = rp.y-0.5; }
+      else  { ages[i] = -1.0; rips[i*2] = 0; rips[i*2+1] = 0; }
+    }
+    // drop expired ripples so fresh ones reuse the slots
+    while(_introRips.length && (performance.now() - _introRips[0].t0)/1000 > INTRO.rippleLife) _introRips.shift();
+    var rv = t >= INTRO.revealAtMs ? Math.min(1, (t - INTRO.revealAtMs)/INTRO.revealDurMs) : 0;
+    rv = rv*rv*(3.0-2.0*rv);                              // ease in/out
+    gl.uniform1f(U.uTime, ts); gl.uniform1f(U.uReveal, rv);
+    gl.uniform2fv(U.uRip, rips); gl.uniform1fv(U.uAge, ages);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+    if(t >= INTRO.totalMs){ endIntro(); return; }
+    _introRAF = requestAnimationFrame(frame);
+  }
+  _introRAF = requestAnimationFrame(frame);
+}
 
 /* ============================ the scene ==================================== */
 var renderer, scene, camera, controls, raycaster, ground;
