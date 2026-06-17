@@ -924,13 +924,13 @@ var THEMES = {
   },
   night: {
     metaColor:"#0a1228",
-    fog:0x0e1b38, ground:0x0b1530, shadowOpacity:0.24, exposure:1.06,
-    hemiSky:0x2b4878, hemiGround:0x0a1224, hemiInt:0.72,
-    keyColor:0xffe9c8, keyInt:1.05, fillColor:0x3a66ad, fillInt:0.68,
+    fog:0x0e1b38, ground:0x0b1530, shadowOpacity:0.24, exposure:1.12,
+    hemiSky:0x6a8cc0, hemiGround:0x26324e, hemiInt:1.12,        // brighter, lighter ambient from every direction so the plan lifts off the dark ground
+    keyColor:0xffe9c8, keyInt:1.45, fillColor:0x5c83c8, fillInt:1.0,   // warm golden key + a stronger cool counter-fill -> lit from all sides
     env:[["#0b1730",0],["#16294d",0.45],["#27498a",0.5],["#0d1828",0.62],["#05080f",1]],
     sun:"rgba(160,200,255,0.65)", sunPos:[300,52,95],
-    matMetal:0.22, matRough:0.42, matEnv:1.05, matEmissiveInt:0.65,
-    nightMix:0.54,
+    matMetal:0.22, matRough:0.42, matEnv:1.05, matEmissiveInt:0.42,
+    nightMix:0.26,                                               // keep the blocks near their true colour (not darkened into the navy background) so they read clearly
     grassTint:0x5f7866, treeTint:0x71866f, birdColor:"rgba(160,190,235,0.82)",
     basemap:"dark_all", basemapFallback:0x071525, basemapBlend:"additive",
     roadColor:0xe2e6ec, roadDim:0.42, roadCut:38, roadSoft:13,   // dark_all roads sit ~40-60 lum; cut low so they catch and read light grey
@@ -1106,7 +1106,7 @@ function init(){
   document.getElementById("dirClose").addEventListener("click", function(){
     clearSearch(); setMode("map");
   });
-  document.getElementById("locPromptClose").addEventListener("click", hideLocPrompt);
+  document.getElementById("locPromptClose").addEventListener("click", dismissLocPrompt);
 
   animate();
 }
@@ -1701,7 +1701,7 @@ function buildBasemap(){
   var x0 = Math.floor(_lon2tile(GEO.lng-dLng, z)), x1 = Math.floor(_lon2tile(GEO.lng+dLng, z));
   var y0 = Math.floor(_lat2tile(GEO.lat+dLat, z)), y1 = Math.floor(_lat2tile(GEO.lat-dLat, z));
   var loader = new THREE.TextureLoader(); loader.setCrossOrigin("anonymous");
-  var hi = "";                                  // 1x tiles: the basemap is a faded backdrop, so skip @2x — it quadruples texture memory/upload (real lag on mobile) for detail the recolour flattens anyway
+  var hi = (window.devicePixelRatio > 1.4) ? "@2x" : "";   // retina-sharp tiles — the per-tile CPU re-grade that used to make this lag now runs on the GPU
   var additive = (T.basemapBlend === "additive");
   /* radial fade: tiles dissolve into the ground toward the rim so the basemap
      blends out smoothly instead of ending on a hard rectangular edge */
@@ -1740,7 +1740,7 @@ function buildBasemap(){
 }
 
 /* -------- live location ("you are here") via real device GPS -------- */
-var youMarker = null, youPulse = 0, locWatch = null, userLL = null, userWorld = null;
+var youMarker = null, youPulse = 0, locWatch = null, userLL = null, userWorld = null, _locDismissed = false;
 var MALL_RADIUS_M = 320;   // treat the user as "in the mall" within this of the centre
 function youTexture(){
   var cv=document.createElement("canvas"); cv.width=cv.height=128; var x=cv.getContext("2d");
@@ -1758,6 +1758,7 @@ function locateMe(){
   if(!navigator.geolocation){ toast("Location not supported"); return; }
   if(location.protocol === "file:"){ toast("Open over http(s) for live location"); return; }
   toast("Locating…");
+  _locDismissed = false;                         // an explicit locate request may show the prompt again
   if(locWatch !== null) navigator.geolocation.clearWatch(locWatch);
   locWatch = navigator.geolocation.watchPosition(onLocation,
     function(e){ toast(e && e.code === 1 ? "Location permission denied" : "Location unavailable"); },
@@ -1788,6 +1789,7 @@ function flyToMarker(){
   flyTo(t.clone().addScaledVector(viewDir(), 80), t);
 }
 function showLocPrompt(distM){
+  if(_locDismissed) return;                      // user closed it — don't let later GPS ticks re-open it
   var el = document.getElementById("locPrompt");
   var km = distM >= 1000 ? (distM/1000).toFixed(1) + " km" : Math.round(distM) + " m";
   document.getElementById("locPromptText").textContent = "You're about " + km + " from Tilal Mall.";
@@ -1796,6 +1798,8 @@ function showLocPrompt(distM){
   el.classList.add("show");
 }
 function hideLocPrompt(){ document.getElementById("locPrompt").classList.remove("show"); }
+/* user dismissed it: hide, remember, and stop polling GPS (it only feeds this prompt when outside) */
+function dismissLocPrompt(){ _locDismissed = true; hideLocPrompt(); if(locWatch !== null){ navigator.geolocation.clearWatch(locWatch); locWatch = null; } }
 /* My-Location button: snap to the dot if we have it, else start tracking */
 function myLocation(){ if(userWorld && youMarker && youMarker.visible){ flyToMarker(); } else { locateMe(); } }
 
@@ -2008,7 +2012,7 @@ function renderPanel(){
     return (counts[b]||0) - (counts[a]||0);
   });
   var head = document.createElement("div"); head.className = "p-head";
-  head.textContent = FLOORS[curFloor].name + " · tap to toggle"; body.appendChild(head);
+  head.textContent = FLOORS[curFloor].name + " · tap to isolate"; body.appendChild(head);
   keys.forEach(function(k){
     var c = cat(k), mesh = fo.meshes[k];
     var row = document.createElement("div");
@@ -2016,9 +2020,11 @@ function renderPanel(){
     row.innerHTML = '<span class="sw" style="background:' + hex6(c.c) + '"></span>'
       + '<span class="nm">' + c.l + '</span><span class="ct">' + (counts[k]||0) + '</span>';
     row.addEventListener("click", function(){
-      mesh.visible = !mesh.visible;
-      row.classList.toggle("off", !mesh.visible);
-      if(selected && selected.mesh === mesh) deselect();
+      /* show ONLY this category; tapping the already-isolated one restores all */
+      var solo = keys.every(function(x){ return fo.meshes[x].visible === (x === k); });
+      keys.forEach(function(x){ fo.meshes[x].visible = solo ? true : (x === k); });
+      if(selected && !selected.mesh.visible) deselect();
+      renderPanel();
     });
     body.appendChild(row);
   });
