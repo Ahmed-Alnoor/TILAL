@@ -133,10 +133,8 @@
   .item .code{font-size:11px; color:var(--ink-soft); font-variant-numeric:tabular-nums; flex:0 0 auto;}
   .empty{padding:26px 12px; text-align:center; color:var(--ink-soft); font-size:13px;}
   /* ---------- right-side control stack ---------- */
-  .controls{position:fixed; right:14px; z-index:8;
-    bottom:calc(env(safe-area-inset-bottom,0px) + 16px + var(--sheet,0px));
-    display:flex; flex-direction:column; gap:8px;
-    transition:bottom .3s cubic-bezier(.2,.8,.2,1);}
+  .controls{position:fixed; right:14px; top:50%; transform:translateY(-50%); z-index:8;
+    display:flex; flex-direction:column; gap:8px;}
   .ctrl{width:46px;height:46px; display:grid; place-items:center; cursor:pointer; color:var(--ink);
     border:1px solid var(--stroke); border-radius:13px; background:var(--glass);
     backdrop-filter:blur(16px) saturate(130%); -webkit-backdrop-filter:blur(16px) saturate(130%); box-shadow:var(--shadow); transition:.15s;}
@@ -162,7 +160,7 @@
 
   /* ---------- info card ---------- */
   .card{
-    position:fixed; z-index:7; left:12px; right:12px;
+    position:fixed; z-index:7; left:12px; right:72px;   /* right gap reserves the control column so they never overlap */
     bottom:calc(env(safe-area-inset-bottom,0px) + 12px);
     border-radius:22px; overflow:hidden;
     background:var(--glass-strong); border:1px solid var(--stroke);
@@ -190,10 +188,11 @@
   .card .pill{font-size:12px; color:var(--ink); background:rgba(255,255,255,.46);
     border:1px solid rgba(255,255,255,.55); border-radius:999px; padding:6px 11px; font-variant-numeric:tabular-nums;}
   .card .pill b{font-weight:700; color:var(--ink-soft);}
-  .card .actions{display:flex; gap:9px; margin-top:14px;}
-  .card .act{flex:1; cursor:pointer; border:1px solid rgba(255,255,255,.55); border-radius:13px;
-    padding:11px 12px; font:inherit; font-size:13px; font-weight:600; color:var(--ink); background:rgba(255,255,255,.42);
-    display:flex; align-items:center; justify-content:center; gap:7px; transition:.16s;}
+  .card .actions{display:flex; gap:7px; margin-top:14px;}
+  .card .act{flex:1; min-width:0; white-space:nowrap; cursor:pointer; border:1px solid rgba(255,255,255,.55); border-radius:13px;
+    padding:11px 7px; font:inherit; font-size:12.5px; font-weight:600; color:var(--ink); background:rgba(255,255,255,.42);
+    display:flex; align-items:center; justify-content:center; gap:5px; transition:.16s;}
+  .card .act svg{flex:0 0 auto;}
   .card .act:hover{background:rgba(255,255,255,.62);}
   .card .act svg{width:16px;height:16px;}
   .card .act.primary{color:#fff; border-color:transparent; background:linear-gradient(135deg,#3f74c0,#2f5391);}
@@ -223,7 +222,7 @@
   @media (max-width:759px){ .routebar{flex-wrap:wrap; max-width:92vw;} .routebar .rb-od{max-width:60vw;} }
 
   /* ---------- directions form ---------- */
-  .dirform{position:fixed; z-index:8; left:12px; right:12px; bottom:calc(env(safe-area-inset-bottom,0px) + 12px);
+  .dirform{position:fixed; z-index:8; left:12px; right:72px; bottom:calc(env(safe-area-inset-bottom,0px) + 12px);
     border-radius:22px; padding:16px 16px 18px; background:var(--glass-strong); border:1px solid var(--stroke);
     backdrop-filter:blur(22px) saturate(150%); -webkit-backdrop-filter:blur(22px) saturate(150%); box-shadow:var(--shadow);
     transform:translateY(150%); opacity:0; transition:transform .36s cubic-bezier(.2,.8,.2,1), opacity .36s;}
@@ -249,7 +248,7 @@
     padding:14px; font:inherit; font-size:15px; font-weight:700; color:#fff; background:linear-gradient(135deg,#3f74c0,#2f5391); box-shadow:0 6px 18px rgba(47,83,145,.3);}
   .df-go svg{width:18px;height:18px;}
   .df-clear{cursor:pointer; border:1px solid var(--stroke); border-radius:14px; padding:14px 22px; font:inherit; font-size:15px; font-weight:600; color:var(--ink); background:rgba(255,255,255,.5);}
-  @media (min-width:760px){ .dirform{left:auto; right:18px; bottom:18px; width:380px;} }
+  @media (min-width:760px){ .dirform{left:auto; right:72px; bottom:18px; width:360px;} }
 
   /* ---------- full-page directory (List) ---------- */
   .directory{position:fixed; inset:0; z-index:16; display:flex; flex-direction:column;
@@ -393,12 +392,16 @@
   /* ---------- responsive: laptop / desktop ---------- */
   @media (min-width:760px){
     .brand b{font-size:17px;}
-    .card{left:auto; right:18px; bottom:18px; width:360px;}
+    .card{left:auto; right:72px; bottom:18px; width:340px;}
     .card .hero{height:168px;}
     .hint{font-size:12.5px;}
   }
   @media (max-width:759px){
     .menu-btn{display:grid;}
+    /* bigger, easier floor tap targets (Basement / Ground / Level 1) */
+    .floors{gap:4px; padding:5px;}
+    .floors button{padding:10px 13px; min-width:48px;}
+    .floors button .lvl{font-size:16px;}
     .panel{transform:translateX(-118%); opacity:0; pointer-events:none;
       top:calc(env(safe-area-inset-top,0px) + 64px); width:min(330px,86vw);}
     .panel.open{transform:none; opacity:1; pointer-events:auto;}
@@ -1341,30 +1344,43 @@ function extrudeUnit(u, height){
 
 /* -------- escalator markers (floating pins above the concourse) -------- */
 var _escTex = null;
-function escTexture(){
-  if(_escTex) return _escTex;
-  var cv = document.createElement("canvas"); cv.width = cv.height = 128;
-  var x = cv.getContext("2d");
-  function rrect(a,b,w,h,r){ x.beginPath(); x.moveTo(a+r,b); x.arcTo(a+w,b,a+w,b+h,r); x.arcTo(a+w,b+h,a,b+h,r); x.arcTo(a,b+h,a,b,r); x.arcTo(a,b,a+w,b,r); x.closePath(); }
-  x.fillStyle = "rgba(33,55,68,0.96)"; rrect(8,8,112,112,30); x.fill();
-  x.strokeStyle = "rgba(255,255,255,0.4)"; x.lineWidth = 3; rrect(8,8,112,112,30); x.stroke();
-  x.strokeStyle = "#fff"; x.lineWidth = 8; x.lineCap = "round"; x.lineJoin = "round";
-  x.beginPath(); x.moveTo(28,98); x.lineTo(48,98); x.lineTo(48,82); x.lineTo(68,82); x.lineTo(68,66); x.lineTo(86,66); x.stroke(); // staircase
-  x.beginPath(); x.moveTo(74,52); x.lineTo(86,40); x.lineTo(98,52); x.moveTo(86,40); x.lineTo(86,66); x.stroke();               // up arrow
-  _escTex = new THREE.CanvasTexture(cv);
-  _escTex.anisotropy = 4; _escTex.encoding = THREE.sRGBEncoding;
-  return _escTex;
+/* a compact low-poly 3-D escalator: an inclined ridged deck with side
+   balustrades + dark handrails. Built running along local +X and rising along
+   local +Z (the floor group maps +Z -> world up), centred on the origin with
+   its base on the floor. */
+function escalatorModel(){
+  var g = new THREE.Group();
+  var RUN = 7.0, W = 3.4, RISE = 2.7;
+  var len = Math.hypot(RUN, RISE), ang = Math.atan2(RISE, RUN);
+  var deckMat = new THREE.MeshStandardMaterial({color:0xccd2db, metalness:0.55, roughness:0.4});
+  var stepMat = new THREE.MeshStandardMaterial({color:0x9aa3b0, metalness:0.5, roughness:0.5});
+  var sideMat = new THREE.MeshStandardMaterial({color:0x8b94a1, metalness:0.35, roughness:0.55});
+  var railMat = new THREE.MeshStandardMaterial({color:0x232a35, metalness:0.45, roughness:0.45});
+  var x0 = -RUN/2;
+  var deck = new THREE.Mesh(new THREE.BoxGeometry(len, W, 0.4), deckMat);
+  deck.rotation.y = -ang; deck.position.set(0, 0, RISE/2); deck.castShadow = true; g.add(deck);
+  var n = 8;
+  for(var i=0;i<n;i++){ var t=(i+0.5)/n;
+    var st = new THREE.Mesh(new THREE.BoxGeometry(0.16, W-0.2, 0.5), stepMat);
+    st.rotation.y = -ang; st.position.set(x0 + RUN*t, 0, RISE*t + 0.28); g.add(st);
+  }
+  for(var s=-1;s<=1;s+=2){
+    var side = new THREE.Mesh(new THREE.BoxGeometry(len, 0.28, 1.25), sideMat);
+    side.rotation.y = -ang; side.position.set(0, s*(W/2-0.14), RISE/2 + 0.72); side.castShadow = true; g.add(side);
+    var rail = new THREE.Mesh(new THREE.BoxGeometry(len, 0.42, 0.34), railMat);
+    rail.rotation.y = -ang; rail.position.set(0, s*(W/2-0.14), RISE/2 + 1.45); g.add(rail);
+  }
+  return g;
 }
-var ESC_SPRITES = [];
+var ESC_SPRITES = [];   // kept (empty) so updateEscScale stays a no-op
 function buildEscalators(fkey, group){
   var list = ESCALATORS[fkey]; if(!list) return;
-  var tex = escTexture();
+  var cx=0, cy=0; list.forEach(function(p){ cx+=p[0]; cy+=p[1]; }); cx/=list.length; cy/=list.length;
   list.forEach(function(p){
-    var sp = new THREE.Sprite(new THREE.SpriteMaterial({map:tex, transparent:true, opacity:0.95, depthWrite:false, depthTest:true}));
-    sp.position.set(p[0]*PLAN_SCALE, p[1]*PLAN_SCALE, 7);   // local; group maps +z -> world +y (height)
-    sp.scale.set(5, 5, 1);
-    sp.userData.escalator = true;
-    group.add(sp); ESC_SPRITES.push(sp);
+    var m = escalatorModel();
+    m.position.set(p[0]*PLAN_SCALE, p[1]*PLAN_SCALE, 0.1);   // base on the floor
+    m.rotation.z = Math.atan2(cy - p[1], cx - p[0]);         // run points in toward the concourse centre
+    group.add(m);
   });
 }
 /* keep escalator pins a roughly constant, modest on-screen size (small when
