@@ -693,7 +693,8 @@ var THEMES = {
     matMetal:0.0, matRough:0.7, matEnv:0.3, matEmissive:0x000000, matEmissiveInt:0,
     nightMix:0,                          // 0 = keep true category colour
     grassTint:0xffffff, treeTint:0xffffff, birdColor:"rgba(42,48,62,0.92)",
-    basemap:"voyager", basemapFallback:0xe9e7e2, basemapBright:0xffffff, basemapBlend:"normal",
+    basemap:"voyager", basemapFallback:0xe9e7e2, basemapBlend:"normal",
+    roadColor:0xffffff, roadDim:0.78, roadCut:246, roadSoft:6,
     /* route: subtle navy dots on the light floors (the original look) */
     routeDot:0x12356e, routeDotR:0.95, routeStep:3.2, routeHalo:false,
     routeOrigin:0x123a99, routeEsc:0xffa023, routeDest:0x9e1414, markerScale:1.0
@@ -708,7 +709,8 @@ var THEMES = {
     matMetal:0.22, matRough:0.42, matEnv:1.05, matEmissiveInt:0.65,
     nightMix:0.54,
     grassTint:0x5f7866, treeTint:0x71866f, birdColor:"rgba(160,190,235,0.82)",
-    basemap:"dark_all", basemapFallback:0x071525, basemapBright:0x8fb4ff, basemapBlend:"additive",
+    basemap:"dark_all", basemapFallback:0x071525, basemapBlend:"additive",
+    roadColor:0xd8dadd, roadDim:0.48, roadCut:58, roadSoft:14,
     routeDot:0x4aa6ff, routeDotR:0.75, routeStep:2.6, routeHalo:false,
     routeOrigin:0x1e4fd0, routeEsc:0xffb347, routeDest:0xc62525, markerScale:1.0
   }
@@ -1425,6 +1427,42 @@ function _lat2tile(a,z){ var r=a*Math.PI/180; return (1-Math.log(Math.tan(r)+1/M
 function _tile2lon(x,z){ return x/Math.pow(2,z)*360-180; }
 function _tile2lat(y,z){ var n=Math.PI-2*Math.PI*y/Math.pow(2,z); return 180/Math.PI*Math.atan(0.5*(Math.exp(n)-Math.exp(-n))); }
 
+/* raster tiles are flat PNGs with no per-feature styling hook, so to make streets
+   pop we re-grade each tile ourselves: streets are drawn as the lightest linework
+   in both the day and night CARTO styles, so anything above a fixed luminance cut
+   gets pushed to a flat roadColor (white by day, light grey by night) and everything
+   else gets dimmed, so streets read clearly against the rest of the map. */
+function _roadGlowCanvas(img, T){
+  var w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+  var cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+  var ctx = cv.getContext("2d");
+  ctx.drawImage(img, 0, 0, w, h);
+  var id, d;
+  try { id = ctx.getImageData(0, 0, w, h); d = id.data; } catch(e){ return cv; }
+  var dim = T.roadDim, lo = T.roadCut-T.roadSoft, hi = T.roadCut+T.roadSoft, span = Math.max(1, hi-lo);
+  var rC=(T.roadColor>>16)&255, gC=(T.roadColor>>8)&255, bC=T.roadColor&255;
+  var minL = 255, maxL = 0, i, l;
+  for(i=0; i<d.length; i+=4){
+    l = 0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2];
+    if(l < minL) minL = l;
+    if(l > maxL) maxL = l;
+  }
+  if(maxL - minL < 10){                       // near-flat tile (e.g. deep inside a park) — no feature signal, just dim it
+    for(i=0; i<d.length; i+=4){ d[i]*=dim; d[i+1]*=dim; d[i+2]*=dim; }
+    ctx.putImageData(id, 0, 0);
+    return cv;
+  }
+  for(i=0; i<d.length; i+=4){
+    l = 0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2];
+    var t = l<lo ? 0 : (l>=hi ? 1 : (l-lo)/span);
+    t = t*t*(3-2*t);
+    d[i]   = d[i]  *dim*(1-t) + rC*t;
+    d[i+1] = d[i+1]*dim*(1-t) + gC*t;
+    d[i+2] = d[i+2]*dim*(1-t) + bC*t;
+  }
+  ctx.putImageData(id, 0, 0);
+  return cv;
+}
 var basemapGroup = null;
 /* throw away the current basemap (geometry + textures) so it can be rebuilt in
    the other theme's tile style */
@@ -1469,13 +1507,15 @@ function buildBasemap(){
         a.x,y,a.z,  d.x,y,d.z,  b.x,y,b.z,   b.x,y,b.z,  d.x,y,d.z,  cc.x,y,cc.z], 3));
       g.setAttribute("uv", new THREE.Float32BufferAttribute([0,1, 0,0, 1,1, 1,1, 0,0, 1,0], 2));
       var url = "https://basemaps.cartocdn.com/rastertiles/"+T.basemap+"/"+z+"/"+tx+"/"+ty+hi+".png";   // voyager by day, dark_all at night
-      var bright = T.basemapBright;
       /* additive at night makes streets glow over the dark-blue ground; normal
          (with the radial fade) at day. DoubleSide guards against quad winding. */
       var mat = new THREE.MeshBasicMaterial({color:T.basemapFallback, side:THREE.DoubleSide,
         transparent:true, opacity:fop, depthWrite:false,
         blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending});
-      (function(m){ loader.load(url, function(tex){ tex.encoding = THREE.sRGBEncoding; m.map = tex; m.color.setHex(bright); m.needsUpdate = true; }, undefined, function(){}); })(mat);
+      (function(m){ loader.load(url, function(tex){
+        var rt = new THREE.CanvasTexture(_roadGlowCanvas(tex.image, T)); rt.encoding = THREE.sRGBEncoding;
+        m.map = rt; m.color.setHex(0xffffff); m.needsUpdate = true;
+      }, undefined, function(){}); })(mat);
       var mesh = new THREE.Mesh(g, mat);
       mesh.renderOrder = -1;                      // under everything
       basemapGroup.add(mesh);
