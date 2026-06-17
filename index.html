@@ -777,7 +777,7 @@ function runIntro(front, back){
     "  float aspect = uRes.x/uRes.y;",
     "  vec2 p = (vUv - 0.5); p.x *= aspect;",                       // circular aspect space
     "  float reveal = 0.0, sheen = 0.0; vec2 disp = vec2(0.0);",
-    "  disp += vec2(sin(vUv.y*40.0 + uTime*1.6), cos(vUv.x*40.0 + uTime*1.3)) * 0.0018;", // thin ambient shimmer
+    "  disp += vec2(sin(vUv.y*40.0 + uTime*1.6), cos(vUv.x*40.0 + uTime*1.3)) * 0.0006;", // faint ambient shimmer (light)
     "  for(int i=0;i<N;i++){",
     "    float a = uAge[i];",
     "    if(a < 0.0 || a > uLife) continue;",
@@ -786,7 +786,7 @@ function runIntro(front, back){
     "    float blob = 1.0 - smoothstep(uRipR*0.35, uRipR, d);",
     "    reveal += blob*env;",
     "    float wave = sin(d*52.0 - a*20.0) * exp(-d*8.0);",
-    "    disp += normalize(dir + 1e-5) * wave * 0.012 * env * blob;",
+    "    disp += normalize(dir + 1e-5) * wave * 0.005 * env * blob;",  // lighter distortion
     "    sheen += max(0.0, wave) * env * blob;",
     "  }",
     "  if(uReveal > 0.0){",                                          // full-map wash from 5s
@@ -794,14 +794,14 @@ function runIntro(front, back){
     "    float wob = 0.05*sin(atan(p.y, p.x)*7.0 + uTime*2.2) + 0.03*sin(dC*18.0 - uTime*3.0);",
     "    float edge = uReveal*1.7; float e = (dC - edge)*6.0; float ring = exp(-e*e);",
     "    float g = smoothstep(edge+0.12, edge-0.04, dC + wob);",
-    "    disp += normalize(p + 1e-5) * ring * 0.02; sheen += ring*0.5;",
+    "    disp += normalize(p + 1e-5) * ring * 0.012; sheen += ring*0.3;",
     "    reveal = max(reveal, g);",
     "  }",
     "  reveal = max(reveal, step(0.999, uReveal));",
     "  reveal = clamp(reveal, 0.0, 1.0);",
     "  vec3 frontC = texture2D(uFront, coverUV(vUv + disp*0.5)).rgb;",
     "  vec3 backC  = texture2D(uBack,  coverUV(vUv + disp)).rgb;",
-    "  vec3 col = mix(frontC, backC, reveal) + vec3(sheen)*0.22;",   // + wet sheen at crests
+    "  vec3 col = mix(frontC, backC, reveal) + vec3(sheen)*0.10;",   // subtle wet sheen at crests
     "  gl_FragColor = vec4(col, 1.0);",
     "}"
   ].join("\n");
@@ -868,16 +868,14 @@ function runIntro(front, back){
   cv.addEventListener("pointermove", ptr);
   cv.addEventListener("pointerdown", ptr);
 
-  var ages = new Float32Array(INTRO_N), rips = new Float32Array(INTRO_N * 2), lastAuto = 0;
+  var ages = new Float32Array(INTRO_N), rips = new Float32Array(INTRO_N * 2);
   _introStart = performance.now();
   setTimeout(endIntro, INTRO.totalMs + 60);   // hard backstop: end on time even if the RAF loop is ever interrupted
   function frame(){
     var t = performance.now() - _introStart, ts = t / 1000;
     var aspect = cv.width / cv.height;
-    if(t < INTRO.revealAtMs && t - lastAuto > 680){      // gentle auto-ripple so it's never static
-      lastAuto = t; var ph = ts;
-      spawn(0.5 + 0.32*Math.sin(ph*0.9), 0.5 + 0.26*Math.sin(ph*1.7 + 1.0));
-    }
+    /* reveal follows the pointer only — no auto-ripples (then at 5s the whole map
+       washes in regardless, so touch users who never hovered still see it). */
     for(var i=0;i<INTRO_N;i++){
       var rp = _introRips[i];
       if(rp){ ages[i] = (performance.now() - rp.t0)/1000; rips[i*2] = (rp.x-0.5)*aspect; rips[i*2+1] = rp.y-0.5; }
@@ -935,7 +933,7 @@ var THEMES = {
     nightMix:0.54,
     grassTint:0x5f7866, treeTint:0x71866f, birdColor:"rgba(160,190,235,0.82)",
     basemap:"dark_all", basemapFallback:0x071525, basemapBlend:"additive",
-    roadColor:0xd8dadd, roadDim:0.48, roadCut:58, roadSoft:14,
+    roadColor:0xe2e6ec, roadDim:0.42, roadCut:38, roadSoft:13,   // dark_all roads sit ~40-60 lum; cut low so they catch and read light grey
     routeDot:0x4aa6ff, routeDotR:0.75, routeStep:2.6, routeHalo:false,
     routeOrigin:0x1e4fd0, routeEsc:0xffb347, routeDest:0xc62525, markerScale:1.0
   }
@@ -1652,41 +1650,34 @@ function _lat2tile(a,z){ var r=a*Math.PI/180; return (1-Math.log(Math.tan(r)+1/M
 function _tile2lon(x,z){ return x/Math.pow(2,z)*360-180; }
 function _tile2lat(y,z){ var n=Math.PI-2*Math.PI*y/Math.pow(2,z); return 180/Math.PI*Math.atan(0.5*(Math.exp(n)-Math.exp(-n))); }
 
-/* raster tiles are flat PNGs with no per-feature styling hook, so to make streets
-   pop we re-grade each tile ourselves: streets are drawn as the lightest linework
-   in both the day and night CARTO styles, so anything above a fixed luminance cut
-   gets pushed to a flat roadColor (white by day, light grey by night) and everything
-   else gets dimmed, so streets read clearly against the rest of the map. */
-function _roadGlowCanvas(img, T){
-  var w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
-  var cv = document.createElement("canvas"); cv.width = w; cv.height = h;
-  var ctx = cv.getContext("2d");
-  ctx.drawImage(img, 0, 0, w, h);
-  var id, d;
-  try { id = ctx.getImageData(0, 0, w, h); d = id.data; } catch(e){ return cv; }
-  var dim = T.roadDim, lo = T.roadCut-T.roadSoft, hi = T.roadCut+T.roadSoft, span = Math.max(1, hi-lo);
-  var rC=(T.roadColor>>16)&255, gC=(T.roadColor>>8)&255, bC=T.roadColor&255;
-  var minL = 255, maxL = 0, i, l;
-  for(i=0; i<d.length; i+=4){
-    l = 0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2];
-    if(l < minL) minL = l;
-    if(l > maxL) maxL = l;
-  }
-  if(maxL - minL < 10){                       // near-flat tile (e.g. deep inside a park) — no feature signal, just dim it
-    for(i=0; i<d.length; i+=4){ d[i]*=dim; d[i+1]*=dim; d[i+2]*=dim; }
-    ctx.putImageData(id, 0, 0);
-    return cv;
-  }
-  for(i=0; i<d.length; i+=4){
-    l = 0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2];
-    var t = l<lo ? 0 : (l>=hi ? 1 : (l-lo)/span);
-    t = t*t*(3-2*t);
-    d[i]   = d[i]  *dim*(1-t) + rC*t;
-    d[i+1] = d[i+1]*dim*(1-t) + gC*t;
-    d[i+2] = d[i+2]*dim*(1-t) + bC*t;
-  }
-  ctx.putImageData(id, 0, 0);
-  return cv;
+/* Road re-grade — on the GPU. Raster tiles are flat PNGs with no per-feature hook,
+   so streets (the lightest linework in both the voyager day + dark_all night styles)
+   are pushed to a flat roadColor (white by day, light grey at night) and the rest is
+   dimmed, in the tile's OWN fragment shader. Doing it here (not via a per-tile canvas
+   getImageData + pixel loop) is the key: that CPU path blocked the main thread for
+   ~1s+ as ~100+ tiles streamed in (the lag), and uploaded a CanvasTexture per tile.
+   Same luminance formula as before, just in sRGB space with toneMapped:false so the
+   colours land exactly; one shared compiled program for the whole basemap. */
+function basemapRecolor(mat, T){
+  var lo = (T.roadCut - T.roadSoft).toFixed(1), hi = (T.roadCut + T.roadSoft).toFixed(1);
+  var dim = T.roadDim.toFixed(3);
+  var r = (((T.roadColor>>16)&255)/255).toFixed(4),
+      g = (((T.roadColor>>8)&255)/255).toFixed(4),
+      b = ((T.roadColor&255)/255).toFixed(4);
+  mat.toneMapped = false;                       // recolour in sRGB, output it verbatim
+  mat.onBeforeCompile = function(sh){
+    sh.fragmentShader = sh.fragmentShader.replace("#include <map_fragment>",
+      "#include <map_fragment>\n#ifdef USE_MAP\n" +
+      "  vec3 _s = pow(clamp(diffuseColor.rgb, 0.0, 1.0), vec3(0.45454545));\n" +   // linear -> sRGB
+      "  float _L = dot(_s, vec3(0.299, 0.587, 0.114)) * 255.0;\n" +
+      "  float _t = smoothstep(" + lo + ", " + hi + ", _L);\n" +
+      "  vec3 _o = _s * " + dim + " * (1.0 - _t) + vec3(" + r + ", " + g + ", " + b + ") * _t;\n" +
+      "  diffuseColor.rgb = pow(_o, vec3(2.2));\n" +                                 // sRGB -> linear
+      "#endif\n");
+  };
+  /* share ONE program across every tile of this theme (without this, each material
+     with an onBeforeCompile gets its own shader compile — 100+ compiles) */
+  mat.customProgramCacheKey = function(){ return "bmRoad_" + lo + "_" + hi + "_" + dim + "_" + r + g + b; };
 }
 var basemapGroup = null;
 /* throw away the current basemap (geometry + textures) so it can be rebuilt in
@@ -1710,7 +1701,7 @@ function buildBasemap(){
   var x0 = Math.floor(_lon2tile(GEO.lng-dLng, z)), x1 = Math.floor(_lon2tile(GEO.lng+dLng, z));
   var y0 = Math.floor(_lat2tile(GEO.lat+dLat, z)), y1 = Math.floor(_lat2tile(GEO.lat-dLat, z));
   var loader = new THREE.TextureLoader(); loader.setCrossOrigin("anonymous");
-  var hi = (window.devicePixelRatio > 1.4) ? "@2x" : "";
+  var hi = "";                                  // 1x tiles: the basemap is a faded backdrop, so skip @2x — it quadruples texture memory/upload (real lag on mobile) for detail the recolour flattens anyway
   var additive = (T.basemapBlend === "additive");
   /* radial fade: tiles dissolve into the ground toward the rim so the basemap
      blends out smoothly instead of ending on a hard rectangular edge */
@@ -1737,9 +1728,9 @@ function buildBasemap(){
       var mat = new THREE.MeshBasicMaterial({color:T.basemapFallback, side:THREE.DoubleSide,
         transparent:true, opacity:fop, depthWrite:false,
         blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending});
+      basemapRecolor(mat, T);                    // GPU road re-grade (no per-tile canvas work)
       (function(m){ loader.load(url, function(tex){
-        var rt = new THREE.CanvasTexture(_roadGlowCanvas(tex.image, T)); rt.encoding = THREE.sRGBEncoding;
-        m.map = rt; m.color.setHex(0xffffff); m.needsUpdate = true;
+        tex.encoding = THREE.sRGBEncoding; m.map = tex; m.color.setHex(0xffffff); m.needsUpdate = true;
       }, undefined, function(){}); })(mat);
       var mesh = new THREE.Mesh(g, mat);
       mesh.renderOrder = -1;                      // under everything
