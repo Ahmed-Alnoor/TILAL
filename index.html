@@ -2637,7 +2637,9 @@ function unitWorld(u){
   /* footprint centroid lives in the group's local XY plane (z=0); the group's
      -90° X rotation then maps plan-Y -> world depth. (Passing it as (x,0,y)
      was the old bug that pinned every unit to the same world-Z line.) */
-  var p = new THREE.Vector3(sx/n, sy/n, 0).applyMatrix4(floorObjs[curFloor].group.matrixWorld);
+  var grp = floorObjs[curFloor].group;
+  grp.updateWorldMatrix(true, false);   // a shared/deep link locates a unit before the first render — make sure the group's world matrix is current, not the stale identity
+  var p = new THREE.Vector3(sx/n, sy/n, 0).applyMatrix4(grp.matrixWorld);
   p.y = cat(u.cat).h * 0.5;
   return p;
 }
