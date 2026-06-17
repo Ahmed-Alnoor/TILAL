@@ -1,0 +1,126 @@
+{
+ "T": [
+  0.0314,
+  -0.9855,
+  3308.2202,
+  0.9855,
+  0.0314,
+  -19.0647
+ ],
+ "det": 0.9721,
+ "scale": 0.986,
+ "GF": {
+  "labels": 310,
+  "polys": 257,
+  "assigned": 196,
+  "dup_dropped": [],
+  "cats": {
+   "fnb-seating": 10,
+   "kiosk": 35,
+   "line-shop": 86,
+   "fnb-cafe": 5,
+   "fnb-kiosk": 3,
+   "toilet": 12,
+   "fnb": 19,
+   "mini-major": 4,
+   "hypermarket": 1,
+   "circulation": 5,
+   "anchor": 2,
+   "mep": 6,
+   "boh": 7,
+   "tenant-store": 1
+  }
+ },
+ "F1": {
+  "labels": 324,
+  "polys": 459,
+  "assigned": 261,
+  "dup_dropped": [
+   {
+    "floor": "F1",
+    "code": "MT-FF-01",
+    "dropped_uid": "F10014",
+    "kept_uid": "FF-002",
+    "dropped_name": "MALE TOILET"
+   },
+   {
+    "floor": "F1",
+    "code": "FF-012",
+    "dropped_uid": "F10165",
+    "kept_uid": "FF-012",
+    "dropped_name": "LINE SHOP"
+   },
+   {
+    "floor": "F1",
+    "code": "FF-112",
+    "dropped_uid": "F10024",
+    "kept_uid": "F10459",
+    "dropped_name": "F&B"
+   }
+  ],
+  "cats": {
+   "toilet": 10,
+   "fnb-seating": 9,
+   "fc-seating": 32,
+   "line-shop": 86,
+   "mini-major": 3,
+   "fnb": 10,
+   "fnb-cafe": 4,
+   "fnb-kiosk": 3,
+   "circulation": 14,
+   "food-village": 34,
+   "mep": 28,
+   "boh": 22,
+   "cinema": 1,
+   "food-court": 2,
+   "fec": 2,
+   "anchor": 1
+  }
+ },
+ "BL": {
+  "labels": 282,
+  "polys": 398,
+  "assigned": 229,
+  "dup_dropped": [
+   {
+    "floor": "BL",
+    "code": "TS-BL-007",
+    "dropped_uid": "BL0411",
+    "kept_uid": "BL0404",
+    "dropped_name": "TENANT STORE"
+   },
+   {
+    "floor": "BL",
+    "code": "SV-BL-111",
+    "dropped_uid": "BL0318",
+    "kept_uid": "BL0124",
+    "dropped_name": "STORAGE"
+   },
+   {
+    "floor": "BL",
+    "code": "CB-BL-18",
+    "dropped_uid": "BL0250",
+    "kept_uid": "BL0126",
+    "dropped_name": "TETRA ROOM"
+   },
+   {
+    "floor": "BL",
+    "code": "TS-BL-009",
+    "dropped_uid": "BL0081",
+    "kept_uid": "BL0029",
+    "dropped_name": "TENANT STORE"
+   }
+  ],
+  "cats": {
+   "boh": 26,
+   "mep": 81,
+   "tenant-store": 83,
+   "management-suite": 6,
+   "circulation": 20,
+   "food-court": 1,
+   "toilet": 5,
+   "prayer-room": 6,
+   "hyper-store": 1
+  }
+ }
+}

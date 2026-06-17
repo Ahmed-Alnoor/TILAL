@@ -1,0 +1,2746 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#aec1da">
+<title>Tilal Mall — 3D Floor Plan</title>
+<style>
+  /* ---- golden-hour background: soft blue sky fading to a warm peach horizon.
+         Painted in CSS behind a transparent WebGL canvas (no noisy texture). ---- */
+  :root{
+    --ink:#2c2f38; --ink-soft:#5b606e;
+    --glass:rgba(255,255,255,.16); --glass-strong:rgba(255,255,255,.30);
+    --stroke:rgba(255,255,255,.45); --shadow:0 10px 34px rgba(60,44,24,.18);
+    --sheet:0px;   /* height of the open bottom sheet (card/dirform) so floating UI clears it */
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0; overflow:hidden; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink); -webkit-font-smoothing:antialiased;
+    background:
+      radial-gradient(130% 80% at 50% 108%, rgba(255,255,255,.55) 0%, rgba(255,255,255,0) 42%),
+      linear-gradient(180deg,#9fb6d6 0%, #bccbe0 40%, #d8e0ec 68%, #e9edf2 100%);
+  }
+  #app{position:fixed; inset:0;}
+  canvas{display:block; touch-action:none;}
+
+  /* ---------- top bar ---------- */
+  .topbar{
+    position:fixed; left:0; right:0; top:0; z-index:6;
+    display:flex; align-items:center; gap:10px;
+    padding:calc(env(safe-area-inset-top,0px) + 10px) 12px 10px;
+    pointer-events:none;
+  }
+  .brand{
+    pointer-events:auto; display:flex; align-items:center; gap:9px;
+    padding:8px 13px; border-radius:14px;
+    background:var(--glass); border:1px solid var(--stroke);
+    backdrop-filter:blur(16px) saturate(130%); -webkit-backdrop-filter:blur(16px) saturate(130%);
+    box-shadow:var(--shadow);
+  }
+  .brand .mark{width:20px;height:20px;border-radius:6px;
+    background:linear-gradient(135deg,#f6c885,#c98f4a); box-shadow:inset 0 0 0 1px rgba(255,255,255,.4);}
+  .brand b{font-size:15px; letter-spacing:.04em; font-weight:700;}
+  .brand span{font-size:11px; color:var(--ink-soft); letter-spacing:.06em; text-transform:uppercase;}
+  .spacer{flex:1;}
+
+  /* segmented floor switcher */
+  .floors{
+    pointer-events:auto; display:flex; gap:3px; padding:4px; border-radius:14px;
+    background:var(--glass); border:1px solid var(--stroke);
+    backdrop-filter:blur(16px) saturate(130%); -webkit-backdrop-filter:blur(16px) saturate(130%);
+    box-shadow:var(--shadow);
+  }
+  .floors button{
+    appearance:none; border:0; cursor:pointer; font:inherit; font-weight:600;
+    color:var(--ink-soft); background:transparent; border-radius:10px;
+    padding:8px 12px; min-width:40px; transition:.18s; line-height:1; font-size:13px;
+  }
+  .floors button .lvl{font-size:15px; font-weight:700; display:block;}
+  .floors button .nm{font-size:9px; letter-spacing:.05em; text-transform:uppercase; opacity:.75;}
+  .floors button.active{background:rgba(255,255,255,.62); color:var(--ink); box-shadow:0 4px 12px rgba(70,52,28,.14);}
+
+  /* ---------- hint ---------- */
+  .hint{
+    position:fixed; left:50%; transform:translateX(-50%); bottom:calc(env(safe-area-inset-bottom,0px) + 14px);
+    z-index:5; pointer-events:none; font-size:12px; color:var(--ink-soft);
+    background:var(--glass); border:1px solid var(--stroke); border-radius:999px;
+    padding:7px 14px; backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+    box-shadow:var(--shadow); opacity:0; transition:opacity .6s; white-space:nowrap;
+  }
+  .hint.show{opacity:1;}
+
+  /* ---------- left panel (Map / List + search) ---------- */
+  .icon-btn{pointer-events:auto; width:42px;height:42px; display:grid; place-items:center; flex:0 0 auto;
+    border:1px solid var(--stroke); border-radius:13px; background:var(--glass); color:var(--ink); cursor:pointer;
+    backdrop-filter:blur(16px) saturate(130%); -webkit-backdrop-filter:blur(16px) saturate(130%); box-shadow:var(--shadow);}
+  .icon-btn svg{width:20px;height:20px;}
+  .menu-btn{display:grid;}                       /* toggles the panel on every size */
+  .panel{
+    position:fixed; left:12px; top:calc(env(safe-area-inset-top,0px) + 70px); z-index:9;
+    width:300px; max-width:84vw; max-height:calc(100dvh - env(safe-area-inset-top,0px) - 90px);
+    display:flex; flex-direction:column; border-radius:18px; overflow:hidden;
+    background:var(--glass); border:1px solid var(--stroke);
+    backdrop-filter:blur(18px) saturate(140%); -webkit-backdrop-filter:blur(18px) saturate(140%);
+    box-shadow:var(--shadow); transition:transform .3s cubic-bezier(.2,.8,.2,1), opacity .3s;
+  }
+  /* hidden state — used on laptop/desktop (the menu button toggles it; mobile
+     uses .open instead, see the media query below) */
+  .panel.collapsed{transform:translateX(-118%); opacity:0; pointer-events:none;}
+  .seg{display:flex; gap:4px; padding:10px 10px 8px;}
+  .seg button{flex:1; display:flex; align-items:center; justify-content:center; gap:7px; cursor:pointer;
+    border:0; border-radius:11px; padding:9px; font:inherit; font-size:13px; font-weight:600; color:var(--ink-soft);
+    background:rgba(255,255,255,.28); transition:.16s;}
+  .seg button svg{width:16px;height:16px;}
+  .seg button.active{background:#fff; color:var(--ink); box-shadow:0 3px 10px rgba(70,52,28,.14);}
+  .search{display:flex; align-items:center; gap:8px; margin:0 10px 8px; padding:0 12px; color:var(--ink-soft);
+    background:rgba(255,255,255,.42); border:1px solid rgba(255,255,255,.5); border-radius:12px;}
+  .search svg{width:16px;height:16px;flex:0 0 auto;}
+  .search input{flex:1; min-width:0; border:0; background:transparent; outline:0; font:inherit; font-size:13.5px; color:var(--ink); padding:11px 0;}
+  /* inline search suggestions (no full-page list) */
+  .search-wrap{position:relative; padding:0 10px 8px; z-index:4;}
+  .search-wrap .search{margin:0;}
+  .suggest{position:absolute; left:10px; right:10px; top:calc(100% - 6px); z-index:6; display:none;
+    background:rgba(255,255,255,.97); border:1px solid var(--stroke); border-radius:14px; overflow:hidden auto;
+    max-height:54vh; box-shadow:0 16px 34px rgba(60,44,24,.2);}
+  .suggest.show{display:block;}
+  .sg-row{display:flex; align-items:center; gap:10px; padding:10px 12px; cursor:pointer; border-bottom:1px solid rgba(20,24,33,.05);}
+  .sg-row:last-child{border-bottom:0;}
+  .sg-row:hover{background:rgba(47,116,208,.08);}
+  .sg-sw{width:11px;height:11px;border-radius:3px;flex:0 0 auto;}
+  .sg-tx{flex:1;min-width:0;}
+  .sg-tx b{display:block;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .sg-tx span{font-size:11.5px;color:var(--ink-soft);}
+  .sg-code{font-size:11px;color:var(--ink-soft);font-variant-numeric:tabular-nums;flex:0 0 auto;}
+  .sg-empty{padding:18px;text-align:center;color:var(--ink-soft);font-size:13px;}
+  .panel-body{flex:1; overflow-y:auto; padding:2px 8px 10px; -webkit-overflow-scrolling:touch;}
+  .panel-body::-webkit-scrollbar{width:0;}
+  .p-head{font-size:11px; letter-spacing:.07em; text-transform:uppercase; color:var(--ink-soft); margin:11px 8px 4px; font-weight:700;}
+  .row{display:flex; align-items:center; gap:10px; padding:8px; border-radius:10px; cursor:pointer; font-size:12.5px; transition:.15s;}
+  .row:hover{background:rgba(255,255,255,.3);}
+  .row.off{opacity:.38;}
+  .row .sw{width:13px;height:13px;border-radius:4px;flex:0 0 auto;box-shadow:inset 0 0 0 1px rgba(0,0,0,.06);}
+  .row .nm{flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .row .ct{color:var(--ink-soft); font-variant-numeric:tabular-nums; font-size:11.5px;}
+  .item{display:flex; align-items:center; gap:11px; padding:9px 8px; border-radius:11px; cursor:pointer; transition:.15s;}
+  .item:hover{background:rgba(255,255,255,.32);}
+  .item .ic{width:30px;height:30px;border-radius:9px;flex:0 0 auto; box-shadow:inset 0 0 0 1px rgba(255,255,255,.5);}
+  .item .tx{flex:1; min-width:0;}
+  .item .tx b{display:block; font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .item .tx span{font-size:11.5px; color:var(--ink-soft);}
+  .item .code{font-size:11px; color:var(--ink-soft); font-variant-numeric:tabular-nums; flex:0 0 auto;}
+  .empty{padding:26px 12px; text-align:center; color:var(--ink-soft); font-size:13px;}
+  /* ---------- right-side control stack ---------- */
+  .controls{position:fixed; right:14px; top:50%; transform:translateY(-50%); z-index:8;
+    display:flex; flex-direction:column; gap:8px;}
+  .ctrl{width:46px;height:46px; display:grid; place-items:center; cursor:pointer; color:var(--ink);
+    border:1px solid var(--stroke); border-radius:13px; background:var(--glass);
+    backdrop-filter:blur(16px) saturate(130%); -webkit-backdrop-filter:blur(16px) saturate(130%); box-shadow:var(--shadow); transition:.15s;}
+  .ctrl:hover{background:rgba(255,255,255,.6);}
+  .ctrl:active{transform:scale(.94);}
+  .ctrl svg{width:21px;height:21px;}
+  #myLoc{color:#2f74d0;}
+  /* ---------- outside-the-mall location prompt ---------- */
+  .loc-prompt{position:fixed; left:50%; bottom:calc(env(safe-area-inset-bottom,0px) + 18px + var(--sheet,0px)); transform:translate(-50%,160%);
+    z-index:11; display:flex; flex-direction:column; gap:11px; width:min(360px, calc(100vw - 24px)); padding:15px 16px 16px;
+    border-radius:18px; background:var(--glass-strong); border:1px solid var(--stroke);
+    backdrop-filter:blur(20px) saturate(140%); -webkit-backdrop-filter:blur(20px) saturate(140%);
+    box-shadow:var(--shadow); opacity:0; transition:transform .34s cubic-bezier(.2,.8,.2,1), opacity .34s;}
+  .loc-prompt.show{transform:translate(-50%,0); opacity:1;}
+  .loc-prompt .lp-txt{display:flex; flex-direction:column; gap:3px; padding-right:30px;}
+  .loc-prompt .lp-txt b{font-size:14.5px; font-weight:700;}
+  .loc-prompt .lp-txt span{font-size:12.5px; color:var(--ink-soft); line-height:1.45;}
+  .loc-prompt .lp-go{display:flex; align-items:center; justify-content:center; gap:8px; text-decoration:none; cursor:pointer;
+    border-radius:12px; padding:12px 14px; font-size:14px; font-weight:600; color:#fff; background:linear-gradient(135deg,#3f74c0,#2f5391);}
+  .loc-prompt .lp-go svg{width:16px;height:16px;}
+  .loc-prompt .lp-x{position:absolute; top:11px; right:11px; cursor:pointer; border:0; background:rgba(255,255,255,.5); color:var(--ink);
+    width:28px;height:28px; border-radius:50%; font-size:17px; line-height:1;}
+
+  /* ---------- info card ---------- */
+  .card{
+    position:fixed; z-index:7; left:12px; right:72px;   /* right gap reserves the control column so they never overlap */
+    bottom:calc(env(safe-area-inset-bottom,0px) + 12px);
+    border-radius:22px; overflow:hidden;
+    background:var(--glass-strong); border:1px solid var(--stroke);
+    backdrop-filter:blur(22px) saturate(150%); -webkit-backdrop-filter:blur(22px) saturate(150%);
+    box-shadow:var(--shadow);
+    transform:translateY(150%); opacity:0; transition:transform .36s cubic-bezier(.2,.8,.2,1), opacity .36s;
+  }
+  .card.show{transform:translateY(0); opacity:1;}
+  .card .hero{position:relative; height:150px; background:linear-gradient(135deg,#cbb98f,#9a7b48);}
+  .card .hero img{width:100%; height:100%; object-fit:cover; display:block;}
+  .card .hero-grad{position:absolute; inset:0; background:linear-gradient(180deg,rgba(20,24,33,.30) 0,rgba(20,24,33,0) 30%,rgba(20,24,33,.05) 52%,rgba(20,24,33,.74) 100%);}
+  .card .chip{display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; padding:6px 10px; border-radius:9px; background:rgba(255,255,255,.88); color:#33384a; box-shadow:0 2px 8px rgba(40,30,16,.18);}
+  .card .cat-chip{position:absolute; top:12px; left:12px;}
+  .card .cat-chip .cdot{width:11px;height:11px;border-radius:3px;}
+  .card .code-chip{background:rgba(30,52,90,.88); color:#fff; letter-spacing:.06em;}
+  .card .hero-tr{position:absolute; top:12px; right:12px; display:flex; align-items:center; gap:8px;}
+  .card .close{cursor:pointer; border:0; background:rgba(255,255,255,.92); color:#33384a; width:30px;height:30px;border-radius:50%; font-size:18px; line-height:1; flex:0 0 auto; box-shadow:0 2px 8px rgba(40,30,16,.18);}
+  .card .hero-title{position:absolute; left:16px; right:16px; bottom:12px; color:#fff;}
+  .card .hero-title h2{margin:0; font-size:20px; font-weight:700; letter-spacing:.01em; text-shadow:0 1px 10px rgba(0,0,0,.45);}
+  .card .hero-title .cat{margin:2px 0 0; font-size:12.5px; opacity:.92; letter-spacing:.02em; text-shadow:0 1px 8px rgba(0,0,0,.4);}
+  .card-body{padding:14px 16px 16px;}
+  .card .desc{margin:0 0 12px; font-size:13px; line-height:1.5; color:var(--ink-soft);
+    display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;}
+  .card .meta{display:flex; gap:8px; flex-wrap:wrap;}
+  .card .pill{font-size:12px; color:var(--ink); background:rgba(255,255,255,.46);
+    border:1px solid rgba(255,255,255,.55); border-radius:999px; padding:6px 11px; font-variant-numeric:tabular-nums;}
+  .card .pill b{font-weight:700; color:var(--ink-soft);}
+  .card .actions{display:flex; gap:7px; margin-top:14px;}
+  .card .act{flex:1; min-width:0; white-space:nowrap; cursor:pointer; border:1px solid rgba(255,255,255,.55); border-radius:13px;
+    padding:11px 7px; font:inherit; font-size:12.5px; font-weight:600; color:var(--ink); background:rgba(255,255,255,.42);
+    display:flex; align-items:center; justify-content:center; gap:5px; transition:.16s;}
+  .card .act svg{flex:0 0 auto;}
+  .card .act:hover{background:rgba(255,255,255,.62);}
+  .card .act svg{width:16px;height:16px;}
+  .card .act.primary{color:#fff; border-color:transparent; background:linear-gradient(135deg,#3f74c0,#2f5391);}
+  .card .act.primary:hover{filter:brightness(1.06);}
+
+  /* ---------- toast ---------- */
+  #toast{position:fixed; left:50%; bottom:calc(env(safe-area-inset-bottom,0px) + 96px); transform:translate(-50%,12px);
+    z-index:12; pointer-events:none; opacity:0; transition:.25s; font-size:13px; color:#fff;
+    background:rgba(34,40,54,.92); border-radius:999px; padding:10px 18px; box-shadow:var(--shadow); white-space:nowrap;}
+  #toast.show{opacity:1; transform:translate(-50%,0);}
+
+  /* ---------- route info bar ---------- */
+  .routebar{position:fixed; left:50%; top:calc(env(safe-area-inset-top,0px) + 74px); transform:translate(-50%,-130%);
+    z-index:10; display:flex; align-items:center; gap:14px; max-width:94vw; padding:10px 12px 10px 16px;
+    border-radius:16px; background:var(--glass-strong); border:1px solid var(--stroke);
+    backdrop-filter:blur(20px) saturate(140%); -webkit-backdrop-filter:blur(20px) saturate(140%);
+    box-shadow:var(--shadow); opacity:0; transition:transform .34s cubic-bezier(.2,.8,.2,1), opacity .34s;}
+  .routebar.show{transform:translate(-50%,0); opacity:1;}
+  .routebar .rb-main{display:flex; flex-direction:column; line-height:1.15; flex:0 0 auto;}
+  .routebar .rb-main b{font-size:16px;}
+  .routebar .rb-main span{font-size:12px; color:var(--ink-soft); font-variant-numeric:tabular-nums;}
+  .routebar .rb-od{font-size:12.5px; color:var(--ink); max-width:40vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .routebar .rb-step{display:none; align-items:center; gap:6px; cursor:pointer; border:0; border-radius:11px;
+    padding:9px 13px; font:inherit; font-size:12.5px; font-weight:600; color:#fff; background:linear-gradient(135deg,#d99e35,#c0892f);}
+  .routebar .rb-x{flex:0 0 auto; cursor:pointer; border:0; background:rgba(255,255,255,.4); color:var(--ink);
+    width:30px;height:30px; border-radius:50%; font-size:18px; line-height:1;}
+  @media (max-width:759px){ .routebar{flex-wrap:wrap; max-width:92vw;} .routebar .rb-od{max-width:60vw;} }
+
+  /* ---------- directions form ---------- */
+  .dirform{position:fixed; z-index:8; left:12px; right:72px; bottom:calc(env(safe-area-inset-bottom,0px) + 12px);
+    border-radius:22px; padding:16px 16px 18px; background:var(--glass-strong); border:1px solid var(--stroke);
+    backdrop-filter:blur(22px) saturate(150%); -webkit-backdrop-filter:blur(22px) saturate(150%); box-shadow:var(--shadow);
+    transform:translateY(150%); opacity:0; transition:transform .36s cubic-bezier(.2,.8,.2,1), opacity .36s;}
+  .dirform.show{transform:none; opacity:1;}
+  .df-head{display:flex; align-items:center; gap:11px; margin-bottom:12px;}
+  .df-icon{color:#2f5391;} .df-icon svg{width:22px;height:22px;}
+  .df-head h2{margin:0; font-size:20px; font-weight:700; flex:1;}
+  .df-x{cursor:pointer; border:0; background:rgba(255,255,255,.45); color:var(--ink); width:32px;height:32px;border-radius:50%;font-size:18px;line-height:1;}
+  .df-label{font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-soft); font-weight:700; margin:8px 2px 7px;}
+  .df-fieldwrap{position:relative;}
+  .df-field{display:flex; align-items:center; gap:10px; padding:0 14px; border:2px solid rgba(47,116,208,.55); border-radius:14px; background:rgba(255,255,255,.62);}
+  .df-field input{flex:1; min-width:0; border:0; background:transparent; outline:0; font:inherit; font-size:15px; padding:13px 0; color:var(--ink);}
+  .df-fdot{width:14px;height:14px;border-radius:50%;background:#2f74d0;box-shadow:0 0 0 3px rgba(47,116,208,.25);flex:0 0 auto;display:none;}
+  .df-field.has-origin .df-fdot{display:block;}
+  .df-suggest{position:absolute; left:0; right:0; top:calc(100% + 6px); z-index:6; display:none;
+    background:#fff; border:1px solid var(--stroke); border-radius:14px; overflow:hidden auto; max-height:42vh; box-shadow:0 16px 34px rgba(60,44,24,.2);}
+  .df-suggest.show{display:block;}
+  .df-dest{display:flex; align-items:center; gap:10px; padding:13px 14px; border-radius:14px; background:rgba(20,40,80,.06); color:var(--ink);}
+  .df-dest svg{width:18px;height:18px;color:#2f5391;flex:0 0 auto;}
+  .df-dest span{font-size:14.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .df-actions{display:flex; gap:10px; margin-top:16px;}
+  .df-go{flex:1; display:flex; align-items:center; justify-content:center; gap:8px; cursor:pointer; border:0; border-radius:14px;
+    padding:14px; font:inherit; font-size:15px; font-weight:700; color:#fff; background:linear-gradient(135deg,#3f74c0,#2f5391); box-shadow:0 6px 18px rgba(47,83,145,.3);}
+  .df-go svg{width:18px;height:18px;}
+  .df-clear{cursor:pointer; border:1px solid var(--stroke); border-radius:14px; padding:14px 22px; font:inherit; font-size:15px; font-weight:600; color:var(--ink); background:rgba(255,255,255,.5);}
+  @media (min-width:760px){ .dirform{left:auto; right:72px; bottom:18px; width:360px;} }
+
+  /* ---------- full-page directory (List) ---------- */
+  .directory{position:fixed; inset:0; z-index:16; display:flex; flex-direction:column;
+    background:radial-gradient(120% 80% at 80% 0%, rgba(255,240,210,.75), rgba(255,240,210,0) 46%),
+      linear-gradient(180deg, rgba(248,244,237,.97), rgba(245,234,217,.98));
+    backdrop-filter:blur(20px) saturate(140%); -webkit-backdrop-filter:blur(20px) saturate(140%);
+    opacity:0; pointer-events:none; transform:translateY(14px); transition:opacity .3s, transform .3s;}
+  .directory.open{opacity:1; pointer-events:auto; transform:none;}
+  .dir-head{display:flex; align-items:center; gap:12px; padding:calc(env(safe-area-inset-top,0px) + 16px) 18px 8px;}
+  .dir-icon-btn{width:40px;height:40px;flex:0 0 auto;display:grid;place-items:center;cursor:pointer; color:var(--ink);
+    border:1px solid var(--stroke); border-radius:12px; background:rgba(255,255,255,.55);}
+  .dir-icon-btn svg{width:20px;height:20px;}
+  .dir-back{display:none;}
+  .directory.in-group .dir-back{display:grid;}
+  .dir-titles{flex:1; min-width:0;}
+  .dir-titles h2{margin:0; font-size:21px; font-weight:700; letter-spacing:.01em;}
+  .dir-titles p{margin:1px 0 0; font-size:12.5px; color:var(--ink-soft);}
+  .dir-map-btn{display:flex; align-items:center; gap:7px; cursor:pointer; flex:0 0 auto; border:0; border-radius:12px;
+    padding:10px 15px; font:inherit; font-size:13px; font-weight:600; color:#fff; background:linear-gradient(135deg,#3f74c0,#2f5391);
+    box-shadow:0 4px 14px rgba(47,83,145,.3);}
+  .dir-map-btn svg{width:16px;height:16px;}
+  .dir-search{display:flex; align-items:center; gap:9px; margin:6px 18px 10px; padding:0 14px; color:var(--ink-soft);
+    background:rgba(255,255,255,.66); border:1px solid rgba(255,255,255,.7); border-radius:14px; box-shadow:0 6px 18px rgba(60,44,24,.08);}
+  .dir-search svg{width:17px;height:17px;flex:0 0 auto;}
+  .dir-search input{flex:1; min-width:0; border:0; background:transparent; outline:0; font:inherit; font-size:15px; color:var(--ink); padding:13px 0;}
+  .dir-body{flex:1; overflow-y:auto; padding:4px 16px calc(env(safe-area-inset-bottom,0px) + 24px); -webkit-overflow-scrolling:touch;}
+  .dir-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(152px,1fr)); gap:12px; padding:6px 2px;}
+  .dir-card{display:flex; flex-direction:column; gap:11px; padding:16px; cursor:pointer; border-radius:18px;
+    background:rgba(255,255,255,.62); border:1px solid rgba(255,255,255,.7); box-shadow:0 8px 22px rgba(60,44,24,.08);
+    transition:transform .16s, box-shadow .16s;}
+  .dir-card:hover{transform:translateY(-2px); box-shadow:0 12px 28px rgba(60,44,24,.14);}
+  .dir-card .ci{width:46px;height:46px;border-radius:13px;display:grid;place-items:center;color:#fff; box-shadow:inset 0 0 0 1px rgba(255,255,255,.25);}
+  .dir-card .ci svg{width:24px;height:24px;}
+  .dir-card .cl{font-size:14.5px; font-weight:700; line-height:1.2;}
+  .dir-card .cn{font-size:12px; color:var(--ink-soft); margin-top:-4px;}
+  .dir-fhead{font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-soft); font-weight:700; margin:18px 6px 7px;}
+  .dir-list{display:grid; grid-template-columns:repeat(auto-fill, minmax(258px,1fr)); gap:8px;}
+  .dir-item{display:flex; align-items:center; gap:12px; padding:12px 14px; cursor:pointer; border-radius:14px;
+    background:rgba(255,255,255,.55); border:1px solid rgba(255,255,255,.6); transition:.15s;}
+  .dir-item:hover{background:rgba(255,255,255,.82);}
+  .dir-item .di{width:34px;height:34px;border-radius:10px;flex:0 0 auto; box-shadow:inset 0 0 0 1px rgba(255,255,255,.5);}
+  .dir-item .dt{flex:1; min-width:0;}
+  .dir-item .dt b{display:block; font-size:14px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .dir-item .dt span{font-size:12px; color:var(--ink-soft);}
+  .dir-item .dc{font-size:11.5px; color:var(--ink-soft); text-align:right; flex:0 0 auto; font-variant-numeric:tabular-nums;}
+  .dir-empty{padding:54px 16px; text-align:center; color:var(--ink-soft); font-size:14px;}
+
+  /* ---------- floating shop labels (Liquid Glass) ---------- */
+  #labels{position:fixed; inset:0; z-index:5; pointer-events:none; overflow:hidden;}
+  .lbl{position:absolute; top:0; left:0; display:flex; flex-direction:row; flex-wrap:nowrap; align-items:center; gap:7px; white-space:nowrap; width:max-content;
+    font-size:12px; font-weight:600; letter-spacing:.01em; color:#1b2230;
+    padding:5px 13px 5px 6px; border-radius:999px;
+    background:linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,.28));
+    backdrop-filter:blur(22px) saturate(180%); -webkit-backdrop-filter:blur(22px) saturate(180%);
+    border:1px solid rgba(255,255,255,.65);
+    box-shadow:0 8px 24px rgba(30,36,54,.22), inset 0 1px 0 rgba(255,255,255,.85), inset 0 -6px 12px rgba(255,255,255,.18);
+    transition:opacity .6s ease; will-change:transform;}
+  .lbl.hide{opacity:0;}
+  .lbl .ic{width:23px;height:23px;flex:0 0 auto;border-radius:8px;display:grid;place-items:center;color:#fff;
+    background:linear-gradient(135deg,#4a7fcf,#2f5391); box-shadow:0 2px 7px rgba(47,83,145,.45), inset 0 1px 0 rgba(255,255,255,.4);}
+  .lbl .ic svg{width:14px;height:14px;}
+
+  /* ---------- loader ---------- */
+  #loader{
+    position:fixed; inset:0; z-index:20; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:16px;
+    background:linear-gradient(180deg,#bccbe0,#e9edf2); transition:opacity .6s; color:var(--ink);
+  }
+  #loader.hide{opacity:0; pointer-events:none;}
+  .ring{width:46px;height:46px;border-radius:50%;
+    border:3px solid rgba(255,255,255,.45); border-top-color:#c98f4a; animation:spin 1s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  #loader .lbl{font-size:13px; letter-spacing:.14em; text-transform:uppercase; color:#6a5636;}
+  #loader .err{display:none; max-width:300px; text-align:center; font-size:13px; line-height:1.5; color:#7a3b2a;}
+
+  /* ---------- intro splash (liquid water-reveal loading screen) ----------
+     The front image (logo) sits over the back image (the map); pointer motion
+     reveals the map through a watery lens, then at 5s the whole map washes in.
+     Three dots pulse at the foot of the screen, and at 10s it fades to the
+     viewer. Self-contained WebGL — runs before Three.js, removes itself if the
+     two images aren't present. */
+  #intro{position:fixed; inset:0; z-index:60; opacity:1; transition:opacity .85s ease;
+    background:radial-gradient(120% 100% at 50% 32%, #1b2740 0%, #0a1020 68%, #05070d 100%);}
+  #intro.gone{opacity:0; pointer-events:none;}
+  #intro canvas{position:absolute; inset:0; width:100%; height:100%; display:block; touch-action:none;}
+  #introDots{position:absolute; left:50%; bottom:calc(env(safe-area-inset-bottom,0px) + 30px);
+    transform:translateX(-50%); display:flex; gap:11px; z-index:2; pointer-events:none;}
+  #introDots i{width:9px; height:9px; border-radius:50%; background:rgba(255,255,255,.92);
+    box-shadow:0 2px 9px rgba(0,0,0,.5); animation:introDot 1.25s infinite ease-in-out;}
+  #introDots i:nth-child(2){animation-delay:.16s;}
+  #introDots i:nth-child(3){animation-delay:.32s;}
+  @keyframes introDot{0%,75%,100%{opacity:.28; transform:translateY(0) scale(.82);}
+    38%{opacity:1; transform:translateY(-6px) scale(1);}}
+  @media (max-width:759px){ #introDots{bottom:calc(env(safe-area-inset-bottom,0px) + 24px);} }
+
+  /* ---------- NIGHT THEME ----------
+     A deep-navy "after dark" mood. Most surfaces use the CSS variables below,
+     so re-pointing those six does the bulk of the work; the rest are explicit
+     overrides for panels that hardcode a light fill. */
+  body.night{
+    --ink:#eaf0ff; --ink-soft:#9db0d6;
+    --glass:rgba(26,42,74,.52); --glass-strong:rgba(16,28,54,.80);
+    --stroke:rgba(120,155,225,.30); --shadow:0 12px 38px rgba(0,6,20,.6);
+    background:
+      radial-gradient(120% 75% at 50% -8%, rgba(48,92,170,.42) 0%, rgba(48,92,170,0) 46%),
+      radial-gradient(120% 90% at 50% 116%, rgba(22,58,128,.5) 0%, rgba(8,16,34,0) 52%),
+      linear-gradient(180deg,#060c1a 0%, #0a1228 46%, #0b1730 100%);
+  }
+  body.night .theme-toggle .ic-moon{display:none;}
+  body.night .theme-toggle .ic-sun{display:block;}
+  .theme-toggle .ic-sun{display:none;}
+  body.night #myLoc{color:#5fa8ff;}
+
+  /* floor switcher active pill */
+  body.night .floors button.active{background:rgba(90,140,225,.30); color:#fff; box-shadow:0 4px 12px rgba(0,10,30,.4);}
+  /* segmented Map/List */
+  body.night .seg button{background:rgba(120,160,230,.10); color:var(--ink-soft);}
+  body.night .seg button.active{background:rgba(90,140,225,.34); color:#fff; box-shadow:0 3px 10px rgba(0,10,30,.4);}
+  /* search field + suggestions */
+  body.night .search{background:rgba(120,160,230,.12); border-color:rgba(120,155,225,.28);}
+  body.night .suggest{background:rgba(16,26,50,.98); border-color:rgba(120,155,225,.28); box-shadow:0 16px 34px rgba(0,6,20,.6);}
+  body.night .sg-row{border-bottom-color:rgba(150,180,235,.10);}
+  body.night .sg-row:hover{background:rgba(90,140,225,.16);}
+  /* info card chips + pills + secondary buttons */
+  body.night .card .chip{background:rgba(225,235,255,.92); color:#16233f;}
+  body.night .card .pill{background:rgba(120,160,230,.14); border-color:rgba(120,155,225,.28);}
+  body.night .card .act{background:rgba(120,160,230,.14); border-color:rgba(120,155,225,.3);}
+  body.night .card .act:hover{background:rgba(120,160,230,.26);}
+  /* directions form */
+  body.night .dirform{background:rgba(14,24,48,.94); border-color:rgba(120,155,225,.32);}
+  body.night .df-icon{color:#6aa6ff;}
+  body.night .df-x{background:rgba(120,160,230,.18);}
+  body.night .df-field{background:rgba(120,160,230,.12); border-color:rgba(95,160,255,.7);}
+  body.night .df-suggest{background:rgba(16,26,50,.98); border-color:rgba(120,155,225,.28); box-shadow:0 16px 34px rgba(0,6,20,.6);}
+  body.night .df-dest{background:rgba(95,160,255,.14); border-color:rgba(95,160,255,.28);}
+  body.night .df-dest svg{color:#6aa6ff;}
+  body.night .df-clear{background:rgba(120,160,230,.12); border-color:rgba(120,155,225,.3);}
+  /* route info bar */
+  body.night .routebar{background:rgba(14,24,48,.94); border-color:rgba(120,155,225,.32);}
+  body.night .routebar .rb-x{background:rgba(120,160,230,.18);}
+  /* full-page directory */
+  body.night .directory{
+    background:radial-gradient(120% 80% at 80% 0%, rgba(48,92,170,.4), rgba(48,92,170,0) 46%),
+      linear-gradient(180deg, rgba(10,18,38,.98), rgba(8,16,34,.99));}
+  body.night .dir-icon-btn{background:rgba(120,160,230,.12);}
+  body.night .dir-search{background:rgba(120,160,230,.12); border-color:rgba(120,155,225,.28);}
+  body.night .dir-card{background:rgba(26,42,74,.5); border-color:rgba(120,155,225,.22); box-shadow:0 8px 22px rgba(0,6,20,.4);}
+  body.night .dir-card:hover{box-shadow:0 12px 28px rgba(0,6,20,.55);}
+  body.night .dir-item{background:rgba(26,42,74,.42); border-color:rgba(120,155,225,.2);}
+  body.night .dir-item:hover{background:rgba(90,140,225,.22);}
+  /* landmark / shop labels become dark glass with light text */
+  body.night .lbl{color:#eaf0ff;
+    background:linear-gradient(180deg, rgba(40,60,100,.62), rgba(20,34,64,.5));
+    border-color:rgba(140,175,240,.4);
+    box-shadow:0 8px 24px rgba(0,6,20,.5), inset 0 1px 0 rgba(180,205,255,.3), inset 0 -6px 12px rgba(60,100,180,.18);}
+  /* loader */
+  body.night #loader{background:linear-gradient(180deg,#0a1228,#0b1730);}
+  body.night #loader .lbl{color:#9db0d6; background:none; border:0; box-shadow:none; backdrop-filter:none; -webkit-backdrop-filter:none; padding:0;}
+  body.night .loc-prompt .lp-x{background:rgba(120,160,230,.18);}
+
+  /* ---------- responsive: laptop / desktop ---------- */
+  @media (min-width:760px){
+    .brand b{font-size:17px;}
+    .card{left:auto; right:72px; bottom:18px; width:340px;}
+    .card .hero{height:168px;}
+    .hint{font-size:12.5px;}
+  }
+  @media (max-width:759px){
+    .menu-btn{display:grid;}
+    /* bigger, easier floor tap targets (Basement / Ground / Level 1) */
+    .floors{gap:4px; padding:5px;}
+    .floors button{padding:10px 13px; min-width:48px;}
+    .floors button .lvl{font-size:16px;}
+    .panel{transform:translateX(-118%); opacity:0; pointer-events:none;
+      top:calc(env(safe-area-inset-top,0px) + 64px); width:min(330px,86vw);}
+    .panel.open{transform:none; opacity:1; pointer-events:auto;}
+    /* the "outside the mall" notice becomes a top banner so it can't collide with the card/controls */
+    .loc-prompt{top:calc(env(safe-area-inset-top,0px) + 62px); bottom:auto; transform:translate(-50%,-170%);}
+    .loc-prompt.show{transform:translate(-50%,0);}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .card,.panel{transition:none;} .ring{animation-duration:2.4s;}
+  }
+</style>
+</head>
+<body>
+  <script>
+    /* pre-paint theme guard: set the night class before the loader renders so
+       night users never see a light flash (init() re-confirms this shortly). */
+    try{
+      var _t0 = localStorage.getItem("tilal-theme");
+      if(_t0 !== "night" && _t0 !== "day") _t0 = (window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches) ? "night" : "day";
+      if(_t0 === "night") document.body.classList.add("night");
+    }catch(e){}
+  </script>
+  <div id="app"></div>
+  <div id="labels"></div>
+
+  <div class="topbar">
+    <button class="icon-btn menu-btn" id="menuBtn" aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+    <div class="spacer"></div>
+    <div class="floors" id="floors"></div>
+  </div>
+
+  <div class="panel" id="panel">
+    <div class="seg" id="seg">
+      <button data-mode="map" class="active" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></svg>Map</button>
+      <button data-mode="list" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg>List</button>
+    </div>
+    <div class="search-wrap">
+      <div class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg>
+        <input id="search" type="text" placeholder="Search shops, codes, categories…" autocomplete="off"/></div>
+      <div class="suggest" id="suggest"></div>
+    </div>
+    <div class="panel-body" id="panelBody"></div>
+  </div>
+
+  <div class="controls" id="controls">
+    <button class="ctrl theme-toggle" id="themeToggle" aria-label="Toggle day / night" type="button">
+      <svg class="ic-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.6 6.6 0 0 0 9.8 9.8z"/></svg>
+      <svg class="ic-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.6M12 18.9v2.6M4.6 4.6l1.9 1.9M17.5 17.5l1.9 1.9M2.5 12h2.6M18.9 12h2.6M4.6 19.4l1.9-1.9M17.5 6.5l1.9-1.9"/></svg>
+    </button>
+    <button class="ctrl" id="zoomIn" aria-label="Zoom in" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+    <button class="ctrl" id="zoomOut" aria-label="Zoom out" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/></svg></button>
+    <button class="ctrl" id="myLoc" aria-label="My location" type="button"><svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"><path d="M12 2.6 20 20.4a.9.9 0 0 1-1.25 1.1L12 18.2l-6.75 3.3A.9.9 0 0 1 4 20.4z"/></svg></button>
+    <button class="ctrl" id="recenter" aria-label="Recenter" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5V5.5a1.5 1.5 0 0 1 1.5-1.5h3M15.5 4h3A1.5 1.5 0 0 1 20 5.5v3M20 15.5v3a1.5 1.5 0 0 1-1.5 1.5h-3M8.5 20h-3A1.5 1.5 0 0 1 4 18.5v-3"/><circle cx="12" cy="12" r="1.7" fill="currentColor" stroke="none"/></svg></button>
+  </div>
+
+  <div class="loc-prompt" id="locPrompt">
+    <button class="lp-x" id="locPromptClose" aria-label="Dismiss" type="button">×</button>
+    <div class="lp-txt"><b>Outside the mall</b><span id="locPromptText">You're away from Tilal Mall.</span></div>
+    <a class="lp-go" id="locPromptLink" href="#" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>Open in Google Maps</a>
+  </div>
+
+  <div class="hint" id="hint">Drag to orbit · pinch to zoom · tap a unit</div>
+
+  <div class="card" id="card">
+    <div class="hero" id="cHero">
+      <img id="cImg" alt="" draggable="false"/>
+      <div class="hero-grad"></div>
+      <span class="chip cat-chip"><span class="cdot" id="cDot"></span><span id="cTag">—</span></span>
+      <div class="hero-tr">
+        <span class="chip code-chip" id="cCode"></span>
+        <button class="close" id="cClose" aria-label="Close">×</button>
+      </div>
+      <div class="hero-title"><h2 id="cName">—</h2><p class="cat" id="cCat">—</p></div>
+    </div>
+    <div class="card-body">
+      <p class="desc" id="cDesc"></p>
+      <div class="meta" id="cMeta"></div>
+      <div class="actions">
+        <button class="act primary" id="cDir" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21.7 11.3 12.7 2.3a1 1 0 0 0-1.4 0l-9 9a1 1 0 0 0 0 1.4l9 9a1 1 0 0 0 1.4 0l9-9a1 1 0 0 0 0-1.4z"/><path d="M9 14.5V12a2 2 0 0 1 2-2h3.5"/><path d="M12.5 7.5 15 10l-2.5 2.5"/></svg>Directions</button>
+        <button class="act" id="cLocate" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.3-7-11a7 7 0 0 1 14 0c0 4.7-7 11-7 11z"/><circle cx="12" cy="10" r="2.6"/></svg>Locate</button>
+        <button class="act" id="cShare" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="M8.3 10.8l7.4-4.3M8.3 13.2l7.4 4.3"/></svg>Share</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- directions form (replaces the shop card) -->
+  <div class="dirform" id="dirForm">
+    <div class="df-head">
+      <span class="df-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></span>
+      <h2>Directions</h2>
+      <button class="df-x" id="dfClose" aria-label="Close" type="button">×</button>
+    </div>
+    <div class="df-label">From — your nearest shop</div>
+    <div class="df-fieldwrap">
+      <div class="df-field" id="dfField"><span class="df-fdot" id="dfFdot"></span>
+        <input id="dfFrom" type="text" placeholder="Type a shop name or code…" autocomplete="off"/></div>
+      <div class="df-suggest" id="dfSuggest"></div>
+    </div>
+    <div class="df-label">To — destination</div>
+    <div class="df-dest"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.3-7-11a7 7 0 0 1 14 0c0 4.7-7 11-7 11z"/><circle cx="12" cy="10" r="2.6"/></svg><span id="dfDestText">—</span></div>
+    <div class="df-actions">
+      <button class="df-go" id="dfGo" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Show route</button>
+      <button class="df-clear" id="dfClear" type="button">Clear</button>
+    </div>
+  </div>
+
+  <!-- route info bar -->
+  <div class="routebar" id="routeBar">
+    <div class="rb-main"><b id="rbTime">— min</b><span id="rbDist">— m</span></div>
+    <div class="rb-od" id="rbOD"></div>
+    <button class="rb-step" id="rbStep" type="button"></button>
+    <button class="rb-x" id="rbClose" aria-label="End route" type="button">×</button>
+  </div>
+
+  <div id="toast"></div>
+
+  <!-- full-page directory (List) -->
+  <div class="directory" id="directory">
+    <div class="dir-head">
+      <button class="dir-icon-btn dir-back" id="dirBack" type="button" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <div class="dir-titles"><h2 id="dirTitle">Directory</h2><p id="dirSub">Browse by category</p></div>
+      <button class="dir-map-btn" id="dirClose" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></svg>Map</button>
+    </div>
+    <div class="dir-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg>
+      <input id="dirSearch" type="text" placeholder="Search shops, codes, categories…" autocomplete="off"/></div>
+    <div class="dir-body" id="dirBody"></div>
+  </div>
+
+  <div id="loader">
+    <div class="ring" id="spinner"></div>
+    <div class="lbl" id="loadLbl">Building 3D model…</div>
+    <div class="err" id="loadErr">Couldn’t load the 3D engine. This viewer needs an internet connection the first time (it fetches Three.js from a CDN).</div>
+  </div>
+
+  <div id="intro">
+    <canvas id="introCv"></canvas>
+    <div id="introDots"><i></i><i></i><i></i></div>
+  </div>
+
+<script>
+/* ============================================================================
+   Tilal Mall — 3D floor-plan viewer (single file, classic <script>, file://-safe)
+   Baked polygon data per floor is injected below. We build THREE.Shapes from the
+   pre-simplified points, extrude them with a soft bevel, light the scene for a
+   warm golden hour, and let you orbit / tap units.
+   ========================================================================== */
+var FLOORS = __FLOORDATA__;
+
+/* per-category look: label, soft palette colour, extrude height, group */
+/* per-category look + copy. c=colour, h=extrude height in world units — kept
+   in a tight 1.6–9 band so a tall anchor never hides a small restroom. The
+   golden (amber) and blue families are saturated so they read distinctly.
+   t=tag, d=description for the info card. */
+var CAT = {
+  hypermarket:{l:"Hypermarket",c:0x13233f,h:9,g:"lease",t:"Anchor Hypermarket",d:"An expansive hypermarket anchor for everyday essentials, fresh produce and household needs."},
+  "hyper-store":{l:"Hypermarket Storage",c:0x3a4150,h:3.5,g:"fac",t:"Hypermarket Storage",d:"Back-of-house storage serving the hypermarket anchor."},
+  anchor:{l:"Anchor Store",c:0x0e1d3a,h:9,g:"lease",t:"Anchor Store",d:"A flagship anchor store drawing footfall across the mall."},
+  "mini-major":{l:"Mini-Major",c:0x223f6c,h:7,g:"lease",t:"Mini-Major Store",d:"Larger-format mini-major stores across fashion and lifestyle."},
+  "line-shop":{l:"Retail Shop",c:0x3e567f,h:5,g:"lease",t:"Line Shop",d:"In-line retail boutiques presenting fashion, lifestyle and specialty brands."},
+  fnb:{l:"Restaurant",c:0x6e4718,h:5.5,g:"lease",t:"Dining & Restaurants",d:"Signature restaurants serving international and regional cuisine."},
+  "fnb-cafe":{l:"Café",c:0x80561f,h:5,g:"lease",t:"Café & Bakery",d:"Relaxed cafés, bakeries and coffee houses for a casual break."},
+  "fnb-kiosk":{l:"F&B Kiosk",c:0x6a4116,h:4.5,g:"lease",t:"F&B Kiosk",d:"Grab-and-go food kiosks and counters serving quick bites."},
+  "fnb-seating":{l:"F&B Seating",c:0x8f7a48,h:3.5,g:"lease",t:"F&B Seating",d:"Comfortable shared dining seating beside the F&B outlets."},
+  kiosk:{l:"Kiosk",c:0x643d12,h:4.5,g:"lease",t:"Retail Kiosk",d:"Compact retail kiosks and pop-ups lining the concourse."},
+  "kiosk-seating":{l:"Kiosk Seating",c:0x586e96,h:3.5,g:"lease",t:"Kiosk Seating",d:"Shared seating alongside the food and retail kiosks."},
+  "food-village":{l:"Food Village",c:0x6e4718,h:5.5,g:"lease",t:"Food Village",d:"A lively food village bringing together a world of flavours."},
+  "food-court":{l:"Food Court",c:0x6e4718,h:5.5,g:"lease",t:"Food Court Hall",d:"The central food court hall, a vibrant dining destination."},
+  "fc-seating":{l:"Food Court Seating",c:0x8f7a48,h:3.5,g:"lease",t:"Food Court Seating",d:"Light-filled food court seating at the heart of dining."},
+  fec:{l:"Family Entertainment",c:0x2a4877,h:7,g:"lease",t:"Family Entertainment",d:"Games, rides and attractions for the whole family."},
+  cinema:{l:"Cinema",c:0x0d1c34,h:9,g:"lease",t:"Cineplex",d:"A multi-screen cineplex showing the latest blockbusters."},
+  "customer-service":{l:"Customer Service",c:0x5e5848,h:5,g:"fac",t:"Guest Services",d:"Guest services and amenities for a seamless visit."},
+  "management-suite":{l:"Management",c:0x515c70,h:5,g:"fac",t:"Mall Management",d:"Mall management offices and administration suites."},
+  "tenant-store":{l:"Storage",c:0x4f4839,h:3.5,g:"fac",t:"Tenant Storage",d:"Dedicated tenant storage and stockrooms."},
+  "prayer-room":{l:"Prayer Room",c:0x5c5544,h:4.5,g:"fac",t:"Prayer Facilities",d:"Quiet prayer rooms with ablution facilities."},
+  circulation:{l:"Circulation",c:0xedeff3,h:1.6,g:"fac",t:"Concourse & Circulation",d:"Concourses, corridors and vertical circulation connecting the mall."},
+  mep:{l:"Building Services",c:0x4e4a3f,h:3,g:"fac",t:"MEP / Services",d:"Mechanical, electrical and plumbing plant serving the building."},
+  boh:{l:"Back of House",c:0x524e42,h:3,g:"fac",t:"Back of House",d:"Back-of-house service and support spaces."},
+  toilet:{l:"Restroom",c:0x5a6c8e,h:4.5,g:"fac",t:"Restrooms",d:"Premium guest restroom facilities, conveniently located."},
+  /* legacy aliases so any stray value still renders */
+  hyper:{l:"Hypermarket",c:0x13233f,h:9,g:"lease",t:"Anchor Hypermarket",d:"An expansive hypermarket anchor."},
+  retail:{l:"Retail Shop",c:0x3e567f,h:5,g:"lease",t:"Line Shop",d:"In-line retail boutiques."},
+  specialty:{l:"Retail Shop",c:0x3e567f,h:5,g:"lease",t:"Line Shop",d:"In-line retail boutiques."},
+  "specialty-retail":{l:"Retail Shop",c:0x3e567f,h:5,g:"lease",t:"Line Shop",d:"In-line retail boutiques."},
+  seating:{l:"Food Court Seating",c:0x8f7a48,h:3.5,g:"lease",t:"Food Court Seating",d:"Food court seating."},
+  service:{l:"Customer Service",c:0x5e5848,h:5,g:"fac",t:"Guest Services",d:"Guest services."},
+  "fnb-kiosk-seating-area":{l:"Kiosk Seating",c:0x586e96,h:3.5,g:"lease",t:"Kiosk Seating Area",d:"Shared kiosk seating."},
+  "fc-kitchen":{l:"Food Court",c:0x6e4718,h:5.5,g:"lease",t:"Food Court Hall",d:"The central food court hall."},
+  "fv-kitchen":{l:"Food Village",c:0x6e4718,h:5.5,g:"lease",t:"Food Village",d:"The food village."}
+};
+var DEF = {l:"Unit",c:0xcfd6df,h:5,g:"fac",t:"Unit",d:""};
+/* halve all extrude heights -> a flatter, more elegant low-relief model */
+/* deepen every category colour at the source (so the legend swatches and the 3-D
+   blocks always match): drop lightness, nudge saturation. Mid/dark tones deepen
+   the most; the light concourse only softens a touch so shops still read against it.
+   This is what makes the palette read rich & elegant instead of pale/pastel. */
+function deepen(hex){
+  var r=(hex>>16&255)/255, g=(hex>>8&255)/255, b=(hex&255)/255;
+  var mx=Math.max(r,g,b), mn=Math.min(r,g,b), l=(mx+mn)/2, h=0, s=0, d=mx-mn;
+  if(d){ s = l>0.5 ? d/(2-mx-mn) : d/(mx+mn);
+    h = mx===r ? (g-b)/d+(g<b?6:0) : mx===g ? (b-r)/d+2 : (r-g)/d+4; h/=6; }
+  l *= (l > 0.78 ? 0.9 : 0.78);
+  s = Math.min(1, s*1.12);
+  function f(p,q,t){ if(t<0)t+=1; if(t>1)t-=1; if(t<1/6)return p+(q-p)*6*t; if(t<1/2)return q; if(t<2/3)return p+(q-p)*(2/3-t)*6; return p; }
+  var q = l<0.5 ? l*(1+s) : l+s-l*s, p=2*l-q;
+  return (Math.round(f(p,q,h+1/3)*255)<<16) | (Math.round(f(p,q,h)*255)<<8) | Math.round(f(p,q,h-1/3)*255);
+}
+for(var _hk in CAT){ CAT[_hk].h *= 0.5; CAT[_hk].c = deepen(CAT[_hk].c); } DEF.h *= 0.5; DEF.c = deepen(DEF.c);
+function cat(k){ return CAT[k] || DEF; }
+
+/* mall contact + per-unit photo pools (served from /images, work over file:// too) */
+var CONTACT = {phone:"+971 123 456 789", email:"hello@tilalgrandmall.ae", hours:"10:00 — 22:00"};
+function _enc(n){ return "images/" + n.replace(/&/g,"%26").replace(/ /g,"%20"); }
+var IMGS = {
+  "line-shop":["shop.webp","shop (2).webp","shop (3).webp","shop (4).webp","shop (5).webp","shop (6).webp","shopping.webp","shoops in first floor.webp"],
+  anchor:["family shooping.webp","shop (4).webp","shopping.webp"],
+  "mini-major":["shop (5).webp","shop (2).webp","family shooping.webp"],
+  fnb:["F&b.webp","F&B (3).webp","f&b (2).webp","external food resturant.webp","external first floor f&b.webp"],
+  "fnb-cafe":["CAFE.webp","CAFE (2).webp","external caffe.webp"],
+  "fnb-kiosk":["F&b KIOSK.webp","F&b KIOSK (2).webp"],
+  "fnb-seating":["F&B Seating (5).webp","F&b SEATING (4).webp","F&b seating (2).webp","F&b seating (3).webp"],
+  kiosk:["KIOSK.webp","KIOSK (2).webp","KIOSK (3).webp","KIOSK (4).webp","KIOSK (9).webp","kiosk (5).webp","kiosk (6).webp","kiosk (7).webp","kiosk (8).webp"],
+  "kiosk-seating":["F&b seating (3).webp","F&b seating (2).webp"],
+  "food-court":["food court.webp"], "fc-seating":["food court.webp"],
+  "food-village":["food village.webp","food village (2).webp"],
+  hypermarket:["hyper market.webp"], cinema:["cinema.webp"],
+  fec:["entertarnemnt.webp","edutarnemtn.webp"], "customer-service":["medical.webp"]
+};
+function imageFor(u){ var pool = IMGS[u.cat];
+  if(pool && pool.length){ var h=0, id=u.id||""; for(var i=0;i<id.length;i++) h=(h*31+id.charCodeAt(i))>>>0; return _enc(pool[h%pool.length]); }
+  return ""; }
+
+/* escalator positions (raw plan/viewBox units, Ground + Level 1 only) */
+var ESCALATORS = {
+  G:[[1370,973],[1068,1081],[1372,1356],[1684,1279],[1995,1360],[2350,1017],[2031,1009],[1031,1275],[1693,1515],[2339,1275],[1315,1180],[2026,1169]],
+  F1:[[1370,943],[1985,945],[1002,1022],[1918,1397],[2329,1011],[1704,1481],[2253,1245]]
+};
+/* the baked model is mirrored on X (see MIRROR_X in build_3d_data.py); mirror
+   the escalator coords to match so the pins + routing land on the right units. */
+for(var _ef in ESCALATORS){ ESCALATORS[_ef].forEach(function(p){ p[0] = -p[0]; }); }
+var PLAN_SCALE = 0.11;   // must match tools/build_3d_data.py
+/* real-world georeference (matches the 2.5D map) — mall centre + footprint */
+var GEO = {lat:25.266544, lng:55.583265, mallWidthM:540, rotDeg:67};
+
+var FLOOR_ORDER = ["BL","G","F1"];
+var FLOOR_SHORT = {BL:"B", G:"G", F1:"1"};
+var FLOOR_SUB = {BL:"Basement", G:"Ground", F1:"Level 1"};
+
+/* ---- CDN loader: classic scripts (work from file://), with a fallback host.
+        r137 still ships examples/js global builds, which is why we pin it. ---- */
+var CDNS = ["https://cdn.jsdelivr.net/npm/three@0.137.0","https://unpkg.com/three@0.137.0"];
+var SCRIPTS = ["/build/three.min.js","/examples/js/controls/OrbitControls.js","/examples/js/utils/BufferGeometryUtils.js"];
+
+function loadFrom(hostIdx){
+  var host = CDNS[hostIdx];
+  var i = 0;
+  (function next(){
+    if(i >= SCRIPTS.length){ _threeReady = true; maybeBoot(); return; }
+    var s = document.createElement("script");
+    s.src = host + SCRIPTS[i];
+    s.onload = function(){ i++; next(); };
+    s.onerror = function(){
+      if(hostIdx + 1 < CDNS.length){ loadFrom(hostIdx + 1); }   // try the other CDN
+      else { showLoadError(); }
+    };
+    document.head.appendChild(s);
+  })();
+}
+function showLoadError(){
+  document.getElementById("spinner").style.display = "none";
+  document.getElementById("loadLbl").style.display = "none";
+  document.getElementById("loadErr").style.display = "block";
+}
+/* The intro runs its own WebGL context. Mobile browsers (and the headless GPU)
+   cap how many live WebGL contexts exist, so we let Three.js DOWNLOAD during the
+   intro (network overlaps, no wasted time) but defer init() — which creates the
+   second context — until the intro hands off. Only one live context at a time. */
+var _threeReady = false, _introOver = false, _booted = false;
+function maybeBoot(){
+  if(_threeReady && _introOver && !_booted){ _booted = true; boot(); }
+}
+window.addEventListener("DOMContentLoaded", function(){ startIntro(); loadFrom(0); });
+
+/* ============================ intro / loading splash =======================
+   10-second branded loader. The front image (logo) sits over the back image
+   (the map). Moving the pointer reveals the map through a "liquid water" lens —
+   medium-sized ripples that heal after ~1.5s; at 5s the whole map washes into
+   view; three dots pulse at the foot of the page throughout; at 10s it fades to
+   the 3D viewer loading underneath. Pure self-contained WebGL — runs before
+   Three.js and quietly removes itself if the two images aren't present. */
+var INTRO = {
+  front: "images/Intro front.webp",   // logo (shown first)
+  back:  "images/intro back.webp",     // the map (revealed)
+  totalMs: 10000,                       // whole splash
+  revealAtMs: 5000,                     // when the full map washes in
+  revealDurMs: 1500,                    // how long that wash takes
+  rippleLife: 1.5,                      // seconds each pointer ripple lasts
+  rippleR: 0.17                         // medium radius (aspect-space; 0.5 = half screen height)
+};
+var INTRO_N = 20;                       // max simultaneous ripples (matches the shader)
+var _introGL = null, _introExt = null, _introRAF = 0, _introRips = [], _introStart = 0, _introResize = null;
+
+function startIntro(){
+  if(!document.getElementById("intro")){ _introOver = true; maybeBoot(); return; }
+  var front = new Image(), back = new Image(), n = 0, dead = false;
+  function fail(){ if(dead) return; dead = true; removeIntro(); }       // images missing -> skip the splash
+  function ok(){ if(dead) return; if(++n >= 2) runIntro(front, back); }
+  front.onload = ok; back.onload = ok;
+  front.onerror = fail; back.onerror = fail;
+  setTimeout(function(){ if(!dead && n < 2) fail(); }, 5000);
+  front.src = INTRO.front; back.src = INTRO.back;
+}
+function removeIntro(){
+  if(_introRAF) cancelAnimationFrame(_introRAF); _introRAF = 0;
+  if(_introResize){ window.removeEventListener("resize", _introResize); _introResize = null; }
+  if(_introExt){ try{ _introExt.loseContext(); }catch(e){} _introExt = null; }   // free the GL context BEFORE the 3D claims one
+  _introGL = null;
+  var host = document.getElementById("intro");
+  if(host && host.parentNode) host.parentNode.removeChild(host);
+  _introOver = true; maybeBoot();        // now safe to build the 3D (single live context)
+}
+var _introEnding = false;
+function endIntro(){
+  if(_introEnding) return; _introEnding = true;
+  var host = document.getElementById("intro");
+  if(!host){ removeIntro(); return; }
+  host.classList.add("gone");
+  setTimeout(removeIntro, 950);          // remove after the opacity fade
+}
+
+function runIntro(front, back){
+  var host = document.getElementById("intro"), cv = document.getElementById("introCv");
+  if(!host || !cv){ removeIntro(); return; }
+  var gl = cv.getContext("webgl", {alpha:false, antialias:true, premultipliedAlpha:false})
+        || cv.getContext("experimental-webgl", {alpha:false});
+  if(!gl){ removeIntro(); return; }      // no WebGL -> hand off to the normal loader underneath
+
+  var VS = "attribute vec2 aPos; varying vec2 vUv;" +
+           "void main(){ vUv = aPos*0.5 + 0.5; gl_Position = vec4(aPos,0.0,1.0); }";
+  var FS = [
+    "precision highp float;",
+    "#define N 20",
+    "varying vec2 vUv;",
+    "uniform vec2 uRes; uniform vec2 uImg; uniform float uTime; uniform float uReveal;",
+    "uniform vec2 uRip[N]; uniform float uAge[N]; uniform float uRipR; uniform float uLife;",
+    "uniform sampler2D uFront; uniform sampler2D uBack;",
+    "vec2 coverUV(vec2 uv){",
+    "  float rs = uRes.x/uRes.y, ri = uImg.x/uImg.y; vec2 st = uv;",
+    "  if(rs < ri){ st.x = uv.x*(rs/ri) + (1.0 - rs/ri)*0.5; }",
+    "  else       { st.y = uv.y*(ri/rs) + (1.0 - ri/rs)*0.5; }",
+    "  return st;",
+    "}",
+    "void main(){",
+    "  float aspect = uRes.x/uRes.y;",
+    "  vec2 p = (vUv - 0.5); p.x *= aspect;",                       // circular aspect space
+    "  float reveal = 0.0, sheen = 0.0; vec2 disp = vec2(0.0);",
+    "  disp += vec2(sin(vUv.y*40.0 + uTime*1.6), cos(vUv.x*40.0 + uTime*1.3)) * 0.0006;", // faint ambient shimmer (light)
+    "  for(int i=0;i<N;i++){",
+    "    float a = uAge[i];",
+    "    if(a < 0.0 || a > uLife) continue;",
+    "    vec2 dir = p - uRip[i]; float d = length(dir); float tn = a/uLife;",
+    "    float env = smoothstep(0.0,0.10,tn) * (1.0 - smoothstep(0.5,1.0,tn));",
+    "    float blob = 1.0 - smoothstep(uRipR*0.35, uRipR, d);",
+    "    reveal += blob*env;",
+    "    float wave = sin(d*52.0 - a*20.0) * exp(-d*8.0);",
+    "    disp += normalize(dir + 1e-5) * wave * 0.005 * env * blob;",  // lighter distortion
+    "    sheen += max(0.0, wave) * env * blob;",
+    "  }",
+    "  if(uReveal > 0.0){",                                          // full-map wash from 5s
+    "    float dC = length(p);",
+    "    float wob = 0.05*sin(atan(p.y, p.x)*7.0 + uTime*2.2) + 0.03*sin(dC*18.0 - uTime*3.0);",
+    "    float edge = uReveal*1.7; float e = (dC - edge)*6.0; float ring = exp(-e*e);",
+    "    float g = smoothstep(edge+0.12, edge-0.04, dC + wob);",
+    "    disp += normalize(p + 1e-5) * ring * 0.012; sheen += ring*0.3;",
+    "    reveal = max(reveal, g);",
+    "  }",
+    "  reveal = max(reveal, step(0.999, uReveal));",
+    "  reveal = clamp(reveal, 0.0, 1.0);",
+    "  vec3 frontC = texture2D(uFront, coverUV(vUv + disp*0.5)).rgb;",
+    "  vec3 backC  = texture2D(uBack,  coverUV(vUv + disp)).rgb;",
+    "  vec3 col = mix(frontC, backC, reveal) + vec3(sheen)*0.10;",   // subtle wet sheen at crests
+    "  gl_FragColor = vec4(col, 1.0);",
+    "}"
+  ].join("\n");
+
+  function sh(type, src){
+    var s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+    if(!gl.getShaderParameter(s, gl.COMPILE_STATUS)){ console.warn("intro shader:", gl.getShaderInfoLog(s)); return null; }
+    return s;
+  }
+  var vs = sh(gl.VERTEX_SHADER, VS), fs = sh(gl.FRAGMENT_SHADER, FS);
+  if(!vs || !fs){ removeIntro(); return; }
+  var prog = gl.createProgram(); gl.attachShader(prog, vs); gl.attachShader(prog, fs); gl.linkProgram(prog);
+  if(!gl.getProgramParameter(prog, gl.LINK_STATUS)){ console.warn("intro link:", gl.getProgramInfoLog(prog)); removeIntro(); return; }
+  gl.useProgram(prog);
+
+  var buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1,  -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
+  var aPos = gl.getAttribLocation(prog, "aPos");
+  gl.enableVertexAttribArray(aPos); gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+  function mkTex(img, unit){
+    var t = gl.createTexture(); gl.activeTexture(gl.TEXTURE0 + unit); gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, img);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    return t;
+  }
+  mkTex(front, 0); mkTex(back, 1);
+  var U = {};
+  ["uRes","uImg","uTime","uReveal","uRip","uAge","uRipR","uLife","uFront","uBack"].forEach(function(k){ U[k] = gl.getUniformLocation(prog, k); });
+  gl.uniform1i(U.uFront, 0); gl.uniform1i(U.uBack, 1);
+  gl.uniform2f(U.uImg, front.naturalWidth || 1, front.naturalHeight || 1);
+  gl.uniform1f(U.uRipR, INTRO.rippleR); gl.uniform1f(U.uLife, INTRO.rippleLife);
+  _introGL = gl; _introExt = gl.getExtension("WEBGL_lose_context");
+
+  function resize(){
+    var dpr = Math.min(window.devicePixelRatio || 1, 1.75);
+    cv.width = Math.round(cv.clientWidth * dpr); cv.height = Math.round(cv.clientHeight * dpr);
+    gl.viewport(0, 0, cv.width, cv.height);
+    gl.uniform2f(U.uRes, cv.width, cv.height);
+  }
+  _introResize = resize; window.addEventListener("resize", resize); resize();
+
+  /* ripples: each is {x,y in 0..1 uv, t0 ms}. Pointer motion (mouse, touch, pen)
+     spawns them, throttled; a slow auto-path keeps the water alive when idle / on
+     touch where there's no hover. */
+  _introRips = [];
+  function spawn(ux, uy){
+    _introRips.push({x:ux, y:uy, t0: performance.now()});
+    if(_introRips.length > INTRO_N) _introRips.shift();
+  }
+  var lastMove = 0, lastX = 0, lastY = 0;
+  function ptr(e){
+    var now = performance.now(); if(now - lastMove < 45) return;
+    var r = cv.getBoundingClientRect();
+    var ux = (e.clientX - r.left) / r.width, uy = 1.0 - (e.clientY - r.top) / r.height;
+    if(ux < 0 || ux > 1 || uy < 0 || uy > 1) return;
+    if(Math.abs(ux-lastX) + Math.abs(uy-lastY) < 0.008) return;
+    lastMove = now; lastX = ux; lastY = uy; spawn(ux, uy);
+  }
+  cv.addEventListener("pointermove", ptr);
+  cv.addEventListener("pointerdown", ptr);
+
+  var ages = new Float32Array(INTRO_N), rips = new Float32Array(INTRO_N * 2);
+  _introStart = performance.now();
+  setTimeout(endIntro, INTRO.totalMs + 60);   // hard backstop: end on time even if the RAF loop is ever interrupted
+  function frame(){
+    var t = performance.now() - _introStart, ts = t / 1000;
+    var aspect = cv.width / cv.height;
+    /* reveal follows the pointer only — no auto-ripples (then at 5s the whole map
+       washes in regardless, so touch users who never hovered still see it). */
+    for(var i=0;i<INTRO_N;i++){
+      var rp = _introRips[i];
+      if(rp){ ages[i] = (performance.now() - rp.t0)/1000; rips[i*2] = (rp.x-0.5)*aspect; rips[i*2+1] = rp.y-0.5; }
+      else  { ages[i] = -1.0; rips[i*2] = 0; rips[i*2+1] = 0; }
+    }
+    // drop expired ripples so fresh ones reuse the slots
+    while(_introRips.length && (performance.now() - _introRips[0].t0)/1000 > INTRO.rippleLife) _introRips.shift();
+    var rv = t >= INTRO.revealAtMs ? Math.min(1, (t - INTRO.revealAtMs)/INTRO.revealDurMs) : 0;
+    rv = rv*rv*(3.0-2.0*rv);                              // ease in/out
+    gl.uniform1f(U.uTime, ts); gl.uniform1f(U.uReveal, rv);
+    gl.uniform2fv(U.uRip, rips); gl.uniform1fv(U.uAge, ages);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+    if(t >= INTRO.totalMs){ endIntro(); return; }
+    _introRAF = requestAnimationFrame(frame);
+  }
+  _introRAF = requestAnimationFrame(frame);
+}
+
+/* ============================ the scene ==================================== */
+var renderer, scene, camera, controls, raycaster, ground;
+var floorObjs = {}, curFloor = "G", selected = null, highlightMesh = null, selectMarker = null, selectPulse = 0;
+var OFFSET = null, MODEL = {w:200, d:90, h:16};   // shared transform + size
+var idleTimer = null, isMobile = matchMedia("(max-width:760px)").matches;
+
+/* ---- day / night themes ----
+   Everything that has two looks lives here so applyTheme() can re-skin the whole
+   scene (lights, fog, ground, building materials, environment, basemap, garden)
+   without rebuilding geometry. */
+var THEME = "day", _hemi=null, _key=null, _fill=null, _bigGround=null, _envTex=null;
+var THEMES = {
+  day: {
+    metaColor:"#aec1da",
+    fog:0xedebe7, ground:0xedebe7, shadowOpacity:0.5, exposure:0.95,
+    hemiSky:0xeaf0fb, hemiGround:0x6f6c64, hemiInt:0.34,
+    keyColor:0xfff6ec, keyInt:1.7, fillColor:0xdce6f5, fillInt:0.3,
+    env:[["#e7eefa",0],["#eef2f7",0.46],["#f7f8fa",0.5],["#c4c0b6",0.6],["#8a857b",1]],
+    sun:"rgba(255,255,255,0.95)", sunPos:[366,60,80],
+    matMetal:0.0, matRough:0.7, matEnv:0.3, matEmissive:0x000000, matEmissiveInt:0,
+    nightMix:0,                          // 0 = keep true category colour
+    grassTint:0xffffff, treeTint:0xffffff, birdColor:"rgba(42,48,62,0.92)",
+    basemap:"voyager", basemapFallback:0xe9e7e2, basemapBlend:"normal",
+    roadColor:0xffffff, roadDim:0.78, roadCut:246, roadSoft:6,
+    /* route: subtle navy dots on the light floors (the original look) */
+    routeDot:0x12356e, routeDotR:0.95, routeStep:3.2, routeHalo:false,
+    routeOrigin:0x123a99, routeEsc:0xffa023, routeDest:0x9e1414, markerScale:1.0
+  },
+  night: {
+    metaColor:"#0a1228",
+    fog:0x0e1b38, ground:0x0b1530, shadowOpacity:0.24, exposure:1.12,
+    hemiSky:0x6a8cc0, hemiGround:0x26324e, hemiInt:1.12,        // brighter, lighter ambient from every direction so the plan lifts off the dark ground
+    keyColor:0xffe9c8, keyInt:1.45, fillColor:0x5c83c8, fillInt:1.0,   // warm golden key + a stronger cool counter-fill -> lit from all sides
+    env:[["#0b1730",0],["#16294d",0.45],["#27498a",0.5],["#0d1828",0.62],["#05080f",1]],
+    sun:"rgba(160,200,255,0.65)", sunPos:[300,52,95],
+    matMetal:0.22, matRough:0.42, matEnv:1.05, matEmissiveInt:0.42,
+    nightMix:0.26,                                               // keep the blocks near their true colour (not darkened into the navy background) so they read clearly
+    grassTint:0x5f7866, treeTint:0x71866f, birdColor:"rgba(160,190,235,0.82)",
+    basemap:"dark_all", basemapFallback:0x071525, basemapBlend:"additive",
+    roadColor:0xe2e6ec, roadDim:0.42, roadCut:38, roadSoft:13,   // dark_all roads sit ~40-60 lum; cut low so they catch and read light grey
+    routeDot:0x4aa6ff, routeDotR:0.75, routeStep:2.6, routeHalo:false,
+    routeOrigin:0x1e4fd0, routeEsc:0xffb347, routeDest:0xc62525, markerScale:1.0
+  }
+};
+function curTheme(){ return THEMES[THEME]; }
+/* per-channel linear blend of two 0xRRGGBB colours */
+function mixHex(a,b,t){
+  var ar=a>>16&255,ag=a>>8&255,ab=a&255, br=b>>16&255,bg=b>>8&255,bb=b&255;
+  return (Math.round(ar+(br-ar)*t)<<16)|(Math.round(ag+(bg-ag)*t)<<8)|Math.round(ab+(bb-ab)*t);
+}
+var NIGHT_NAVY = 0x0d1b34;
+/* set a building material to the look for the current theme, from its stored
+   base (day) colour. Night = darkened toward navy + a faint self-glow so each
+   block reads like a lit interior. */
+function applyMatTheme(mat){
+  var T=curTheme(), base=(mat.userData&&mat.userData.baseColor!=null)?mat.userData.baseColor:mat.color.getHex();
+  mat.metalness=T.matMetal; mat.roughness=T.matRough; mat.envMapIntensity=T.matEnv;
+  if(T.nightMix>0){
+    mat.color.setHex(mixHex(base, NIGHT_NAVY, T.nightMix));
+    mat.emissive.setHex(mixHex(base, 0x000000, 0.7));   // dim version of the identity colour
+    mat.emissiveIntensity=T.matEmissiveInt;
+  } else {
+    mat.color.setHex(base);
+    mat.emissive.setHex(0x000000); mat.emissiveIntensity=0;
+  }
+  mat.needsUpdate=true;
+}
+
+function boot(){
+  if(typeof THREE === "undefined"){ showLoadError(); return; }
+  try { init(); }
+  catch(e){ console.error(e); showLoadError(); }
+}
+
+function init(){
+  var app = document.getElementById("app");
+
+  /* decide the theme up front so every build step paints in the right palette */
+  THEME = initialTheme();
+  document.body.classList.toggle("night", THEME === "night");
+  var _meta = document.querySelector('meta[name="theme-color"]'); if(_meta) _meta.setAttribute("content", curTheme().metaColor);
+
+  renderer = new THREE.WebGLRenderer({antialias:true, alpha:true, powerPreference:"high-performance"});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 0.95;                 // slightly down for richer, deeper midtones
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;     // soft, no acne
+  renderer.shadowMap.autoUpdate = false;                // KEY PERF FIX: the scene/light are static,
+                                                        // so render the shadow only when something changes
+  app.appendChild(renderer.domElement);
+
+  scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(0xedebe7, 260, 720);        // neutral haze matching the page background (no yellow cast)
+
+  camera = new THREE.PerspectiveCamera(46, window.innerWidth/window.innerHeight, 1, 4000);
+
+  /* ---- warm late-afternoon sun from the top-right, long soft shadows to the left ---- */
+  _hemi = new THREE.HemisphereLight(0xeaf0fb, 0x6f6c64, 0.34);  // lower ambient -> shadow faces fall away (contrast = elegance), still neutral (no yellow)
+  scene.add(_hemi);
+
+  _key = new THREE.DirectionalLight(0xfff6ec, 1.7);  // crisp near-white daylight (a whisper warm, not yellow)
+  _key.position.set(220, 210, 140);                      // high in the sky so it reads from every angle, not just a low raking one
+  _key.castShadow = true;
+  _key.shadow.mapSize.set(2048, 2048);
+  _key.shadow.bias = -0.0004;
+  _key.shadow.normalBias = 0.8;
+  _key.shadow.radius = 4;                                // soft penumbra
+  scene.add(_key);
+  scene.add(_key.target);
+  window._key = _key;
+
+  _fill = new THREE.DirectionalLight(0xdce6f5, 0.3);  // gentle cool counter-fill so shadows stay readable, not dead
+  _fill.position.set(-150, 120, -120);
+  scene.add(_fill);
+
+  /* warm image-based lighting so the metallic blocks have a golden studio to
+     reflect (a metal with no environment renders nearly black). Baked once
+     from a canvas gradient + a bright sun hotspot -> PMREM. */
+  buildEnvironment();
+
+  /* large solid ground: extends past the basemap tiles and fades into the fog
+     horizon (no "cut"). Sat well below the tiles so the two planes never
+     z-fight / flicker when the camera moves. */
+  _bigGround = new THREE.Mesh(new THREE.PlaneGeometry(40000, 40000),
+                                 new THREE.MeshBasicMaterial({color:0xedebe7, fog:true}));
+  _bigGround.rotation.x = -Math.PI/2; _bigGround.position.y = -1.2; _bigGround.renderOrder = -2;
+  scene.add(_bigGround);
+
+  /* transparent ground that only catches a soft contact shadow */
+  ground = new THREE.Mesh(new THREE.PlaneGeometry(8000, 8000),
+                          new THREE.ShadowMaterial({color:0x1c1710, opacity:0.5, depthWrite:false}));   // darker, real shadow
+  ground.rotation.x = -Math.PI/2;
+  ground.position.y = -0.02;
+  ground.receiveShadow = true;
+  scene.add(ground);
+
+  raycaster = new THREE.Raycaster();
+
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.075;
+  controls.maxPolarAngle = 1.45;        // can't dip under the floor
+  controls.minPolarAngle = 0.18;
+  controls.rotateSpeed = 0.85;
+  controls.zoomSpeed = 0.9;
+  controls.panSpeed = 0.8;
+  controls.screenSpacePanning = false;
+  controls.autoRotate = false;          // no drift — the user is in full control
+  controls.enablePan = true;
+
+  buildFloorSwitcher();
+
+  /* build the visible floor first, reveal, then build the rest off the critical path */
+  buildFloor(curFloor);
+  showFloor(curFloor);
+  frameModel(true);
+  buildBirds();
+  buildFireflies();
+  buildGarden();
+  buildBasemap();
+  applyTheme(THEME, true);   // sync lights/fog/ground to the chosen theme (geometry already built in-theme)
+  renderPanel();
+  hideLoader();
+  revealHint();
+  applyDeepLink();
+
+  setTimeout(function(){
+    FLOOR_ORDER.forEach(function(f){ if(!floorObjs[f]) buildFloor(f); });
+  }, 60);
+
+  window.addEventListener("resize", onResize);
+  window.addEventListener("orientationchange", function(){ setTimeout(onResize, 250); });
+  if(window.visualViewport) window.visualViewport.addEventListener("resize", onResize);
+  setTimeout(onResize, 300);                      // settle after the mobile toolbar shows/hides
+  setupPicking();
+  document.getElementById("cClose").addEventListener("click", deselect);
+  document.getElementById("cLocate").addEventListener("click", locateSelected);
+  document.getElementById("cShare").addEventListener("click", shareSelected);
+  document.getElementById("cDir").addEventListener("click", function(){ if(selected) openDirForm(selected.unit); });
+  document.getElementById("dfClose").addEventListener("click", closeDirForm);
+  document.getElementById("dfGo").addEventListener("click", dfShowRoute);
+  document.getElementById("dfClear").addEventListener("click", dfClearForm);
+  var dfi=document.getElementById("dfFrom");
+  dfi.addEventListener("input", function(e){ dfRenderSuggest(e.target.value); });
+  dfi.addEventListener("focus", function(e){ dfRenderSuggest(e.target.value); });
+  document.getElementById("rbStep").addEventListener("click", routeStepFloor);
+  document.getElementById("rbClose").addEventListener("click", clearRoute);
+  document.getElementById("zoomIn").addEventListener("click", function(){ zoomBy(0.78); });
+  document.getElementById("zoomOut").addEventListener("click", function(){ zoomBy(1.28); });
+  document.getElementById("myLoc").addEventListener("click", myLocation);
+  document.getElementById("recenter").addEventListener("click", function(){ deselect(); defaultView(true); });
+  document.getElementById("themeToggle").addEventListener("click", toggleTheme);
+  document.getElementById("menuBtn").addEventListener("click", function(){
+    var p = document.getElementById("panel");
+    /* mobile slides the panel in/out with .open (hidden by default);
+       laptop/desktop shows it by default and hides it with .collapsed */
+    if(isMobile) p.classList.toggle("open");
+    else p.classList.toggle("collapsed");
+  });
+  document.querySelectorAll("#seg button").forEach(function(b){
+    b.addEventListener("click", function(){ setMode(b.dataset.mode); });
+  });
+  document.getElementById("search").addEventListener("input", function(e){ renderSuggest(e.target.value); });
+  document.getElementById("dirSearch").addEventListener("input", function(e){ searchQ = e.target.value.toLowerCase().trim(); dirGroup = null; renderDirectory(); });
+  document.addEventListener("pointerdown", function(e){ var sw=e.target.closest&&e.target.closest(".search-wrap"); if(!sw){ var sg=document.getElementById("suggest"); if(sg)sg.classList.remove("show"); } });
+  document.getElementById("dirBack").addEventListener("click", function(){ dirGroup = null; renderDirectory(); });
+  document.getElementById("dirClose").addEventListener("click", function(){
+    clearSearch(); setMode("map");
+  });
+  document.getElementById("locPromptClose").addEventListener("click", dismissLocPrompt);
+
+  animate();
+}
+
+/* -------- environment for metallic reflections (day: neutral sky; night: deep
+            navy with a cool moon-glow hotspot). Baked to PMREM. -------- */
+function buildEnvironment(){
+  if(!renderer || !scene) return;
+  var T = curTheme();
+  if(_envTex){ _envTex.dispose(); _envTex = null; }   // release the previous bake
+  var cv = document.createElement("canvas"); cv.width = 512; cv.height = 256;
+  var x = cv.getContext("2d");
+  var g = x.createLinearGradient(0, 0, 0, 256);
+  T.env.forEach(function(s){ g.addColorStop(s[1], s[0]); });
+  x.fillStyle = g; x.fillRect(0, 0, 512, 256);
+  var sp = T.sunPos;
+  var sun = x.createRadialGradient(sp[0], sp[1], 2, sp[0], sp[1], sp[2]);   // soft hotspot -> specular highlight
+  sun.addColorStop(0, T.sun); sun.addColorStop(1, "rgba(255,255,255,0)");
+  x.fillStyle = sun; x.beginPath(); x.arc(sp[0], sp[1], sp[2], 0, 7); x.fill();
+  var tex = new THREE.CanvasTexture(cv);
+  tex.mapping = THREE.EquirectangularReflectionMapping; tex.encoding = THREE.sRGBEncoding;
+  try{
+    var pm = new THREE.PMREMGenerator(renderer);
+    _envTex = pm.fromEquirectangular(tex).texture;
+    scene.environment = _envTex;
+    pm.dispose(); tex.dispose();          // PMREM has consumed the source texture
+  }catch(e){ _envTex = tex; scene.environment = tex; }   // fallback: raw equirect still tints the metal
+}
+
+/* the theme to open with: an explicit saved choice wins; otherwise follow the
+   device's colour-scheme preference (defaults to day). */
+function initialTheme(){
+  try{ var s = localStorage.getItem("tilal-theme"); if(s === "night" || s === "day") return s; }catch(e){}
+  return (window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches) ? "night" : "day";
+}
+
+/* ---- re-skin the whole scene for day / night without rebuilding geometry ---- */
+function applyTheme(theme, initial){
+  THEME = (theme === "night") ? "night" : "day";
+  var T = curTheme();
+  document.body.classList.toggle("night", THEME === "night");
+  var meta = document.querySelector('meta[name="theme-color"]'); if(meta) meta.setAttribute("content", T.metaColor);
+  try{ localStorage.setItem("tilal-theme", THEME); }catch(e){}
+  if(!scene) return;
+
+  /* lights + exposure */
+  if(_hemi){ _hemi.color.setHex(T.hemiSky); _hemi.groundColor.setHex(T.hemiGround); _hemi.intensity = T.hemiInt; }
+  if(_key){ _key.color.setHex(T.keyColor); _key.intensity = T.keyInt; }
+  if(_fill){ _fill.color.setHex(T.fillColor); _fill.intensity = T.fillInt; }
+  if(renderer) renderer.toneMappingExposure = T.exposure;
+
+  /* sky / ground / fog */
+  if(scene.fog) scene.fog.color.setHex(T.fog);
+  if(_bigGround) _bigGround.material.color.setHex(T.ground);
+  if(ground) ground.material.opacity = T.shadowOpacity;
+
+  buildEnvironment();   // re-bake reflections for the new sky
+
+  /* building blocks across every built floor */
+  Object.keys(floorObjs).forEach(function(f){
+    var m = floorObjs[f].meshes;
+    Object.keys(m).forEach(function(k){ if(m[k].material) applyMatTheme(m[k].material); });
+  });
+
+  /* garden grass + trees */
+  if(gardenGroup) gardenGroup.traverse(function(o){
+    if(!o.material) return;
+    if(o.userData.gardenTint === "grass") o.material.color.setHex(T.grassTint);
+    else if(o.userData.gardenTint === "tree") o.material.color.setHex(T.treeTint);
+  });
+
+  /* birds re-skin to a visible silhouette colour */
+  if(_birdTex && _birdTex.length){
+    _birdTex[0].dispose(); _birdTex[1].dispose();
+    _birdTex = [birdTexture(true), birdTexture(false)];
+    birds.forEach(function(b){ b.material.map = _birdTex[0]; b.material.needsUpdate = true; });
+  }
+
+  /* fireflies only glow at night */
+  if(fireflyPts) fireflyPts.visible = (THEME === "night");
+
+  /* basemap tile style (skip on first paint — it was already built in-theme) */
+  if(!initial){ disposeBasemap(); buildBasemap(); }
+
+  /* re-draw an active route so its dots/pins pick up the new theme's style */
+  if(ROUTE.active && !initial) drawRouteForFloor();
+
+  markShadow();
+}
+function toggleTheme(){ applyTheme(THEME === "day" ? "night" : "day"); }
+
+/* -------- distant birds: a few drifting silhouettes high in the sky. They
+            flap (2-frame texture swap) and slowly cross, and fade out as you
+            zoom in (only present in the wide "from afar" view). -------- */
+var birdGroup = null, birds = [], _birdTex = null;
+function birdTexture(spread){
+  var cv = document.createElement("canvas"); cv.width = cv.height = 64;
+  var x = cv.getContext("2d");
+  x.strokeStyle = curTheme().birdColor; x.lineWidth = 5; x.lineCap = "round"; x.lineJoin = "round";
+  x.beginPath();
+  if(spread){ x.moveTo(7,38); x.quadraticCurveTo(22,18,32,30); x.quadraticCurveTo(42,18,57,38); }  // wings up
+  else      { x.moveTo(10,30); x.quadraticCurveTo(22,40,32,31); x.quadraticCurveTo(42,40,54,30); }  // wings down
+  x.stroke();
+  var t = new THREE.CanvasTexture(cv); t.encoding = THREE.sRGBEncoding; return t;
+}
+function buildBirds(){
+  if(birdGroup || !MODEL) return;
+  _birdTex = [birdTexture(true), birdTexture(false)];
+  birdGroup = new THREE.Group(); scene.add(birdGroup);
+  var R = Math.max(MODEL.w, MODEL.d);
+  for(var i=0;i<12;i++){
+    var sp = new THREE.Sprite(new THREE.SpriteMaterial({
+      map:_birdTex[0], transparent:true, opacity:0, depthWrite:false, fog:true }));
+    var ang = Math.random()*Math.PI*2, rad = R*(0.65 + Math.random()*0.95);
+    sp.position.set(Math.cos(ang)*rad, MODEL.h*0.5 + R*(0.4 + Math.random()*0.45), Math.sin(ang)*rad);
+    var sc = 4 + Math.random()*3.5; sp.scale.set(sc, sc, 1);
+    var sp2 = 0.16 + Math.random()*0.12, dir = Math.random()*Math.PI*2;
+    sp.userData = {vx:Math.cos(dir)*sp2, vz:Math.sin(dir)*sp2, flap:Math.random()*6.28};
+    birdGroup.add(sp); birds.push(sp);
+  }
+}
+function updateBirds(){
+  if(!birds.length || !MODEL) return;
+  var R = Math.max(MODEL.w, MODEL.d), maxD = controls.maxDistance || R*2;
+  var dist = camera.position.distanceTo(controls.target);
+  var vis = Math.max(0, Math.min(1, (dist - maxD*0.30) / (maxD*0.35)));   // far -> visible, near -> gone
+  for(var i=0;i<birds.length;i++){
+    var b = birds[i], u = b.userData;
+    b.position.x += u.vx; b.position.z += u.vz;
+    if(Math.hypot(b.position.x, b.position.z) > R*2.4){ b.position.x = -b.position.x*0.9; b.position.z = -b.position.z*0.9; }
+    u.flap += 0.28;
+    b.material.map = _birdTex[Math.sin(u.flap) > 0 ? 0 : 1];
+    b.material.opacity = vis*0.6;
+    b.visible = vis > 0.02;
+  }
+}
+
+/* -------- fireflies: a dense cloud of tiny glowing dots drifting over the mall
+            like insects. One THREE.Points cloud (cheap); each point wanders on
+            its own little orbit and twinkles via per-point brightness. Only lit
+            at night (they'd be invisible / odd by day). ---- */
+var fireflyPts = null, _ffBase = [], _ffTex = null, FF_N = 720;
+function fireflyTexture(){
+  if(_ffTex) return _ffTex;
+  var cv = document.createElement("canvas"); cv.width = cv.height = 32;
+  var x = cv.getContext("2d");
+  var g = x.createRadialGradient(16,16,0, 16,16,16);
+  g.addColorStop(0, "rgba(255,255,255,1)");
+  g.addColorStop(0.35, "rgba(255,246,200,0.9)");
+  g.addColorStop(1, "rgba(255,240,170,0)");
+  x.fillStyle = g; x.beginPath(); x.arc(16,16,16,0,7); x.fill();
+  _ffTex = new THREE.CanvasTexture(cv); _ffTex.encoding = THREE.sRGBEncoding;
+  return _ffTex;
+}
+function buildFireflies(){
+  if(fireflyPts || !MODEL) return;
+  var R = Math.max(MODEL.w, MODEL.d) * 0.62;
+  var pos = new Float32Array(FF_N*3), col = new Float32Array(FF_N*3);
+  for(var i=0;i<FF_N;i++){
+    var ang = Math.random()*Math.PI*2, rad = R*Math.sqrt(Math.random());   // even areal spread
+    var cx = Math.cos(ang)*rad, cz = Math.sin(ang)*rad;
+    var cy = 1.5 + Math.random()*(MODEL.h*1.4 + 8);
+    _ffBase.push({x:cx, y:cy, z:cz,
+      r:0.6 + Math.random()*2.4,              // wander radius
+      sp:0.25 + Math.random()*0.7,            // wander speed
+      ph:Math.random()*6.28,                  // wander phase
+      tw:Math.random()*6.28,                  // twinkle phase
+      ts:0.7 + Math.random()*1.8});           // twinkle speed
+    pos[i*3]=cx; pos[i*3+1]=cy; pos[i*3+2]=cz;
+    col[i*3]=1; col[i*3+1]=0.95; col[i*3+2]=0.7;
+  }
+  var geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute("color", new THREE.BufferAttribute(col, 3));
+  var mat = new THREE.PointsMaterial({
+    size:1.15, map:fireflyTexture(), vertexColors:true, transparent:true, opacity:0.95,
+    depthWrite:false, blending:THREE.AdditiveBlending, sizeAttenuation:true, fog:true });
+  fireflyPts = new THREE.Points(geo, mat);
+  fireflyPts.visible = (THEME === "night");
+  scene.add(fireflyPts);
+}
+function updateFireflies(t){
+  if(!fireflyPts || !fireflyPts.visible) return;
+  var pos = fireflyPts.geometry.attributes.position, col = fireflyPts.geometry.attributes.color;
+  for(var i=0;i<_ffBase.length;i++){
+    var f = _ffBase[i], a = f.ph + t*f.sp;
+    pos.array[i*3]   = f.x + Math.cos(a)*f.r;
+    pos.array[i*3+1] = f.y + Math.sin(a*0.7)*f.r*0.6;
+    pos.array[i*3+2] = f.z + Math.sin(a)*f.r;
+    var k = 0.35 + 0.65*Math.max(0, Math.sin(f.tw + t*f.ts));   // twinkle 0.35..1
+    col.array[i*3]=k; col.array[i*3+1]=k*0.95; col.array[i*3+2]=k*0.7;
+  }
+  pos.needsUpdate = true; col.needsUpdate = true;
+}
+
+/* -------- garden: a lush grove of palms and leafy trees following the mall's
+            curved fan footprint, on a grass bed. Trees are 3-D (thin brown
+            trunk, full green crown); the grass is a tiled 2-D canvas texture
+            (it's only ever seen from above). Each species is one merged,
+            vertex-coloured template drawn through a single InstancedMesh. ---- */
+var GREENS = [0x4f8a39, 0x5fa047, 0x3f7a30, 0x6fb152, 0x468534];
+function randOf(arr){ return arr[(Math.random()*arr.length)|0]; }
+/* mergeBufferGeometries requires every part to be indexed, or none of them --
+   IcosahedronGeometry is never indexed, Cylinder/Cone always are, so flatten
+   everything to non-indexed before merging */
+function nonIndexed(g){ return g.index ? g.toNonIndexed() : g; }
+function paintGeo(g, hex){
+  var c = new THREE.Color(hex), n = g.attributes.position.count, arr = new Float32Array(n*3);
+  for(var i=0;i<n;i++){ arr[i*3]=c.r; arr[i*3+1]=c.g; arr[i*3+2]=c.b; }
+  g.setAttribute("color", new THREE.BufferAttribute(arr, 3));
+  return g;
+}
+/* a thin, tall, slightly leaning trunk shaded dark-brown at the base ->
+   lighter brown under the crown (vertex colour, no texture needed) */
+function trunkGeo(rTop, rBot, h, lean){
+  var g = nonIndexed(new THREE.CylinderGeometry(rTop, rBot, h, 6, 5, false));
+  g.translate(0, h/2, 0);
+  var pos = g.attributes.position, n = pos.count, arr = new Float32Array(n*3);
+  var cb = new THREE.Color(0x4a3119), ct = new THREE.Color(0x7d5634);
+  for(var i=0;i<n;i++){
+    var y = pos.getY(i), t = Math.max(0, Math.min(1, y/h));
+    pos.setX(i, pos.getX(i) + lean*t*t);                 // bend the lean into the upper trunk
+    arr[i*3]=cb.r+(ct.r-cb.r)*t; arr[i*3+1]=cb.g+(ct.g-cb.g)*t; arr[i*3+2]=cb.b+(ct.b-cb.b)*t;
+  }
+  pos.needsUpdate = true; g.computeVertexNormals();
+  g.setAttribute("color", new THREE.BufferAttribute(arr, 3));
+  return g;
+}
+/* a long, slim, drooping palm frond (a flattened blade) radiating from the crown */
+function frondGeo(len, droop, yaw, baseY){
+  var g = nonIndexed(new THREE.ConeGeometry(len*0.16, len, 4, 1, true));
+  g.translate(0, len/2, 0);
+  g.scale(0.5, 1, 1);                  // flatten into a blade
+  g.rotateZ(droop);                    // arch outward + down
+  g.translate(0, baseY, 0);
+  g.rotateY(yaw);
+  return paintGeo(g, randOf(GREENS));
+}
+/* slim palm (kept smaller than the mall blocks): brown trunk + a dense, drooping green crown */
+function palmTemplate(){
+  var h = 5.0 + Math.random()*2.0;
+  var parts = [ trunkGeo(0.17, 0.32, h, 0.8 + Math.random()*1.0) ];
+  var crownY = h*0.96;
+  for(var i=0;i<13;i++){                                  // outer drooping ring
+    var yaw = (i/13)*Math.PI*2 + Math.random()*0.35;
+    parts.push(frondGeo(2.4 + Math.random()*1.1, 1.18 + Math.random()*0.32, yaw, crownY));
+  }
+  for(i=0;i<6;i++){                                        // inner, more upright ring (fills the centre)
+    parts.push(frondGeo(1.5 + Math.random()*0.5, 0.55 + Math.random()*0.3, (i/6)*Math.PI*2 + 0.5, crownY + 0.25));
+  }
+  var core = nonIndexed(new THREE.IcosahedronGeometry(0.6, 0));   // hide the trunk top
+  core.translate(0, crownY, 0);
+  parts.push(paintGeo(core, randOf(GREENS)));
+  return THREE.BufferGeometryUtils.mergeBufferGeometries(parts, false);
+}
+/* rounded leafy tree: brown trunk + a clustered green canopy */
+function leafyTemplate(){
+  var h = 2.6 + Math.random()*1.5;
+  var parts = [ trunkGeo(0.14, 0.27, h, 0.4 + Math.random()*0.7) ];
+  var cy = h + 0.7;
+  for(var i=0;i<5;i++){
+    var r = 1.1 + Math.random()*0.8;
+    var g = nonIndexed(new THREE.IcosahedronGeometry(r, 1));
+    g.translate((Math.random()-0.5)*1.7, cy + (Math.random()-0.5)*1.2, (Math.random()-0.5)*1.7);
+    parts.push(paintGeo(g, randOf(GREENS)));
+  }
+  return THREE.BufferGeometryUtils.mergeBufferGeometries(parts, false);
+}
+
+/* a tiled, top-down grass texture: thousands of tiny blade strokes over a
+   mottled green base. Blades near an edge are duplicated on the opposite edge
+   so the tile repeats seamlessly. */
+var _grassTex = null;
+function grassTexture(){
+  if(_grassTex) return _grassTex;
+  var s = 512, cv = document.createElement("canvas"); cv.width = cv.height = s;
+  var x = cv.getContext("2d");
+  x.fillStyle = "#3f7a30"; x.fillRect(0, 0, s, s);
+  for(var i=0;i<28;i++){                                   // soft light/dark mottling
+    var g = x.createRadialGradient(Math.random()*s, Math.random()*s, 2, Math.random()*s, Math.random()*s, 60+Math.random()*90);
+    g.addColorStop(0, Math.random()>0.5 ? "rgba(120,180,80,0.45)" : "rgba(38,86,28,0.45)");
+    g.addColorStop(1, "rgba(0,0,0,0)");
+    x.fillStyle = g; x.fillRect(0, 0, s, s);
+  }
+  var greens = ["#5fa047","#6fb152","#478534","#3f7a30","#7cc15e"];
+  function blade(bx, by){
+    var len = 4+Math.random()*7, ang = -Math.PI/2 + (Math.random()-0.5)*1.1;
+    var mx = bx+Math.cos(ang-0.4)*len*0.6, my = by+Math.sin(ang-0.4)*len*0.6;
+    var ex = bx+Math.cos(ang)*len, ey = by+Math.sin(ang)*len;
+    x.strokeStyle = greens[(Math.random()*greens.length)|0];
+    x.lineWidth = 0.8+Math.random()*0.9; x.lineCap = "round";
+    x.beginPath(); x.moveTo(bx, by); x.quadraticCurveTo(mx, my, ex, ey); x.stroke();
+  }
+  for(i=0;i<9000;i++){
+    var bx = Math.random()*s, by = Math.random()*s; blade(bx, by);
+    if(bx<14) blade(bx+s, by); else if(bx>s-14) blade(bx-s, by);   // wrap for seamless tiling
+    if(by<14) blade(bx, by+s); else if(by>s-14) blade(bx, by-s);
+  }
+  var t = new THREE.CanvasTexture(cv);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.encoding = THREE.sRGBEncoding; t.anisotropy = 4;
+  _grassTex = t; return t;
+}
+
+/* convex hull (Andrew's monotone chain) of [x,z] points -> CCW ring. Used to
+   trace the mall's curved silhouette so the garden hugs it instead of a box. */
+function convexHull(pts){
+  pts = pts.slice().sort(function(a,b){ return a[0]-b[0] || a[1]-b[1]; });
+  if(pts.length < 3) return pts;
+  function cr(o,a,b){ return (a[0]-o[0])*(b[1]-o[1]) - (a[1]-o[1])*(b[0]-o[0]); }
+  var lo=[], up=[], i;
+  for(i=0;i<pts.length;i++){ while(lo.length>=2 && cr(lo[lo.length-2],lo[lo.length-1],pts[i])<=0) lo.pop(); lo.push(pts[i]); }
+  for(i=pts.length-1;i>=0;i--){ while(up.length>=2 && cr(up[up.length-2],up[up.length-1],pts[i])<=0) up.pop(); up.push(pts[i]); }
+  lo.pop(); up.pop(); return lo.concat(up);
+}
+function footprintHull(){
+  var pts = [];
+  FLOOR_ORDER.forEach(function(fk){
+    var fl = FLOORS[fk]; if(!fl) return;
+    fl.units.forEach(function(u){
+      for(var si=0; si<u.s.length; si++){
+        var o = u.s[si].o; if(!o) continue;
+        for(var i=0;i<o.length;i+=2) pts.push([o[i]-OFFSET.x, -o[i+1]-OFFSET.z]);   // -> world XZ
+      }
+    });
+  });
+  return convexHull(pts);
+}
+
+var gardenGroup = null;
+function buildGarden(){
+  if(gardenGroup || !MODEL) return;
+  var hull = footprintHull(); if(hull.length < 3) return;
+  gardenGroup = new THREE.Group(); scene.add(gardenGroup);
+
+  var n = hull.length, cx=0, cz=0, k;
+  for(k=0;k<n;k++){ cx+=hull[k][0]; cz+=hull[k][1]; }
+  cx/=n; cz/=n;
+  var gap = 1.5, band = 12;                                 // grass starts just outside, this deep (kept tight so it never reaches the road)
+
+  /* outward unit normal of edge a->b (flipped to face away from the centroid) */
+  function eNormal(a, b){
+    var nx = b[1]-a[1], ny = -(b[0]-a[0]), L = Math.hypot(nx,ny)||1; nx/=L; ny/=L;
+    if(nx*((a[0]+b[0])/2-cx) + ny*((a[1]+b[1])/2-cz) < 0){ nx=-nx; ny=-ny; }
+    return [nx, ny];
+  }
+  /* the mall is a fan: one long flat chord forms the "back". Find it (the longest
+     edge) and skip every edge whose outward normal points roughly the same way,
+     so the garden wraps only the curved arc (front + sides), leaving the back bare. */
+  var seg = [], longest = 0, back = [0,1];
+  for(k=0;k<n;k++){
+    var a = hull[k], b = hull[(k+1)%n], len = Math.hypot(b[0]-a[0], b[1]-a[1]), nrm = eNormal(a,b);
+    seg.push({a:a, b:b, len:len, nrm:nrm});
+    if(len > longest){ longest = len; back = nrm; }
+  }
+  var keep = seg.map(function(s){ return (s.nrm[0]*back[0] + s.nrm[1]*back[1]) < 0.67; });   // skip edges within ~48deg of the back
+
+  /* the kept edges form one contiguous arc; take the longest run so a stray
+     classification can never split it, then collect its vertex path */
+  var bestStart = 0, bestLen = 0, run = 0, runStart = 0;
+  for(k=0;k<2*n;k++){
+    if(keep[k%n]){ if(run===0) runStart = k%n; run++; if(run>bestLen){ bestLen = run; bestStart = runStart; } }
+    else run = 0;
+  }
+  bestLen = Math.min(bestLen, n);
+  var path = [seg[bestStart].a];
+  for(k=0;k<bestLen;k++) path.push(seg[(bestStart+k)%n].b);
+
+  function pushOut(p, dist){ var dx=p[0]-cx, dz=p[1]-cz, L=Math.hypot(dx,dz)||1; return [p[0]+dx/L*dist, p[1]+dz/L*dist]; }
+
+  /* grass bed: an open ribbon following the arc only (outer edge out, inner edge
+     back) -> a crescent with no strip across the flat back */
+  var bed = new THREE.Shape();
+  path.forEach(function(p,i){ var o=pushOut(p, gap+band); i ? bed.lineTo(o[0], -o[1]) : bed.moveTo(o[0], -o[1]); });   // shape XY; -z keeps it upright after the -90deg X rotation
+  for(k=path.length-1;k>=0;k--){ var o=pushOut(path[k], gap); bed.lineTo(o[0], -o[1]); }
+  bed.closePath();
+  var grass = grassTexture(); grass.repeat.set(1/9, 1/9);
+  var bedMesh = new THREE.Mesh(new THREE.ShapeGeometry(bed),
+    new THREE.MeshStandardMaterial({map:grass, color:curTheme().grassTint, roughness:0.97, metalness:0, envMapIntensity:0.5, side:THREE.DoubleSide}));
+  bedMesh.rotation.x = -Math.PI/2; bedMesh.position.y = 0.05;
+  bedMesh.receiveShadow = true;
+  bedMesh.userData.gardenTint = "grass";
+  gardenGroup.add(bedMesh);
+
+  /* trees: walk the arc at even steps, push each out into the band by a random
+     depth (-> several natural rows). The arc is open, so clamp (no wrap). */
+  var acc=[0]; for(k=1;k<path.length;k++) acc.push(acc[k-1] + Math.hypot(path[k][0]-path[k-1][0], path[k][1]-path[k-1][1]));
+  var arcLen = acc[acc.length-1] || 1;
+  function pointAt(d){ d=Math.max(0, Math.min(arcLen, d)); for(var i=1;i<path.length;i++){ if(d<=acc[i]){ var f=(d-acc[i-1])/((acc[i]-acc[i-1])||1); return [path[i-1][0]+(path[i][0]-path[i-1][0])*f, path[i-1][1]+(path[i][1]-path[i-1][1])*f]; } } return path[path.length-1]; }
+
+  var species = [
+    {geo:palmTemplate(),  list:[], sMin:0.6,  sVar:0.32},   // palm A
+    {geo:palmTemplate(),  list:[], sMin:0.55, sVar:0.34},   // palm B
+    {geo:leafyTemplate(), list:[], sMin:0.6,  sVar:0.34},   // leafy A
+    {geo:leafyTemplate(), list:[], sMin:0.55, sVar:0.38}    // leafy B
+  ];
+  var N = 185;                                              // dense along the (now tighter) arc band
+  for(k=0;k<N;k++){
+    var p = pointAt(((k + (Math.random()-0.5)*0.7)/(N-1))*arcLen);
+    var dx=p[0]-cx, dz=p[1]-cz, L=Math.hypot(dx,dz)||1; dx/=L; dz/=L;
+    var push = gap + 0.5 + Math.random()*(band-1.5);
+    var jit = (Math.random()-0.5)*2.6;
+    var X = p[0] + dx*push - dz*jit, Z = p[1] + dz*push + dx*jit;
+    var r = Math.random(), si = r<0.34 ? 0 : r<0.62 ? 1 : r<0.83 ? 2 : 3;
+    species[si].list.push([X, Z]);
+  }
+
+  var m = new THREE.Matrix4(), q = new THREE.Quaternion(), pos = new THREE.Vector3(), scl = new THREE.Vector3(), yAxis = new THREE.Vector3(0,1,0);
+  species.forEach(function(sp){
+    if(!sp.list.length) return;
+    var im = new THREE.InstancedMesh(sp.geo, new THREE.MeshStandardMaterial({vertexColors:true, color:curTheme().treeTint, flatShading:true, roughness:0.85, metalness:0, envMapIntensity:0.45}), sp.list.length);
+    im.castShadow = true; im.receiveShadow = true;
+    im.userData.gardenTint = "tree";
+    sp.list.forEach(function(xz, i){
+      pos.set(xz[0], 0, xz[1]);
+      q.setFromAxisAngle(yAxis, Math.random()*Math.PI*2);
+      var s = sp.sMin + Math.random()*sp.sVar;
+      scl.set(s, s*(0.9+Math.random()*0.3), s);
+      m.compose(pos, q, scl);
+      im.setMatrixAt(i, m);
+    });
+    im.instanceMatrix.needsUpdate = true;
+    gardenGroup.add(im);
+  });
+  markShadow();
+}
+
+/* -------- build shapes for one unit (outer ring + holes) -------- */
+function shapesFor(u){
+  var out = [];
+  for(var i=0;i<u.s.length;i++){
+    var sh = u.s[i], o = sh.o;
+    if(!o || o.length < 6) continue;
+    var shape = new THREE.Shape();
+    shape.moveTo(o[0], o[1]);
+    for(var k=2;k<o.length;k+=2) shape.lineTo(o[k], o[k+1]);
+    if(sh.h){
+      for(var hh=0;hh<sh.h.length;hh++){
+        var hole = sh.h[hh]; if(hole.length < 6) continue;
+        var p = new THREE.Path();
+        p.moveTo(hole[0], hole[1]);
+        for(var m=2;m<hole.length;m+=2) p.lineTo(hole[m], hole[m+1]);
+        shape.holes.push(p);
+      }
+    }
+    out.push(shape);
+  }
+  return out;
+}
+
+function extrudeUnit(u, height){
+  var shapes = shapesFor(u);
+  if(!shapes.length) return null;
+  /* no bevel: on the simplified, often-jagged unit outlines a bevel
+     self-intersects into spiky artefacts. Flat, sharp-edged extrusion
+     reads as a clean architectural block. */
+  var geo = new THREE.ExtrudeGeometry(shapes, { depth: height, bevelEnabled: false, steps: 1 });
+  geo.computeVertexNormals();
+  return geo;
+}
+
+/* -------- escalator markers (floating pins above the concourse) -------- */
+var _escTex = null;
+/* a compact low-poly 3-D escalator: an inclined ridged deck with side
+   balustrades + dark handrails. Built running along local +X and rising along
+   local +Z (the floor group maps +Z -> world up), centred on the origin with
+   its base on the floor. */
+function escalatorModel(){
+  var g = new THREE.Group();
+  var RUN = 7.0, W = 3.4, RISE = 2.7;
+  var len = Math.hypot(RUN, RISE), ang = Math.atan2(RISE, RUN);
+  var deckMat = new THREE.MeshStandardMaterial({color:0xccd2db, metalness:0.55, roughness:0.4});
+  var stepMat = new THREE.MeshStandardMaterial({color:0x9aa3b0, metalness:0.5, roughness:0.5});
+  var sideMat = new THREE.MeshStandardMaterial({color:0x8b94a1, metalness:0.35, roughness:0.55});
+  var railMat = new THREE.MeshStandardMaterial({color:0x232a35, metalness:0.45, roughness:0.45});
+  var x0 = -RUN/2;
+  var deck = new THREE.Mesh(new THREE.BoxGeometry(len, W, 0.4), deckMat);
+  deck.rotation.y = -ang; deck.position.set(0, 0, RISE/2); deck.castShadow = true; g.add(deck);
+  var n = 8;
+  for(var i=0;i<n;i++){ var t=(i+0.5)/n;
+    var st = new THREE.Mesh(new THREE.BoxGeometry(0.16, W-0.2, 0.5), stepMat);
+    st.rotation.y = -ang; st.position.set(x0 + RUN*t, 0, RISE*t + 0.28); g.add(st);
+  }
+  for(var s=-1;s<=1;s+=2){
+    var side = new THREE.Mesh(new THREE.BoxGeometry(len, 0.28, 1.25), sideMat);
+    side.rotation.y = -ang; side.position.set(0, s*(W/2-0.14), RISE/2 + 0.72); side.castShadow = true; g.add(side);
+    var rail = new THREE.Mesh(new THREE.BoxGeometry(len, 0.42, 0.34), railMat);
+    rail.rotation.y = -ang; rail.position.set(0, s*(W/2-0.14), RISE/2 + 1.45); g.add(rail);
+  }
+  return g;
+}
+var ESC_SPRITES = [];   // kept (empty) so updateEscScale stays a no-op
+function buildEscalators(fkey, group){
+  var list = ESCALATORS[fkey]; if(!list) return;
+  var cx=0, cy=0; list.forEach(function(p){ cx+=p[0]; cy+=p[1]; }); cx/=list.length; cy/=list.length;
+  list.forEach(function(p){
+    var m = escalatorModel();
+    m.scale.setScalar(0.25);                                  // tiny — only obvious when zoomed in
+    m.position.set(p[0]*PLAN_SCALE, p[1]*PLAN_SCALE, 0.1);   // base on the floor
+    m.rotation.z = Math.atan2(cy - p[1], cx - p[0]);         // run points in toward the concourse centre
+    group.add(m);
+  });
+}
+/* keep escalator pins a roughly constant, modest on-screen size (small when
+   zoomed in so they don't block the view, still legible when zoomed out) */
+var _v3 = null;
+function updateEscScale(){
+  if(!_v3) _v3 = new THREE.Vector3();
+  for(var i=0;i<ESC_SPRITES.length;i++){ var s=ESC_SPRITES[i];
+    if(!s.visible || !s.parent || !s.parent.visible) continue;
+    s.getWorldPosition(_v3);
+    var d = camera.position.distanceTo(_v3);
+    var sc = Math.max(3, Math.min(10, d*0.026));
+    s.scale.set(sc, sc, 1);
+  }
+}
+
+/* -------- real-world CARTO street basemap (georeferenced like the 2.5D map) ----
+   Tiles are placed as explicit world quads: geo -> plan (equirectangular, exactly
+   as the old map) -> rotate about the plan centre by GEO.rotDeg -> world, reusing
+   the same plan->world transform the floors use, so map + mall always align. ---- */
+function geoWorld(lat, lng){
+  var S = PLAN_SCALE;
+  var cx = OFFSET.x/S, cy = -OFFSET.z/S, planW = MODEL.w/S, mpu = GEO.mallWidthM/planW;
+  var E = (lng-GEO.lng)*111320*Math.cos(GEO.lat*Math.PI/180), N = (lat-GEO.lat)*110540;
+  var px = cx + E/mpu, py = cy - N/mpu;                       // plan, north-up
+  /* The baked floor plan is mirrored on X about the mall centre (MIRROR_X in
+     build_3d_data.py) — i.e. reflected across the WORLD X=0 plane after lay-flat.
+     The basemap must be mirrored across that SAME plane so streets + labels
+     register with the building and read the right way round. We do it by negating
+     the FINAL world X (not the pre-rotation dx): reflecting across world X=0 keeps
+     the +Z axis fixed, so the mall plot's flat edge stays exactly where the
+     building's flat edge is (no drift onto the roads), while the map un-mirrors
+     (Arabic reads correctly). Centre (rx=cx) maps to x=0, so the mall keeps its
+     exact location 25.266544, 55.583265. */
+  var R = GEO.rotDeg*Math.PI/180, dx = px-cx, dy = py-cy, co = Math.cos(R), si = Math.sin(R);
+  var rx = cx + dx*co - dy*si, ry = cy + dx*si + dy*co;        // rotate to building orientation
+  return new THREE.Vector3(OFFSET.x - rx*S, 0, -ry*S - OFFSET.z);
+}
+function _lon2tile(l,z){ return (l+180)/360*Math.pow(2,z); }
+function _lat2tile(a,z){ var r=a*Math.PI/180; return (1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*Math.pow(2,z); }
+function _tile2lon(x,z){ return x/Math.pow(2,z)*360-180; }
+function _tile2lat(y,z){ var n=Math.PI-2*Math.PI*y/Math.pow(2,z); return 180/Math.PI*Math.atan(0.5*(Math.exp(n)-Math.exp(-n))); }
+
+/* Road re-grade — on the GPU. Raster tiles are flat PNGs with no per-feature hook,
+   so streets (the lightest linework in both the voyager day + dark_all night styles)
+   are pushed to a flat roadColor (white by day, light grey at night) and the rest is
+   dimmed, in the tile's OWN fragment shader. Doing it here (not via a per-tile canvas
+   getImageData + pixel loop) is the key: that CPU path blocked the main thread for
+   ~1s+ as ~100+ tiles streamed in (the lag), and uploaded a CanvasTexture per tile.
+   Same luminance formula as before, just in sRGB space with toneMapped:false so the
+   colours land exactly; one shared compiled program for the whole basemap. */
+function basemapRecolor(mat, T){
+  var lo = (T.roadCut - T.roadSoft).toFixed(1), hi = (T.roadCut + T.roadSoft).toFixed(1);
+  var dim = T.roadDim.toFixed(3);
+  var r = (((T.roadColor>>16)&255)/255).toFixed(4),
+      g = (((T.roadColor>>8)&255)/255).toFixed(4),
+      b = ((T.roadColor&255)/255).toFixed(4);
+  mat.toneMapped = false;                       // recolour in sRGB, output it verbatim
+  mat.onBeforeCompile = function(sh){
+    sh.fragmentShader = sh.fragmentShader.replace("#include <map_fragment>",
+      "#include <map_fragment>\n#ifdef USE_MAP\n" +
+      "  vec3 _s = pow(clamp(diffuseColor.rgb, 0.0, 1.0), vec3(0.45454545));\n" +   // linear -> sRGB
+      "  float _L = dot(_s, vec3(0.299, 0.587, 0.114)) * 255.0;\n" +
+      "  float _t = smoothstep(" + lo + ", " + hi + ", _L);\n" +
+      "  vec3 _o = _s * " + dim + " * (1.0 - _t) + vec3(" + r + ", " + g + ", " + b + ") * _t;\n" +
+      "  diffuseColor.rgb = pow(_o, vec3(2.2));\n" +                                 // sRGB -> linear
+      "#endif\n");
+  };
+  /* share ONE program across every tile of this theme (without this, each material
+     with an onBeforeCompile gets its own shader compile — 100+ compiles) */
+  mat.customProgramCacheKey = function(){ return "bmRoad_" + lo + "_" + hi + "_" + dim + "_" + r + g + b; };
+}
+var basemapGroup = null;
+/* throw away the current basemap (geometry + textures) so it can be rebuilt in
+   the other theme's tile style */
+function disposeBasemap(){
+  if(!basemapGroup) return;
+  basemapGroup.traverse(function(o){
+    if(o.geometry) o.geometry.dispose();
+    if(o.material){ if(o.material.map) o.material.map.dispose(); o.material.dispose(); }
+  });
+  scene.remove(basemapGroup); basemapGroup = null;
+}
+function buildBasemap(){
+  if(basemapGroup) return;
+  var T = curTheme();
+  basemapGroup = new THREE.Group();
+  scene.add(basemapGroup);
+  var z = 16;                                   // arterial roads + surrounding blocks read clearly
+  var cover = GEO.mallWidthM * 5;               // wide enough that the map fills the view — no visible rectangular "box"
+  var dLat = cover/110540, dLng = cover/(111320*Math.cos(GEO.lat*Math.PI/180));
+  var x0 = Math.floor(_lon2tile(GEO.lng-dLng, z)), x1 = Math.floor(_lon2tile(GEO.lng+dLng, z));
+  var y0 = Math.floor(_lat2tile(GEO.lat+dLat, z)), y1 = Math.floor(_lat2tile(GEO.lat-dLat, z));
+  var loader = new THREE.TextureLoader(); loader.setCrossOrigin("anonymous");
+  var hi = (window.devicePixelRatio > 1.4) ? "@2x" : "";   // retina-sharp tiles — the per-tile CPU re-grade that used to make this lag now runs on the GPU
+  var additive = (T.basemapBlend === "additive");
+  /* radial fade: tiles dissolve into the ground toward the rim so the basemap
+     blends out smoothly instead of ending on a hard rectangular edge */
+  var m2w = MODEL.w / GEO.mallWidthM, coverW = cover * m2w;
+  var fadeEnd = coverW*0.92, fadeSpan = Math.max(1, fadeEnd - coverW*0.40);
+  for(var tx=x0; tx<=x1; tx++){
+    for(var ty=y0; ty<=y1; ty++){
+      if((x1-x0+1)*(y1-y0+1) > 260) continue;   // safety cap
+      var a = geoWorld(_tile2lat(ty, z),   _tile2lon(tx, z)),     // NW
+          b = geoWorld(_tile2lat(ty, z),   _tile2lon(tx+1, z)),   // NE
+          cc= geoWorld(_tile2lat(ty+1, z), _tile2lon(tx+1, z)),   // SE
+          d = geoWorld(_tile2lat(ty+1, z), _tile2lon(tx, z));     // SW
+      var cdx=(a.x+b.x+cc.x+d.x)/4, cdz=(a.z+b.z+cc.z+d.z)/4;      // tile centre (world)
+      var fop = Math.max(0, Math.min(1, (fadeEnd - Math.hypot(cdx,cdz)) / fadeSpan));
+      if(fop <= 0.02) continue;                  // drop fully-faded rim tiles (saves requests too)
+      var g = new THREE.BufferGeometry();
+      var y = -0.12;  // sits just under the ground plane
+      g.setAttribute("position", new THREE.Float32BufferAttribute([
+        a.x,y,a.z,  d.x,y,d.z,  b.x,y,b.z,   b.x,y,b.z,  d.x,y,d.z,  cc.x,y,cc.z], 3));
+      g.setAttribute("uv", new THREE.Float32BufferAttribute([0,1, 0,0, 1,1, 1,1, 0,0, 1,0], 2));
+      var url = "https://basemaps.cartocdn.com/rastertiles/"+T.basemap+"/"+z+"/"+tx+"/"+ty+hi+".png";   // voyager by day, dark_all at night
+      /* additive at night makes streets glow over the dark-blue ground; normal
+         (with the radial fade) at day. DoubleSide guards against quad winding. */
+      var mat = new THREE.MeshBasicMaterial({color:T.basemapFallback, side:THREE.DoubleSide,
+        transparent:true, opacity:fop, depthWrite:false,
+        blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending});
+      basemapRecolor(mat, T);                    // GPU road re-grade (no per-tile canvas work)
+      (function(m){ loader.load(url, function(tex){
+        tex.encoding = THREE.sRGBEncoding; m.map = tex; m.color.setHex(0xffffff); m.needsUpdate = true;
+      }, undefined, function(){}); })(mat);
+      var mesh = new THREE.Mesh(g, mat);
+      mesh.renderOrder = -1;                      // under everything
+      basemapGroup.add(mesh);
+    }
+  }
+}
+
+/* -------- live location ("you are here") via real device GPS -------- */
+var youMarker = null, youPulse = 0, locWatch = null, userLL = null, userWorld = null, _locDismissed = false;
+var MALL_RADIUS_M = 320;   // treat the user as "in the mall" within this of the centre
+function youTexture(){
+  var cv=document.createElement("canvas"); cv.width=cv.height=128; var x=cv.getContext("2d");
+  x.beginPath(); x.arc(64,64,26,0,7); x.fillStyle="#2f74d0"; x.fill();
+  x.lineWidth=9; x.strokeStyle="#fff"; x.stroke();
+  var t=new THREE.CanvasTexture(cv); t.encoding=THREE.sRGBEncoding; return t;
+}
+function haversineM(la1,lo1,la2,lo2){
+  var R=6371000, p=Math.PI/180, dLa=(la2-la1)*p, dLo=(lo2-lo1)*p;
+  var a=Math.sin(dLa/2)*Math.sin(dLa/2)+Math.cos(la1*p)*Math.cos(la2*p)*Math.sin(dLo/2)*Math.sin(dLo/2);
+  return 2*R*Math.asin(Math.min(1,Math.sqrt(a)));
+}
+/* start continuous GPS tracking (real navigator.geolocation, no simulated coords) */
+function locateMe(){
+  if(!navigator.geolocation){ toast("Location not supported"); return; }
+  if(location.protocol === "file:"){ toast("Open over http(s) for live location"); return; }
+  toast("Locating…");
+  _locDismissed = false;                         // an explicit locate request may show the prompt again
+  if(locWatch !== null) navigator.geolocation.clearWatch(locWatch);
+  locWatch = navigator.geolocation.watchPosition(onLocation,
+    function(e){ toast(e && e.code === 1 ? "Location permission denied" : "Location unavailable"); },
+    {enableHighAccuracy:true, timeout:12000, maximumAge:4000});
+}
+function onLocation(pos){
+  userLL = {lat:pos.coords.latitude, lng:pos.coords.longitude};
+  var dist = haversineM(userLL.lat, userLL.lng, GEO.lat, GEO.lng);
+  if(dist <= MALL_RADIUS_M){                  // inside / at the mall -> show the blue dot
+    hideLocPrompt();
+    userWorld = geoWorld(userLL.lat, userLL.lng);
+    if(!youMarker){
+      youMarker = new THREE.Sprite(new THREE.SpriteMaterial({map:youTexture(), transparent:true, depthTest:false, depthWrite:false}));
+      youMarker.renderOrder = 6; scene.add(youMarker);
+    }
+    youMarker.position.set(userWorld.x, 2, userWorld.z); youMarker.visible = true;
+    flyToMarker();
+    toast("You are here");
+  } else {                                    // outside -> offer Google Maps directions
+    userWorld = null;
+    if(youMarker) youMarker.visible = false;
+    showLocPrompt(dist);
+  }
+}
+function flyToMarker(){
+  if(!userWorld) return;
+  var t = new THREE.Vector3(userWorld.x, 2, userWorld.z);
+  flyTo(t.clone().addScaledVector(viewDir(), 80), t);
+}
+function showLocPrompt(distM){
+  if(_locDismissed) return;                      // user closed it — don't let later GPS ticks re-open it
+  var el = document.getElementById("locPrompt");
+  var km = distM >= 1000 ? (distM/1000).toFixed(1) + " km" : Math.round(distM) + " m";
+  document.getElementById("locPromptText").textContent = "You're about " + km + " from Tilal Mall.";
+  document.getElementById("locPromptLink").href =
+    "https://www.google.com/maps/dir/?api=1&destination=" + GEO.lat + "," + GEO.lng;
+  el.classList.add("show");
+}
+function hideLocPrompt(){ document.getElementById("locPrompt").classList.remove("show"); }
+/* user dismissed it: hide, remember, and stop polling GPS (it only feeds this prompt when outside) */
+function dismissLocPrompt(){ _locDismissed = true; hideLocPrompt(); if(locWatch !== null){ navigator.geolocation.clearWatch(locWatch); locWatch = null; } }
+/* My-Location button: snap to the dot if we have it, else start tracking */
+function myLocation(){ if(userWorld && youMarker && youMarker.visible){ flyToMarker(); } else { locateMe(); } }
+
+/* -------- floating Liquid-Glass labels for the landmark destinations. Each is
+            a glass pill with a blue icon chip + the name. They show on entering
+            a floor and fade out after 6s (back only when you re-enter a floor). */
+var LANDMARK = {hypermarket:1, anchor:1, cinema:1, fec:1, "food-court":1, "mini-major":1};
+var LANDMARK_ICON = {
+  anchor:'<path d="M6 7h12l-1 13H7L6 7z"/><path d="M9 7a3 3 0 0 1 6 0"/>',
+  "mini-major":'<path d="M6 7h12l-1 13H7L6 7z"/><path d="M9 7a3 3 0 0 1 6 0"/>',
+  cinema:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 4v16M17 4v16M3 10h4M17 10h4M3 14h4M17 14h4"/>',
+  hypermarket:'<circle cx="9" cy="20" r="1.3"/><circle cx="17" cy="20" r="1.3"/><path d="M3 4h2l2.2 11h10l1.8-8H6.2"/>',
+  fec:'<rect x="3" y="8" width="18" height="9" rx="4"/><path d="M7 12h3M8.5 10.5v3"/><circle cx="16" cy="12" r=".9"/><circle cx="18" cy="14" r=".9"/>',
+  "food-court":'<path d="M6 3v8a2 2 0 0 0 2 2v8M8 3v6M10 3v6"/><path d="M16 3c-1.4 1-2 3-2 5s.6 4 2 5v6"/>'
+};
+var labelObjs = [], labelTimer = 0, labelsHidden = false;
+function buildLabels(fkey){
+  var host=document.getElementById("labels"); if(!host) return;
+  host.innerHTML=""; labelObjs=[]; labelsHidden=false; clearTimeout(labelTimer);
+  (FLOORS[fkey] ? FLOORS[fkey].units : []).forEach(function(u){
+    if(!LANDMARK[u.cat]) return;
+    var c=cat(u.cat), o=u.s[0].o, n=o.length/2, sx=0, sy=0;
+    for(var i=0;i<o.length;i+=2){ sx+=o[i]; sy+=o[i+1]; }
+    var p=new THREE.Vector3((sx/n)-OFFSET.x, c.h+1.4, -(sy/n)-OFFSET.z);   // top-centre of the unit, in world
+    var el=document.createElement("div"); el.className="lbl";
+    el.innerHTML='<span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'
+      +(LANDMARK_ICON[u.cat]||'')+'</svg></span><span>'+((u.name&&u.name.trim()&&u.name!==c.l)?u.name:c.l)+'</span>';
+    host.appendChild(el);
+    labelObjs.push({p:p, el:el});
+  });
+  labelTimer=setTimeout(function(){ labelsHidden=true; labelObjs.forEach(function(o){ o.el.classList.add("hide"); }); }, 6000);
+}
+var _lv=null;
+function updateLabels(){
+  if(labelsHidden || !labelObjs.length) return;
+  if(!_lv) _lv=new THREE.Vector3();
+  var w=renderer.domElement.clientWidth, h=renderer.domElement.clientHeight;
+  for(var i=0;i<labelObjs.length;i++){ var o=labelObjs[i];
+    _lv.copy(o.p).project(camera);
+    if(_lv.z>1 || _lv.x<-1.15 || _lv.x>1.15 || _lv.y<-1.15 || _lv.y>1.15){ o.el.style.display="none"; continue; }
+    o.el.style.display="flex";   // keep the flex row (block would stack the grid icon onto its own line)
+    o.el.style.transform="translate(-50%,-100%) translate("+((_lv.x*0.5+0.5)*w).toFixed(1)+"px,"+((-_lv.y*0.5+0.5)*h).toFixed(1)+"px)";
+  }
+}
+
+/* -------- build a whole floor: one merged mesh per category -------- */
+function buildFloor(fkey){
+  var data = FLOORS[fkey]; if(!data) return;
+  var group = new THREE.Group();
+  var byCat = {};   // cat -> { geos:[], ranges:[{u,start,count}], tri:0 }
+
+  data.units.forEach(function(u){
+    try{
+      var c = cat(u.cat);
+      var geo = extrudeUnit(u, c.h);
+      if(!geo) return;
+      var tri = (geo.index ? geo.index.count : geo.attributes.position.count) / 3;   // triangle count
+      var bucket = byCat[u.cat] || (byCat[u.cat] = {geos:[], ranges:[], tri:0});
+      bucket.ranges.push({u:u, start:bucket.tri, count:tri});
+      bucket.geos.push(geo);
+      bucket.tri += tri;
+    }catch(err){ /* one bad polygon must never freeze the scene */ console.warn("unit skipped", u.id, err); }
+  });
+
+  var meshes = {};
+  Object.keys(byCat).forEach(function(k){
+    var bucket = byCat[k]; if(!bucket.geos.length) return;
+    var merged = bucket.geos.length === 1 ? bucket.geos[0]
+               : THREE.BufferGeometryUtils.mergeBufferGeometries(bucket.geos, false);
+    if(!merged) return;
+    var c = cat(k);
+    /* clean, accurate tenant colours read crisp and premium -> no metallic
+       bronze sheen (that muddied the colours and swung with the view angle).
+       The base (day) colour is stashed so applyTheme() can re-derive the
+       night look without losing the original. */
+    var mat = new THREE.MeshStandardMaterial({
+      color:c.c, flatShading:false, side:THREE.DoubleSide,
+      metalness: 0.0, roughness: 0.7, envMapIntensity: 0.3
+    });
+    mat.userData.baseColor = c.c;
+    applyMatTheme(mat);
+    var mesh = new THREE.Mesh(merged, mat);
+    mesh.castShadow = true; mesh.receiveShadow = true;
+    mesh.userData.ranges = bucket.ranges;
+    mesh.userData.catKey = k;
+    group.add(mesh);
+    meshes[k] = mesh;
+  });
+
+  buildEscalators(fkey, group);
+
+  /* orient: the plan is drawn in the XY plane (y-down). Rotating -90° about X
+     lays it flat on the ground (XZ) and sends the extrude axis (+Z) straight
+     up (+Y), so every block rises from y=0 and rests on the ground regardless
+     of height. (A pure rotation keeps the determinant +1, so face winding,
+     holes and normals all stay correct — no inside-out blocks.) */
+  group.rotation.x = -Math.PI/2;
+
+  /* one shared transform for every floor so switching never jumps */
+  if(!OFFSET){
+    var box = new THREE.Box3().setFromObject(group);
+    var ctr = box.getCenter(new THREE.Vector3());
+    var size = box.getSize(new THREE.Vector3());
+    OFFSET = {x:ctr.x, y:box.min.y, z:ctr.z};
+    MODEL = {w:size.x, d:size.z, h:size.y};
+  }
+  group.position.set(-OFFSET.x, -OFFSET.y, -OFFSET.z);
+  group.visible = false;
+  scene.add(group);
+  floorObjs[fkey] = {group:group, meshes:meshes};
+}
+
+function showFloor(fkey){
+  FLOOR_ORDER.forEach(function(f){ if(floorObjs[f]) floorObjs[f].group.visible = (f === fkey); });
+  curFloor = fkey;
+  deselect();
+  document.querySelectorAll("#floors button").forEach(function(b){
+    b.classList.toggle("active", b.dataset.f === fkey);
+  });
+  renderPanel();
+  buildLabels(fkey);
+  markShadow();
+  if(ROUTE.active){ drawRouteForFloor(); renderRouteBar(); }   // keep the route in sync across floors
+}
+
+/* re-render the (static) shadow map once after a discrete change, instead of
+   every frame — this is what keeps orbiting smooth and flicker-free */
+function markShadow(){ if(renderer) renderer.shadowMap.needsUpdate = true; }
+
+/* -------- camera framing (aspect-aware so the wide fan fits portrait + desktop) -------- */
+function framingRadius(){
+  var R = 0.5 * Math.sqrt(MODEL.w*MODEL.w + MODEL.d*MODEL.d + MODEL.h*MODEL.h);
+  var vFov = camera.fov * Math.PI/180;
+  var hFov = 2 * Math.atan(Math.tan(vFov/2) * camera.aspect);
+  return (R / Math.sin(Math.min(vFov, hFov)/2)) * 1.08;
+}
+/* unit vector pointing to true north in world space (the plan is rotated 67°) */
+function worldNorth(){
+  var a = geoWorld(GEO.lat, GEO.lng), b = geoWorld(GEO.lat + 0.002, GEO.lng);
+  var v = new THREE.Vector3(b.x - a.x, 0, b.z - a.z);
+  return v.lengthSq() < 1e-9 ? new THREE.Vector3(0,0,-1) : v.normalize();
+}
+/* the "home" view: centred on the mall, the mall's flat (diameter) side up,
+   subtle 3-D pitch. We frame to the MALL's own axis — not geographic north —
+   so the fan sits square to the screen exactly like the 2.5D reference. The
+   basemap is part of the same scene, so it rotates with the view and stays
+   registered with the building (no "mall in the middle of the roads"). The
+   flat-edge normal of the laid-flat plan (yaw 0) points world +Z. */
+function defaultView(doFly){
+  var radius = framingRadius();
+  var target = new THREE.Vector3(0, MODEL.h * 0.3, 0);
+  var north = new THREE.Vector3(0, 0, 1);                         // mall flat side = "up"
+  var pitch = 40 * Math.PI/180;                                   // subtle tilt
+  var camPos = target.clone()
+    .addScaledVector(north, -radius * Math.cos(pitch))            // sit on the arc side so the flat side reads "up"
+    .add(new THREE.Vector3(0, radius * Math.sin(pitch), 0));
+  controls.minDistance = 20;
+  controls.maxDistance = radius * 1.85;
+  scene.fog.near = radius * 1.6; scene.fog.far = radius * 7;   // push fog far out so the model never fogs/goes vague when zoomed out
+  var m = Math.max(MODEL.w, MODEL.d) * 0.95, sc = window._key.shadow.camera;   // wider, to catch the long shadows
+  sc.left = -m; sc.right = m; sc.top = m; sc.bottom = -m;
+  sc.near = 1; sc.far = radius*3; sc.updateProjectionMatrix();
+  window._key.target.position.set(0,0,0);
+  if(doFly){ flyTo(camPos, target); }
+  else { camera.position.copy(camPos); controls.target.copy(target); controls.update(); }
+}
+function frameModel(initial){ if(initial) defaultView(false); }
+
+/* zoom the camera in/out along its current view direction */
+function zoomBy(factor){
+  var dir = camera.position.clone().sub(controls.target);
+  var d = Math.max(controls.minDistance, Math.min(controls.maxDistance, dir.length() * factor));
+  camera.position.copy(controls.target).add(dir.setLength(d));
+  controls.update();
+}
+
+
+/* -------- UI: floor switcher -------- */
+function buildFloorSwitcher(){
+  var host = document.getElementById("floors");
+  host.innerHTML = "";
+  FLOOR_ORDER.forEach(function(f){
+    var b = document.createElement("button");
+    b.dataset.f = f;
+    b.innerHTML = '<span class="lvl">' + FLOOR_SHORT[f] + '</span><span class="nm">' + FLOOR_SUB[f] + '</span>';
+    b.title = FLOORS[f].name;
+    if(f === curFloor) b.classList.add("active");
+    b.addEventListener("click", function(){ if(f !== curFloor){ showFloor(f); } });
+    host.appendChild(b);
+  });
+}
+
+/* -------- left panel (Map): category toggles for the current floor -------- */
+var panelMode = "map", searchQ = "";
+function setMode(m){
+  panelMode = m;
+  document.querySelectorAll("#seg button").forEach(function(b){ b.classList.toggle("active", b.dataset.mode === m); });
+  if(m === "list") openDirectory(); else closeDirectory();
+}
+function renderPanel(){
+  var body = document.getElementById("panelBody");
+  if(!body) return;
+  body.innerHTML = "";
+  var fo = floorObjs[curFloor]; if(!fo) return;
+  var counts = {};
+  FLOORS[curFloor].units.forEach(function(u){ counts[u.cat] = (counts[u.cat]||0)+1; });
+  var keys = Object.keys(fo.meshes).sort(function(a,b){
+    var ga = cat(a).g === "lease" ? 0:1, gb = cat(b).g === "lease" ? 0:1;
+    if(ga !== gb) return ga - gb;
+    return (counts[b]||0) - (counts[a]||0);
+  });
+  var head = document.createElement("div"); head.className = "p-head";
+  head.textContent = FLOORS[curFloor].name + " · tap to isolate"; body.appendChild(head);
+  keys.forEach(function(k){
+    var c = cat(k), mesh = fo.meshes[k];
+    var row = document.createElement("div");
+    row.className = "row" + (mesh.visible ? "" : " off");
+    row.innerHTML = '<span class="sw" style="background:' + hex6(c.c) + '"></span>'
+      + '<span class="nm">' + c.l + '</span><span class="ct">' + (counts[k]||0) + '</span>';
+    row.addEventListener("click", function(){
+      /* show ONLY this category; tapping the already-isolated one restores all */
+      var solo = keys.every(function(x){ return fo.meshes[x].visible === (x === k); });
+      keys.forEach(function(x){ fo.meshes[x].visible = solo ? true : (x === k); });
+      if(selected && !selected.mesh.visible) deselect();
+      renderPanel();
+    });
+    body.appendChild(row);
+  });
+}
+function goToUnit(f, u){
+  if(f !== curFloor){ if(!floorObjs[f]) buildFloor(f); showFloor(f); }
+  var fo = floorObjs[curFloor]; if(!fo) return;
+  for(var k in fo.meshes){ var rs = fo.meshes[k].userData.ranges;
+    for(var i=0;i<rs.length;i++){ if(rs[i].u.id === u.id){ select(rs[i].u, fo.meshes[k]); locateSelected(); break; } } }
+  if(isMobile) document.getElementById("panel").classList.remove("open");
+}
+
+/* ======================= full-page directory (List) ======================= */
+/* high-level browse groups built from the map categories */
+var DIR_GROUPS = [
+  {k:"shops",   l:"Shops & Stores",  c:0x5e83bd, cats:["line-shop","anchor","mini-major"], icon:'<path d="M6 7h12l-1 13H7L6 7z"/><path d="M9 7a3 3 0 0 1 6 0"/>'},
+  {k:"dining",  l:"Dining & F&B",    c:0x6e4718, cats:["fnb","fnb-cafe","fnb-kiosk","food-court","food-village","fc-seating","fnb-seating","kiosk-seating","fc-kitchen","fv-kitchen"], icon:'<path d="M6 3v8a2 2 0 0 0 2 2v8M8 3v6M10 3v6"/><path d="M16 3c-1.4 1-2 3-2 5s.6 4 2 5v6"/>'},
+  {k:"hyper",   l:"Hypermarket",     c:0xbf9f53, cats:["hypermarket","hyper-store"], icon:'<circle cx="9" cy="20" r="1.3"/><circle cx="17" cy="20" r="1.3"/><path d="M3 4h2l2.2 11h10l1.8-8H6.2"/>'},
+  {k:"cinema",  l:"Cinema",          c:0x0d1c34, cats:["cinema"], icon:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 4v16M17 4v16M3 10h4M17 10h4M3 14h4M17 14h4"/>'},
+  {k:"fun",     l:"Entertainment",   c:0x6a6fc0, cats:["fec"], icon:'<rect x="3" y="8" width="18" height="9" rx="4"/><path d="M7 12h3M8.5 10.5v3"/><circle cx="16" cy="12" r=".9"/><circle cx="18" cy="14" r=".9"/>'},
+  {k:"kiosk",   l:"Kiosks",          c:0x643d12, cats:["kiosk"], icon:'<path d="M4 9h16l-1 3H5L4 9z"/><path d="M5 12v8h14v-8"/><path d="M4 9l1-4h14l1 4"/>'},
+  {k:"restroom",l:"Restrooms",       c:0x8fa3c0, cats:["toilet"], icon:'<path d="M7 22v-6M17 22v-6"/><circle cx="7" cy="5" r="2"/><circle cx="17" cy="5" r="2"/><path d="M5 16h4l-2-7-2 7zM15 16h4l-2-7-2 7z"/>'},
+  {k:"services",l:"Guest Services",  c:0xc2a874, cats:["customer-service","prayer-room","management-suite"], icon:'<circle cx="12" cy="8" r="3.2"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/>'},
+  {k:"facility",l:"Facilities",      c:0xa7a291, cats:["circulation","mep","boh","tenant-store"], icon:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/>'}
+];
+var dirGroup = null;
+function directoryOpen(){ return document.getElementById("directory").classList.contains("open"); }
+function openDirectory(){ dirGroup = null; searchQ = ""; var ds=document.getElementById("dirSearch"); if(ds)ds.value=""; document.getElementById("directory").classList.add("open"); renderDirectory(); }
+function closeDirectory(){ document.getElementById("directory").classList.remove("open"); }
+
+/* the basement is intentionally excluded from search + the directory ("only when
+   click shows"): it's still reachable via the floor button, just not surfaced. */
+function searchFloors(){ return FLOOR_ORDER.filter(function(f){ return f !== "BL"; }); }
+function unitsInGroup(g){
+  var set = {}; g.cats.forEach(function(c){ set[c] = 1; });
+  var out = [];
+  searchFloors().forEach(function(f){ (FLOORS[f].units||[]).forEach(function(u){ if(u.id && set[u.cat]) out.push({u:u, floor:f}); }); });
+  return out;
+}
+function unitsMatching(q){
+  var out = [];
+  searchFloors().forEach(function(f){ (FLOORS[f].units||[]).forEach(function(u){
+    if(!u.id) return; var c = cat(u.cat);
+    if((((u.name||"") + " " + u.id + " " + c.l + " " + (c.t||"")).toLowerCase()).indexOf(q) >= 0) out.push({u:u, floor:f});
+  }); });
+  return out;
+}
+function renderDirectory(){
+  var dir = document.getElementById("directory"), body = document.getElementById("dirBody");
+  var title = document.getElementById("dirTitle"), sub = document.getElementById("dirSub");
+  body.innerHTML = ""; body.scrollTop = 0;
+  if(searchQ){
+    dir.classList.remove("in-group");
+    title.textContent = "Search"; sub.textContent = "Results for “" + searchQ + "”";
+    renderDirShops(body, unitsMatching(searchQ));
+  } else if(dirGroup){
+    var g = DIR_GROUPS.filter(function(x){ return x.k === dirGroup; })[0];
+    dir.classList.add("in-group");
+    title.textContent = g.l; sub.textContent = "Tap a place to view it on the map";
+    renderDirShops(body, unitsInGroup(g));
+  } else {
+    dir.classList.remove("in-group");
+    title.textContent = "Directory"; sub.textContent = "Browse by category";
+    var grid = document.createElement("div"); grid.className = "dir-grid";
+    DIR_GROUPS.forEach(function(g){
+      var n = unitsInGroup(g).length; if(!n) return;
+      var card = document.createElement("div"); card.className = "dir-card";
+      card.innerHTML = '<span class="ci" style="background:' + hex6(g.c) + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' + g.icon + '</svg></span>'
+        + '<div class="cl">' + g.l + '</div><div class="cn">' + n + (n>1?" places":" place") + '</div>';
+      card.addEventListener("click", function(){ dirGroup = g.k; renderDirectory(); });
+      grid.appendChild(card);
+    });
+    body.appendChild(grid);
+  }
+}
+function renderDirShops(body, list){
+  if(!list.length){ var e = document.createElement("div"); e.className = "dir-empty"; e.textContent = "No places found"; body.appendChild(e); return; }
+  var byFloor = {}; list.forEach(function(it){ (byFloor[it.floor] = byFloor[it.floor] || []).push(it); });
+  FLOOR_ORDER.forEach(function(f){
+    var items = byFloor[f]; if(!items || !items.length) return;
+    items.sort(function(a,b){ return (a.u.name||cat(a.u.cat).l).localeCompare(b.u.name||cat(b.u.cat).l); });
+    var h = document.createElement("div"); h.className = "dir-fhead"; h.textContent = FLOORS[f].name + " · " + items.length; body.appendChild(h);
+    var grid = document.createElement("div"); grid.className = "dir-list";
+    items.slice(0, 600).forEach(function(it){
+      var u = it.u, c = cat(u.cat);
+      var row = document.createElement("div"); row.className = "dir-item";
+      row.innerHTML = '<span class="di" style="background:' + hex6(c.c) + '"></span>'
+        + '<span class="dt"><b>' + (u.name && u.name.trim() ? u.name : c.l) + '</b><span>' + c.l + '</span></span>'
+        + '<span class="dc">' + (u.id||"") + '</span>'
+        + '<svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
+      row.addEventListener("click", function(){ pickFromDirectory(it.floor, u); });
+      grid.appendChild(row);
+    });
+    body.appendChild(grid);
+  });
+}
+function pickFromDirectory(f, u){
+  clearSearch();
+  panelMode = "map";
+  document.querySelectorAll("#seg button").forEach(function(b){ b.classList.toggle("active", b.dataset.mode === "map"); });
+  closeDirectory();
+  goToUnit(f, u);
+}
+function clearSearch(){
+  searchQ = "";
+  var a=document.getElementById("search"), b=document.getElementById("dirSearch"), sg=document.getElementById("suggest");
+  if(a)a.value=""; if(b)b.value=""; if(sg){ sg.classList.remove("show"); sg.innerHTML=""; }
+}
+/* inline autocomplete under the sidebar search — does NOT open the full list */
+function renderSuggest(q){
+  q=(q||"").toLowerCase().trim();
+  var el=document.getElementById("suggest"); if(!el) return;
+  if(!q){ el.classList.remove("show"); el.innerHTML=""; return; }
+  var matches=unitsMatching(q).slice(0,8); el.innerHTML="";
+  if(!matches.length){ el.innerHTML='<div class="sg-empty">No matches for “'+q+'”</div>'; el.classList.add("show"); return; }
+  matches.forEach(function(it){
+    var u=it.u, c=cat(u.cat), row=document.createElement("div"); row.className="sg-row";
+    row.innerHTML='<span class="sg-sw" style="background:'+hex6(c.c)+'"></span>'
+      +'<span class="sg-tx"><b>'+(u.name&&u.name.trim()?u.name:c.l)+'</b><span>'+c.l+' · '+FLOORS[it.floor].name+'</span></span>'
+      +'<span class="sg-code">'+(u.id||"")+'</span>';
+    row.addEventListener("click", function(){
+      document.getElementById("search").value=""; el.classList.remove("show"); el.innerHTML="";
+      if(isMobile) document.getElementById("panel").classList.remove("open");
+      goToUnit(it.floor, u);
+    });
+    el.appendChild(row);
+  });
+  el.classList.add("show");
+}
+
+/* ======================= WAYFINDING / ROUTING =======================
+   Ported from the 2.5D map: a per-floor walkable corridor mask (units rasterised
+   as obstacles, morphological closing recovers the footprint, walkable = footprint
+   minus units), then a clearance-biased A* that rides the wide public concourse.
+   Everything here runs in raw viewBox units (the baked points are viewBox*SCALE,
+   so we divide by SCALE); the resulting path is converted to world for drawing. */
+var RMASKS = {}, UNITS_PER_M = 3.769, WALK_MS = 1.2, RSQ2 = Math.SQRT2;
+/* not obstacles: the concourse itself (circulation) is the walkable space, and
+   kiosks stand in the middle of it (the path may pass over them) */
+var KIOSK_FREE = {circulation:1, kiosk:1, "fnb-kiosk":1, "kiosk-seating":1};
+function vb(v){ return v / PLAN_SCALE; }                       // world-scaled -> viewBox
+function vbToWorld(x, y, h){ return new THREE.Vector3(x*PLAN_SCALE - OFFSET.x, h||0, -y*PLAN_SCALE - OFFSET.z); }
+function unitCentroidVB(u){
+  var o = u.s[0].o, n = o.length/2, sx=0, sy=0;
+  for(var i=0;i<o.length;i+=2){ sx += o[i]; sy += o[i+1]; }
+  return [vb(sx/n), vb(sy/n)];
+}
+function rHeapPush(a,n){ a.push(n); var i=a.length-1; while(i>0){ var p=(i-1)>>1; if(a[p].f<=a[i].f)break; var t=a[p];a[p]=a[i];a[i]=t;i=p; } }
+function rHeapPop(a){ var top=a[0], last=a.pop(); if(a.length){ a[0]=last; var i=0,n=a.length; for(;;){ var l=2*i+1,r=l+1,m=i; if(l<n&&a[l].f<a[m].f)m=l; if(r<n&&a[r].f<a[m].f)m=r; if(m===i)break; var t=a[m];a[m]=a[i];a[i]=t;i=m; } } return top; }
+function rDilate(src,cols,rows,r){
+  var tmp=new Uint8Array(cols*rows),out=new Uint8Array(cols*rows),x,y,k;
+  for(y=0;y<rows;y++){var base=y*cols;for(x=0;x<cols;x++){var v=0;for(k=-r;k<=r;k++){var xx=x+k;if(xx>=0&&xx<cols&&src[base+xx]){v=1;break;}}tmp[base+x]=v;}}
+  for(x=0;x<cols;x++){for(y=0;y<rows;y++){var w=0;for(k=-r;k<=r;k++){var yy=y+k;if(yy>=0&&yy<rows&&tmp[yy*cols+x]){w=1;break;}}out[y*cols+x]=w;}}
+  return out;
+}
+function buildMask(floor){
+  if(RMASKS[floor]) return RMASKS[floor];
+  var units = (FLOORS[floor]||{units:[]}).units;
+  var minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9, paths=[];
+  units.forEach(function(u){
+    var d="";
+    for(var si=0;si<u.s.length;si++){ var o=u.s[si].o;
+      for(var i=0;i<o.length;i+=2){ var x=vb(o[i]), y=vb(o[i+1]);
+        if(x<minX)minX=x; if(y<minY)minY=y; if(x>maxX)maxX=x; if(y>maxY)maxY=y;
+        d += (i===0?"M":"L") + x.toFixed(1) + " " + y.toFixed(1); }
+      d += "Z"; }
+    if(!KIOSK_FREE[u.cat]) paths.push(d);
+  });
+  if(maxX<minX) return null;
+  var pad=90; minX-=pad; minY-=pad; maxX+=pad; maxY+=pad;
+  var CELL=3, cols=Math.ceil((maxX-minX)/CELL), rows=Math.ceil((maxY-minY)/CELL);
+  var cv=document.createElement("canvas"); cv.width=cols; cv.height=rows; var ctx=cv.getContext("2d");
+  ctx.setTransform(1/CELL,0,0,1/CELL,-minX/CELL,-minY/CELL); ctx.fillStyle="#fff";
+  paths.forEach(function(d){ try{ ctx.fill(new Path2D(d)); }catch(e){} });
+  var img=ctx.getImageData(0,0,cols,rows).data, N=cols*rows, solid=new Uint8Array(N);
+  for(var si=0;si<N;si++) solid[si]=img[si*4]>40?1:0;
+  var RC=Math.round(70/CELL);
+  var dil=rDilate(solid,cols,rows,RC), inv=new Uint8Array(N);
+  for(var a=0;a<N;a++) inv[a]=dil[a]?0:1;
+  var invd=rDilate(inv,cols,rows,RC), foot=new Uint8Array(N);
+  for(var b=0;b<N;b++) foot[b]=invd[b]?0:1;
+  var seen=new Uint8Array(N),stk=new Int32Array(N),sp=0,hx,hy;
+  for(hx=0;hx<cols;hx++){var c0=hx,c1=(rows-1)*cols+hx;if(!foot[c0]&&!seen[c0]){seen[c0]=1;stk[sp++]=c0;}if(!foot[c1]&&!seen[c1]){seen[c1]=1;stk[sp++]=c1;}}
+  for(hy=0;hy<rows;hy++){var l0=hy*cols,r0=hy*cols+cols-1;if(!foot[l0]&&!seen[l0]){seen[l0]=1;stk[sp++]=l0;}if(!foot[r0]&&!seen[r0]){seen[r0]=1;stk[sp++]=r0;}}
+  while(sp){var fc=stk[--sp],fx=fc%cols,fy=(fc/cols)|0;
+    if(fx+1<cols&&!foot[fc+1]&&!seen[fc+1]){seen[fc+1]=1;stk[sp++]=fc+1;}
+    if(fx-1>=0&&!foot[fc-1]&&!seen[fc-1]){seen[fc-1]=1;stk[sp++]=fc-1;}
+    if(fy+1<rows&&!foot[fc+cols]&&!seen[fc+cols]){seen[fc+cols]=1;stk[sp++]=fc+cols;}
+    if(fy-1>=0&&!foot[fc-cols]&&!seen[fc-cols]){seen[fc-cols]=1;stk[sp++]=fc-cols;}}
+  for(var h2=0;h2<N;h2++) if(!foot[h2]&&!seen[h2]) foot[h2]=1;
+  var walk=new Uint8Array(N); for(var w0=0;w0<N;w0++) walk[w0]=(foot[w0]&&!solid[w0])?1:0;
+  var q=new Int32Array(N),comp=new Int32Array(N); for(var c2=0;c2<N;c2++) comp[c2]=-1;
+  var bigC=-1,bigSz=0,ncc=0;
+  for(var s0=0;s0<N;s0++){ if(walk[s0]&&comp[s0]<0){ var st=0; q[st++]=s0; comp[s0]=ncc; var sz=0;
+    for(var sh=0; sh<st; ){ var cc=q[sh++],ax=cc%cols,ay=(cc/cols)|0; sz++;
+      if(ax+1<cols&&walk[cc+1]&&comp[cc+1]<0){comp[cc+1]=ncc;q[st++]=cc+1;}
+      if(ax-1>=0&&walk[cc-1]&&comp[cc-1]<0){comp[cc-1]=ncc;q[st++]=cc-1;}
+      if(ay+1<rows&&walk[cc+cols]&&comp[cc+cols]<0){comp[cc+cols]=ncc;q[st++]=cc+cols;}
+      if(ay-1>=0&&walk[cc-cols]&&comp[cc-cols]<0){comp[cc-cols]=ncc;q[st++]=cc-cols;} }
+    if(sz>bigSz){bigSz=sz;bigC=ncc;} ncc++; } }
+  var main=new Uint8Array(N); for(var mi=0;mi<N;mi++) main[mi]=(comp[mi]===bigC)?1:0;
+  for(var wi=0;wi<N;wi++) if(!main[wi]) walk[wi]=0;
+  var dist=new Float32Array(N),D1=1,D2=RSQ2,BIG=1e9,maxD=0;
+  for(var di=0;di<N;di++) dist[di]=main[di]?BIG:0;
+  for(var fy2=0;fy2<rows;fy2++)for(var fx2=0;fx2<cols;fx2++){var fi=fy2*cols+fx2;if(!main[fi])continue;var v=dist[fi];
+    if(fx2>0)v=Math.min(v,dist[fi-1]+D1); if(fy2>0)v=Math.min(v,dist[fi-cols]+D1);
+    if(fx2>0&&fy2>0)v=Math.min(v,dist[fi-cols-1]+D2); if(fx2<cols-1&&fy2>0)v=Math.min(v,dist[fi-cols+1]+D2); dist[fi]=v;}
+  for(var by=rows-1;by>=0;by--)for(var bx=cols-1;bx>=0;bx--){var bi=by*cols+bx;if(!main[bi])continue;var v2=dist[bi];
+    if(bx<cols-1)v2=Math.min(v2,dist[bi+1]+D1); if(by<rows-1)v2=Math.min(v2,dist[bi+cols]+D1);
+    if(bx<cols-1&&by<rows-1)v2=Math.min(v2,dist[bi+cols+1]+D2); if(bx>0&&by<rows-1)v2=Math.min(v2,dist[bi+cols-1]+D2);
+    dist[bi]=v2; if(v2>maxD&&v2<BIG)maxD=v2;}
+  var m={cols:cols,rows:rows,CELL:CELL,ox:minX,oy:minY,walkable:walk,main:main,dist:dist,maxD:maxD};
+  RMASKS[floor]=m; return m;
+}
+function rSnap(m,x,y){
+  var gx=Math.floor((x-m.ox)/m.CELL),gy=Math.floor((y-m.oy)/m.CELL);
+  gx=Math.max(0,Math.min(m.cols-1,gx)); gy=Math.max(0,Math.min(m.rows-1,gy));
+  if(m.walkable[gy*m.cols+gx]) return [gx,gy];
+  for(var r=1;r<300;r++){ for(var dx=-r;dx<=r;dx++)for(var dy=-r;dy<=r;dy++){ if(Math.max(Math.abs(dx),Math.abs(dy))!==r)continue;
+    var nx=gx+dx,ny=gy+dy; if(nx<0||ny<0||nx>=m.cols||ny>=m.rows)continue; if(m.walkable[ny*m.cols+nx])return [nx,ny]; } }
+  return null;
+}
+function rAStar(m,a,b){
+  var w=m.walkable,cols=m.cols,rows=m.rows,dist=m.dist,maxD=m.maxD||1,N=cols*rows;
+  var g=new Float64Array(N),came=new Int32Array(N),closed=new Uint8Array(N),i;
+  for(i=0;i<N;i++){g[i]=Infinity;came[i]=-1;}
+  function id(x,y){return y*cols+x;}
+  var sI=id(a[0],a[1]),gI=id(b[0],b[1]); if(!w[sI]||!w[gI])return null;
+  var ref=Math.min(maxD,13),LAMBDA=34;
+  function bias(idx){var c=dist[idx];if(c>=ref)return 0;var t=(ref-c)/ref;return LAMBDA*t*t;}
+  function h(x,y){var dx=Math.abs(x-b[0]),dy=Math.abs(y-b[1]);return (dx+dy)+(RSQ2-2)*Math.min(dx,dy);}
+  var open=[]; g[sI]=0; rHeapPush(open,{i:sI,x:a[0],y:a[1],f:h(a[0],a[1])});
+  var D=[[1,0,1],[-1,0,1],[0,1,1],[0,-1,1],[1,1,RSQ2],[1,-1,RSQ2],[-1,1,RSQ2],[-1,-1,RSQ2]];
+  while(open.length){
+    var cur=rHeapPop(open); if(closed[cur.i])continue; closed[cur.i]=1;
+    if(cur.i===gI){var path=[],c=gI;while(c!==-1){path.push([c%cols,(c/cols)|0]);c=came[c];}return path.reverse();}
+    for(var d=0;d<8;d++){var nx=cur.x+D[d][0],ny=cur.y+D[d][1];if(nx<0||ny<0||nx>=cols||ny>=rows)continue;var nI=id(nx,ny);if(!w[nI]||closed[nI])continue;
+      if(D[d][2]>1&&(!w[id(cur.x+D[d][0],cur.y)]||!w[id(cur.x,cur.y+D[d][1])]))continue;
+      var ng=g[cur.i]+D[d][2]*(1+bias(nI));if(ng<g[nI]){g[nI]=ng;came[nI]=cur.i;rHeapPush(open,{i:nI,x:nx,y:ny,f:ng+h(nx,ny)});}}
+  }
+  return null;
+}
+function rPerp(p,a,b){var dx=b[0]-a[0],dy=b[1]-a[1],L=Math.hypot(dx,dy);if(L<1e-9)return Math.hypot(p[0]-a[0],p[1]-a[1]);return Math.abs((p[0]-a[0])*dy-(p[1]-a[1])*dx)/L;}
+function rDP(pts,eps){if(pts.length<3)return pts.slice();var dmax=0,idx=0;for(var i=1;i<pts.length-1;i++){var dd=rPerp(pts[i],pts[0],pts[pts.length-1]);if(dd>dmax){dmax=dd;idx=i;}}if(dmax>eps){var l=rDP(pts.slice(0,idx+1),eps),r=rDP(pts.slice(idx),eps);return l.slice(0,-1).concat(r);}return [pts[0],pts[pts.length-1]];}
+function rDirect(ax,ay,bx,by){var line=[[ax,ay],[bx,by]];line.entryA=[ax,ay];line.entryB=[bx,by];return line;}
+function routeOnFloor(floor,ax,ay,bx,by){
+  var m=buildMask(floor); if(!m)return rDirect(ax,ay,bx,by);
+  var A=rSnap(m,ax,ay),B=rSnap(m,bx,by); if(!A||!B)return rDirect(ax,ay,bx,by);
+  var cells=rAStar(m,A,B); if(!cells)return rDirect(ax,ay,bx,by);
+  var pts=cells.map(function(c){return [m.ox+(c[0]+0.5)*m.CELL,m.oy+(c[1]+0.5)*m.CELL];});
+  var line=rDP(pts,m.CELL*3.2);
+  line.entryA=[m.ox+(A[0]+0.5)*m.CELL,m.oy+(A[1]+0.5)*m.CELL];
+  line.entryB=[m.ox+(B[0]+0.5)*m.CELL,m.oy+(B[1]+0.5)*m.CELL];
+  return line;
+}
+function rNearEsc(floor,x,y){var L=ESCALATORS[floor]||[],best=null,bd=1e18;L.forEach(function(e){var dd=(e[0]-x)*(e[0]-x)+(e[1]-y)*(e[1]-y);if(dd<bd){bd=dd;best=e;}});return best;}
+function rLen(pts){var L=0;for(var i=1;i<pts.length;i++)L+=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]);return L;}
+/* origin/dest = {floor, pt:[vbx,vby], label} */
+function computeRoute(origin, dest){
+  var oc=origin.pt, dc=dest.pt;
+  if(origin.floor===dest.floor){
+    var pts=routeOnFloor(origin.floor,oc[0],oc[1],dc[0],dc[1]);
+    return {cross:false,segments:[{floor:origin.floor,pts:pts,oc:pts.entryA,dc:pts.entryB}]};
+  }
+  /* cross-floor: pick the SAME physical escalator bank on both floors (link<=120),
+     so you exit on the next floor at the exact escalator you rode up — no teleporting. */
+  var Lo=ESCALATORS[origin.floor]||[],Ld=ESCALATORS[dest.floor]||[],bestO=null,bestD=null,bs=1e18;
+  Lo.forEach(function(eo){Ld.forEach(function(ed){
+    var link=Math.hypot(eo[0]-ed[0],eo[1]-ed[1]); if(link>120)return;
+    var sc=Math.hypot(eo[0]-oc[0],eo[1]-oc[1])+link*4+Math.hypot(ed[0]-dc[0],ed[1]-dc[1]);
+    if(sc<bs){bs=sc;bestO=eo;bestD=ed;}
+  });});
+  if(!bestO){ Lo.forEach(function(e){var sc=Math.hypot(e[0]-oc[0],e[1]-oc[1])+Math.hypot(e[0]-dc[0],e[1]-dc[1]);if(sc<bs){bs=sc;bestO=e;}});
+    if(!bestO)return null; bestD=rNearEsc(dest.floor,bestO[0],bestO[1])||bestO; }
+  var emx=(bestO[0]+bestD[0])/2,emy=(bestO[1]+bestD[1])/2;
+  var s1=routeOnFloor(origin.floor,oc[0],oc[1],emx,emy), s2=routeOnFloor(dest.floor,emx,emy,dc[0],dc[1]);
+  return {cross:true,escFloor:origin.floor,segments:[
+    {floor:origin.floor,pts:s1,oc:s1.entryA,esc:s1.entryB,kind:"toEsc"},
+    {floor:dest.floor,pts:s2,esc:s2.entryA,dc:s2.entryB,kind:"fromEsc"}]};
+}
+
+/* ---- route state + 3D drawing ---- */
+var ROUTE = {active:false, route:null, origin:null, dest:null}, routeGroup=null;
+function clearRoute(){
+  ROUTE.active=false; ROUTE.route=null; ROUTE.origin=null; ROUTE.dest=null;
+  if(routeGroup){ scene.remove(routeGroup); routeGroup.traverse(function(o){ if(o.geometry)o.geometry.dispose(); if(o.material){ if(o.material.map)o.material.map.dispose(); o.material.dispose(); } }); routeGroup=null; }
+  document.getElementById("routeBar").classList.remove("show");
+}
+/* end-point pin: a flat ring + dot, always drawn on top (overlay). At night it
+   gains a white halo + centre highlight so it glows on the dark floors; by day
+   it's the original clean ring + dot. */
+function flatMat(color){ return new THREE.MeshBasicMaterial({color:color, side:THREE.DoubleSide, transparent:true, opacity:0.98, depthTest:false, depthWrite:false}); }
+/* small coloured disc for mid-route waypoints (escalator) */
+function routeMarker(world, color){
+  var g=new THREE.Group();
+  var dot=new THREE.Mesh(new THREE.CircleGeometry(1.8,24), flatMat(color));
+  dot.rotation.x=-Math.PI/2; dot.position.copy(world); dot.position.y=2.0; dot.renderOrder=20; g.add(dot);
+  return g;
+}
+/* crisp SVG drop-pin sprite for start / end points. Rendered from vector at
+   high resolution so it stays sharp, then billboarded so the tip sits on the
+   location. Half the previous size. */
+function pinMarker(world, color){
+  var hex = '#' + ('000000' + (color>>>0).toString(16)).slice(-6);
+  var VBW = 40, VBH = 52, ratio = VBH/VBW;
+  var px = Math.round(64 * (window.devicePixelRatio || 1));   // hi-res for clarity
+  var can = document.createElement('canvas'); can.width = px; can.height = Math.round(px*ratio);
+  var ctx = can.getContext('2d');
+  var sp = new THREE.Sprite(new THREE.SpriteMaterial({depthTest:false, depthWrite:false, transparent:true}));
+  var sw = 4.5;                                               // HALF of the old 9
+  sp.scale.set(sw, sw*ratio, 1);
+  sp.position.set(world.x, 2.0 + sw*ratio*0.5, world.z);      // tip ≈ at the floor point
+  sp.renderOrder = 25;
+  var svg =
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+VBW+' '+VBH+'">'
+    + '<ellipse cx="20" cy="49.5" rx="8.5" ry="2.4" fill="#000" opacity="0.18"/>'
+    + '<path d="M20 1.5C10.3 1.5 2.5 9.3 2.5 19c0 12.3 14.4 27.6 16.6 29.9a1.25 1.25 0 0 0 1.8 0C23.1 46.6 37.5 31.3 37.5 19 37.5 9.3 29.7 1.5 20 1.5Z" fill="'+hex+'" stroke="#ffffff" stroke-width="2.2"/>'
+    + '<circle cx="20" cy="18.5" r="6.6" fill="#ffffff"/>'
+    + '</svg>';
+  var img = new Image();
+  img.onload = function(){
+    ctx.clearRect(0,0,can.width,can.height);
+    ctx.drawImage(img,0,0,can.width,can.height);
+    var tex = new THREE.CanvasTexture(can); tex.anisotropy = 8; tex.needsUpdate = true;
+    sp.material.map = tex; sp.material.needsUpdate = true;
+  };
+  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  return sp;
+}
+/* sample a polyline (world XZ) at fixed arc-length spacing */
+function samplePolyline(pts, step){
+  var out=[], carry=0;
+  for(var i=0;i<pts.length-1;i++){
+    var a=pts[i], b=pts[i+1], dx=b.x-a.x, dz=b.z-a.z, len=Math.hypot(dx,dz);
+    if(len<1e-6) continue; var ux=dx/len, uz=dz/len, d;
+    for(d=carry; d<len; d+=step){ out.push({x:a.x+ux*d, z:a.z+uz*d, dx:ux, dz:uz}); }
+    carry = d-len;
+  }
+  if(pts.length) { var last=pts[pts.length-1]; out.push({x:last.x, z:last.z, dx:0, dz:0}); }
+  return out;
+}
+/* a modern filled arrowhead in the XZ plane pointing +X */
+function chevronGeo(){
+  var s=new THREE.Shape();
+  s.moveTo(1.0,0); s.lineTo(-0.7,0.9); s.lineTo(-0.25,0); s.lineTo(-0.7,-0.9); s.closePath();
+  var g=new THREE.ShapeGeometry(s); g.rotateX(-Math.PI/2); return g;   // lies flat, points +X
+}
+/* draw the route for the visible floor as a flat, Google-Maps-style dotted path.
+   Day: subtle navy dots. Night: glowing blue dots with white outline halos so the
+   trail reads on the dark floors (like the night reference render). A direction
+   chevron every 5th dot; always drawn on top. */
+function drawRouteForFloor(){
+  if(routeGroup){ scene.remove(routeGroup); routeGroup.traverse(function(o){ if(o.geometry)o.geometry.dispose(); if(o.material){ if(o.material.map)o.material.map.dispose(); o.material.dispose(); } }); routeGroup=null; }
+  if(!ROUTE.route) return;
+  var seg=null; ROUTE.route.segments.forEach(function(s){ if(s.floor===curFloor) seg=s; });
+  routeGroup=new THREE.Group(); scene.add(routeGroup);
+  if(!seg) return;                          // route is on other floors only
+  var T=curTheme();
+  var wpts=seg.pts.map(function(p){ return vbToWorld(p[0],p[1],0); });
+  var samples=samplePolyline(wpts, T.routeStep), Y=2.0;
+  var dotGeos=[], ringGeos=[], arrowGeos=[];
+  var DOT=new THREE.CircleGeometry(T.routeDotR,18); DOT.rotateX(-Math.PI/2);
+  var RING=null;
+  if(T.routeHalo){ RING=new THREE.RingGeometry(T.routeDotR*1.05, T.routeDotR*1.6, 18); RING.rotateX(-Math.PI/2); }
+  for(var i=0;i<samples.length;i++){
+    var s=samples[i];
+    if(i>0 && i%5===0 && (s.dx||s.dz)){
+      var ag=chevronGeo();
+      var q=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1,0,0), new THREE.Vector3(s.dx,0,s.dz));
+      ag.applyQuaternion(q); ag.translate(s.x, Y+0.05, s.z); arrowGeos.push(ag);
+    } else {
+      var dg=DOT.clone(); dg.translate(s.x, Y, s.z); dotGeos.push(dg);
+      if(RING){ var rg=RING.clone(); rg.translate(s.x, Y-0.02, s.z); ringGeos.push(rg); }
+    }
+  }
+  var BU=THREE.BufferGeometryUtils;
+  if(ringGeos.length){
+    var rm=new THREE.Mesh(BU.mergeBufferGeometries(ringGeos,false),
+      new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0.85, depthTest:false, depthWrite:false}));
+    rm.renderOrder=16; routeGroup.add(rm);
+  }
+  if(dotGeos.length){
+    var dm=new THREE.Mesh(BU.mergeBufferGeometries(dotGeos,false),
+      new THREE.MeshBasicMaterial({color:T.routeDot, transparent:true, opacity:0.97, depthTest:false, depthWrite:false}));
+    dm.renderOrder=18; routeGroup.add(dm);
+  }
+  if(arrowGeos.length){
+    var am=new THREE.Mesh(BU.mergeBufferGeometries(arrowGeos,false),
+      new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0.98, depthTest:false, depthWrite:false}));
+    am.renderOrder=19; routeGroup.add(am);
+  }
+  if(seg.oc) routeGroup.add(pinMarker(vbToWorld(seg.oc[0],seg.oc[1],0), T.routeOrigin));   // start pin
+  if(seg.esc) routeGroup.add(routeMarker(vbToWorld(seg.esc[0],seg.esc[1],0), T.routeEsc)); // escalator dot
+  if(seg.dc) routeGroup.add(pinMarker(vbToWorld(seg.dc[0],seg.dc[1],0), T.routeDest));     // end pin
+}
+function routeTotals(R){ var m=0; R.segments.forEach(function(s){ m+=rLen(s.pts); }); m/=UNITS_PER_M;
+  var secs=m/WALK_MS+(R.cross?25:0); return {m:Math.round(m), min:Math.max(1,Math.round(secs/60))}; }
+function startRoute(){
+  if(!ROUTE.origin || !ROUTE.dest) return;
+  var R=computeRoute(ROUTE.origin, ROUTE.dest); if(!R){ toast("No route found"); return; }
+  ROUTE.route=R; ROUTE.active=true;
+  var floorWithOrigin = R.segments[0].floor;
+  if(curFloor!==floorWithOrigin){ if(!floorObjs[floorWithOrigin]) buildFloor(floorWithOrigin); showFloor(floorWithOrigin); }
+  drawRouteForFloor();
+  renderRouteBar();
+  // frame the visible segment
+  var seg=R.segments[0], mid=seg.pts[Math.floor(seg.pts.length/2)];
+  var t=vbToWorld(mid[0],mid[1],2); flyTo(t.clone().addScaledVector(viewDir(), framingRadius()*0.5), t);
+}
+function renderRouteBar(){
+  var R=ROUTE.route; if(!R) return;
+  var tot=routeTotals(R);
+  document.getElementById("rbTime").textContent=tot.min+" min";
+  document.getElementById("rbDist").textContent=tot.m+" m";
+  document.getElementById("rbOD").textContent=(ROUTE.origin.label||"Start")+"  →  "+(ROUTE.dest.label||"Destination");
+  var step=document.getElementById("rbStep"), destFloor=R.segments[R.segments.length-1].floor;
+  if(R.cross && curFloor!==destFloor){ step.style.display="flex"; step.textContent="Take escalator to "+FLOORS[destFloor].name; }
+  else if(R.cross && curFloor===destFloor){ step.style.display="flex"; step.textContent="Back to "+FLOORS[R.segments[0].floor].name; }
+  else step.style.display="none";
+  document.getElementById("routeBar").classList.add("show");
+}
+function routeStepFloor(){
+  var R=ROUTE.route; if(!R||!R.cross) return;
+  var other=null; R.segments.forEach(function(s){ if(s.floor!==curFloor) other=s.floor; });
+  if(other){ if(!floorObjs[other]) buildFloor(other); showFloor(other); }   // showFloor redraws via drawRouteForFloor
+}
+/* ---- Directions form (opens in place of the shop card) ---- */
+var dfDestUnit=null, dfDestFloor=null, dfOrigin=null;
+function openDirForm(u){
+  dfDestUnit=u; dfDestFloor=curFloor; dfOrigin=null;
+  document.getElementById("card").classList.remove("show");
+  document.getElementById("dfDestText").textContent=(u.name&&u.name.trim()?u.name:cat(u.cat).l)+" · "+(u.id||"");
+  var fin=document.getElementById("dfFrom"); fin.value="";
+  document.getElementById("dfField").classList.remove("has-origin");
+  document.getElementById("dfSuggest").classList.remove("show");
+  document.getElementById("dirForm").classList.add("show");
+  updateSheetOffset();
+}
+function closeDirForm(){ document.getElementById("dirForm").classList.remove("show"); if(selected) document.getElementById("card").classList.add("show"); updateSheetOffset(); }
+function dfRenderSuggest(q){
+  q=(q||"").toLowerCase().trim();
+  var el=document.getElementById("dfSuggest"); el.innerHTML="";
+  var rows=[]; if(userWorld) rows.push({loc:true});
+  if(q) unitsMatching(q).slice(0,7).forEach(function(it){ rows.push(it); });
+  if(!rows.length){ if(q){ el.innerHTML='<div class="sg-empty">No matches</div>'; el.classList.add("show"); } else el.classList.remove("show"); return; }
+  rows.forEach(function(r){
+    var row=document.createElement("div"); row.className="sg-row";
+    if(r.loc){ row.innerHTML='<span class="sg-sw" style="background:#2f74d0;border-radius:50%"></span><span class="sg-tx"><b>Your location</b><span>Start from where you are</span></span>'; row.addEventListener("click",function(){ chooseFrom(null); }); }
+    else { var u=r.u,c=cat(u.cat); row.innerHTML='<span class="sg-sw" style="background:'+hex6(c.c)+'"></span><span class="sg-tx"><b>'+(u.name&&u.name.trim()?u.name:c.l)+'</b><span>'+c.l+' · '+FLOORS[r.floor].name+'</span></span><span class="sg-code">'+(u.id||"")+'</span>'; row.addEventListener("click",function(){ chooseFrom(r); }); }
+    el.appendChild(row);
+  });
+  el.classList.add("show");
+}
+function chooseFrom(r){
+  if(r===null){ dfOrigin={floor:"G", pt:[vb(userWorld.x+OFFSET.x), vb(-(userWorld.z+OFFSET.z))], label:"Your location"}; document.getElementById("dfFrom").value="Your location"; }
+  else { var u=r.u; dfOrigin={floor:r.floor, pt:unitCentroidVB(u), label:(u.name&&u.name.trim()?u.name:cat(u.cat).l)}; document.getElementById("dfFrom").value=dfOrigin.label+" · "+(u.id||""); }
+  document.getElementById("dfField").classList.add("has-origin");
+  document.getElementById("dfSuggest").classList.remove("show");
+}
+function dfShowRoute(){
+  if(!dfDestUnit) return;
+  if(!dfOrigin){ if(userWorld){ chooseFrom(null); } else { toast("Choose a starting point"); return; } }
+  ROUTE.origin=dfOrigin;
+  ROUTE.dest={floor:dfDestFloor, pt:unitCentroidVB(dfDestUnit), label:(dfDestUnit.name&&dfDestUnit.name.trim()?dfDestUnit.name:cat(dfDestUnit.cat).l)};
+  document.getElementById("dirForm").classList.remove("show");
+  startRoute();
+}
+function dfClearForm(){ dfOrigin=null; document.getElementById("dfFrom").value=""; document.getElementById("dfField").classList.remove("has-origin"); document.getElementById("dfSuggest").classList.remove("show"); clearRoute(); }
+
+/* -------- tap / click picking -------- */
+function setupPicking(){
+  var el = renderer.domElement, down = null, activePts = 0;
+  el.addEventListener("pointerdown", function(e){
+    activePts++;
+    if(activePts === 1) down = {x:e.clientX, y:e.clientY, t:Date.now()};
+    else down = null;     // multi-touch gesture, not a tap
+  });
+  el.addEventListener("pointerup", function(e){
+    activePts = Math.max(0, activePts - 1);
+    if(!down) return;
+    var dx = e.clientX - down.x, dy = e.clientY - down.y;
+    if(Math.abs(dx) < 8 && Math.abs(dy) < 8 && (Date.now() - down.t) < 380) pick(e.clientX, e.clientY);
+    down = null;
+  });
+  el.addEventListener("pointercancel", function(){ activePts = Math.max(0, activePts-1); down = null; });
+}
+
+function pick(px, py){
+  var fo = floorObjs[curFloor]; if(!fo) return;
+  var r = renderer.domElement.getBoundingClientRect();
+  var ndc = new THREE.Vector2(((px-r.left)/r.width)*2-1, -((py-r.top)/r.height)*2+1);
+  raycaster.setFromCamera(ndc, camera);
+  var meshes = []; for(var k in fo.meshes){ if(fo.meshes[k].visible) meshes.push(fo.meshes[k]); }
+  var hits = raycaster.intersectObjects(meshes, false);
+  if(!hits.length){ deselect(); return; }
+  var hit = hits[0], mesh = hit.object, fi = hit.faceIndex, ranges = mesh.userData.ranges, unit = null;
+  for(var i=0;i<ranges.length;i++){ if(fi >= ranges[i].start && fi < ranges[i].start + ranges[i].count){ unit = ranges[i].u; break; } }
+  if(!unit){ deselect(); return; }
+  select(unit, mesh);
+}
+
+function select(u, mesh){
+  selected = {unit:u, mesh:mesh};
+  if(highlightMesh){ highlightMesh.parent.remove(highlightMesh); highlightMesh.geometry.dispose(); highlightMesh = null; }
+  var c = cat(u.cat);
+  try{
+    /* a slightly taller glowing copy. polygonOffset biases it toward the camera
+       so its walls win the depth test cleanly against the base block — no
+       coplanar z-fighting ("pixel boxes") on the selected unit. */
+    var geo = extrudeUnit(u, c.h + 0.6);
+    var mat = new THREE.MeshStandardMaterial({
+      color:c.c, emissive:0xffb24d, emissiveIntensity:0.9, roughness:0.4, metalness:0.0,
+      side:THREE.DoubleSide, polygonOffset:true, polygonOffsetFactor:-4, polygonOffsetUnits:-4
+    });
+    highlightMesh = new THREE.Mesh(geo, mat);
+    highlightMesh.castShadow = false;   // overlay only — keeps the static shadow map cached
+    highlightMesh.renderOrder = 2;
+    floorObjs[curFloor].group.add(highlightMesh);
+  }catch(e){ /* ignore highlight build errors */ }
+  placeSelectMarker(u);
+  showCard(u);
+}
+
+/* tell the floating UI (right controls + location notice) how tall the open
+   bottom sheet is, so they lift clear of it instead of overlapping. */
+function updateSheetOffset(){
+  var h = 0, ids = ["card","dirForm"], i, el;
+  for(i=0;i<ids.length;i++){ el = document.getElementById(ids[i]); if(el && el.classList.contains("show")) h = Math.max(h, el.offsetHeight); }
+  document.documentElement.style.setProperty("--sheet", h ? (h + 18) + "px" : "0px");
+}
+
+function deselect(){
+  selected = null;
+  if(highlightMesh){ highlightMesh.parent.remove(highlightMesh); highlightMesh.geometry.dispose(); highlightMesh = null; }
+  removeSelectMarker();
+  document.getElementById("card").classList.remove("show");
+  updateSheetOffset();
+}
+
+/* -------- "you tapped here" marker: a dot + an expanding pulse ring,
+            hovering just above the selected shop's roof. Only shown on tap. */
+function removeSelectMarker(){
+  if(!selectMarker) return;
+  scene.remove(selectMarker);
+  selectMarker.traverse(function(o){ if(o.geometry) o.geometry.dispose(); });
+  selectMarker = null;
+}
+function placeSelectMarker(u){
+  removeSelectMarker();
+  var c = cat(u.cat), p = unitWorld(u); p.y = c.h + 0.7;
+  var g = new THREE.Group();
+  var dot = new THREE.Mesh(new THREE.CircleGeometry(1.3, 24), flatMat(0x2f74d0));
+  dot.rotation.x = -Math.PI/2; dot.position.copy(p); dot.renderOrder = 25; g.add(dot);
+  var ring = new THREE.Mesh(new THREE.RingGeometry(1.0, 1.5, 32), flatMat(0x2f74d0));
+  ring.rotation.x = -Math.PI/2; ring.position.copy(p); ring.position.y += 0.02; ring.renderOrder = 24; g.add(ring);
+  g.userData.ring = ring;
+  selectPulse = 0;
+  selectMarker = g;
+  scene.add(g);
+}
+
+/* -------- info card -------- */
+function hex6(n){ return "#" + n.toString(16).padStart(6,"0"); }
+function showCard(u){
+  var c = cat(u.cat), col = hex6(c.c);
+  var img = document.getElementById("cImg"), hero = document.getElementById("cHero"), photo = imageFor(u);
+  if(photo){ img.style.display = "block"; img.src = photo;
+    img.onerror = function(){ img.style.display = "none"; }; }
+  else { img.style.display = "none"; }
+  hero.style.background = "linear-gradient(135deg," + col + "," + shade(c.c,-30) + ")";
+  document.getElementById("cDot").style.background = col;
+  document.getElementById("cTag").textContent = c.t || c.l;
+  document.getElementById("cCode").textContent = u.id || "";
+  document.getElementById("cName").textContent = u.name && u.name.trim() ? u.name : c.l;
+  document.getElementById("cCat").textContent = c.l + " · " + FLOORS[curFloor].name;
+  document.getElementById("cDesc").textContent = c.d || "";
+  var meta = document.getElementById("cMeta"); meta.innerHTML = "";
+  meta.appendChild(pill("Floor", FLOORS[curFloor].name));
+  if(u.m2 && parseFloat(u.m2) > 0){
+    var m2 = parseFloat(u.m2);
+    meta.appendChild(pill("Area", Math.round(m2).toLocaleString() + " m²"));
+    meta.appendChild(pill("", Math.round(m2*10.7639).toLocaleString() + " ft²"));
+  }
+  var _cd = document.getElementById("card");
+  _cd.classList.add("show");
+  /* prevent ghost clicks: on touch devices the browser fires a synthetic click
+     ~300 ms after pointerup at the same screen position. If the card slides in
+     to that position the click lands on a card button. Disable pointer events
+     briefly so that synthetic click is swallowed by the canvas instead. */
+  _cd.style.pointerEvents = "none";
+  setTimeout(function(){ _cd.style.pointerEvents = ""; }, 440);
+  updateSheetOffset();
+}
+function pill(label, val){
+  var d = document.createElement("span"); d.className = "pill";
+  d.innerHTML = (label ? "<b>" + label + "</b> " : "") + val;
+  return d;
+}
+/* darken/lighten a 0xRRGGBB colour, returning a #hex string */
+function shade(n, amt){
+  var r = (n>>16)&255, g = (n>>8)&255, b = n&255, f = amt*2.55|0;
+  r = Math.max(0,Math.min(255,r+f)); g = Math.max(0,Math.min(255,g+f)); b = Math.max(0,Math.min(255,b+f));
+  return "#" + ((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);
+}
+
+/* world-space centre of a unit (at half its height), for camera centring */
+function unitWorld(u){
+  var o = u.s[0].o, n = o.length/2, sx = 0, sy = 0;
+  for(var i=0;i<o.length;i+=2){ sx += o[i]; sy += o[i+1]; }
+  /* footprint centroid lives in the group's local XY plane (z=0); the group's
+     -90° X rotation then maps plan-Y -> world depth. (Passing it as (x,0,y)
+     was the old bug that pinned every unit to the same world-Z line.) */
+  var p = new THREE.Vector3(sx/n, sy/n, 0).applyMatrix4(floorObjs[curFloor].group.matrixWorld);
+  p.y = cat(u.cat).h * 0.5;
+  return p;
+}
+function viewDir(){
+  var d = camera.position.clone().sub(controls.target);
+  return d.lengthSq() < 1e-6 ? new THREE.Vector3(0.3,0.85,1).normalize() : d.normalize();
+}
+/* zoom in and centre (from the Locate button / directory) */
+function locateSelected(){
+  if(!selected) return;
+  var t = unitWorld(selected.unit);
+  flyTo(t.clone().addScaledVector(viewDir(), 62), t);
+}
+var _fly = null;
+function flyTo(camPos, target){
+  _fly = {cp0:camera.position.clone(), tp0:controls.target.clone(), cp1:camPos, tp1:target, t:0};
+}
+function shareSelected(){
+  if(!selected) return;
+  var u = selected.unit;
+  var url = location.origin + location.pathname + "?floor=" + curFloor + "&unit=" + encodeURIComponent(u.id||"");
+  var name = (u.name && u.name.trim()) ? u.name : cat(u.cat).l;
+  if(navigator.share){ navigator.share({title:"Tilal Mall · " + name, url:url}).catch(function(){}); }
+  else if(navigator.clipboard){ navigator.clipboard.writeText(url).then(function(){ toast("Link copied"); }, function(){ toast(url); }); }
+  else { toast(url); }
+}
+var _toastT = null;
+function toast(msg){
+  var el = document.getElementById("toast"); el.textContent = msg; el.classList.add("show");
+  clearTimeout(_toastT); _toastT = setTimeout(function(){ el.classList.remove("show"); }, 2200);
+}
+
+/* open a shared ?floor=&unit= link straight to that unit */
+function selectById(id){
+  var fo = floorObjs[curFloor]; if(!fo || !id) return false;
+  for(var k in fo.meshes){ var rs = fo.meshes[k].userData.ranges;
+    for(var i=0;i<rs.length;i++){ if(rs[i].u.id === id){ select(rs[i].u, fo.meshes[k]); locateSelected(); return true; } } }
+  return false;
+}
+function applyDeepLink(){
+  var q; try{ q = new URLSearchParams(location.search); }catch(e){ return; }
+  var f = q.get("floor"), id = q.get("unit");
+  if(f && FLOORS[f] && f !== curFloor){ if(!floorObjs[f]) buildFloor(f); showFloor(f); }
+  if(id) selectById(id);
+}
+
+/* -------- keep the model in frame: clamp the pan target to a box around the
+            origin (and shift the camera by the same amount so it never jerks),
+            so the plan can't drift off-screen no matter how you pan. -------- */
+function clampView(){
+  if(!MODEL) return;
+  var t = controls.target, lx = MODEL.w*0.5, lz = MODEL.d*0.6, ly = MODEL.h*1.3;
+  var nx = Math.max(-lx, Math.min(lx, t.x)),
+      nz = Math.max(-lz, Math.min(lz, t.z)),
+      ny = Math.max(0,   Math.min(ly, t.y));
+  if(nx!==t.x || ny!==t.y || nz!==t.z){
+    camera.position.x += nx - t.x; camera.position.y += ny - t.y; camera.position.z += nz - t.z;
+    t.set(nx, ny, nz);
+  }
+}
+function revealHint(){
+  var h = document.getElementById("hint"); h.classList.add("show");
+  setTimeout(function(){ h.classList.remove("show"); }, 5200);
+}
+
+/* -------- loop & resize -------- */
+function animate(){
+  requestAnimationFrame(animate);
+  if(_fly){
+    _fly.t = Math.min(1, _fly.t + 0.045);
+    var e = 1 - Math.pow(1 - _fly.t, 3);            // ease-out
+    camera.position.lerpVectors(_fly.cp0, _fly.cp1, e);
+    controls.target.lerpVectors(_fly.tp0, _fly.tp1, e);
+    if(_fly.t >= 1) _fly = null;
+  }
+  controls.update();
+  clampView();
+  updateEscScale();
+  updateBirds();
+  updateFireflies(performance.now()/1000);
+  updateLabels();
+  if(youMarker && youMarker.visible){ youPulse += 0.06; var s = 6.5 + Math.sin(youPulse)*0.9; youMarker.scale.set(s, s, 1); }
+  if(selectMarker){
+    selectPulse = (selectPulse + 0.018) % 1;
+    var ring = selectMarker.userData.ring, sc = 1 + selectPulse*4.5;
+    ring.scale.set(sc, sc, 1);
+    ring.material.opacity = Math.max(0, 0.85 * (1 - selectPulse));
+  }
+  renderer.render(scene, camera);
+}
+function onResize(){
+  var w = (window.visualViewport ? window.visualViewport.width : window.innerWidth);
+  var h = (window.visualViewport ? window.visualViewport.height : window.innerHeight);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h, true);
+  isMobile = matchMedia("(max-width:760px)").matches;
+  /* drop both hide-states on a breakpoint change so the panel returns to its
+     default for the new layout (collapsed is laptop-only, open is mobile-only) */
+  document.getElementById("panel").classList.remove("collapsed", "open");
+  updateSheetOffset();
+}
+function hideLoader(){ var l = document.getElementById("loader"); l.classList.add("hide"); setTimeout(function(){ l.style.display = "none"; }, 650); }
+</script>
+</body>
+</html>
