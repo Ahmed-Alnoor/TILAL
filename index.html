@@ -326,8 +326,8 @@
 
   /* ---------- intro splash (liquid water-reveal loading screen) ----------
      The front image (logo) sits over the back image (the map); pointer motion
-     reveals the map through a watery lens, then at 5s the whole map washes in.
-     Three dots pulse at the foot of the screen, and at 10s it fades to the
+     reveals the map through a watery lens.
+     Three dots pulse at the foot of the screen, and at 5s it fades to the
      viewer. Self-contained WebGL — runs before Three.js, removes itself if the
      two images aren't present. */
   #intro{position:fixed; inset:0; z-index:60; opacity:1; transition:opacity .85s ease;
@@ -705,17 +705,17 @@ function maybeBoot(){
 window.addEventListener("DOMContentLoaded", function(){ startIntro(); loadFrom(0); });
 
 /* ============================ intro / loading splash =======================
-   10-second branded loader. The front image (logo) sits over the back image
+   5-second branded loader. The front image (logo) sits over the back image
    (the map). Moving the pointer reveals the map through a "liquid water" lens —
-   medium-sized ripples that heal after ~1.5s; at 5s the whole map washes into
-   view; three dots pulse at the foot of the page throughout; at 10s it fades to
-   the 3D viewer loading underneath. Pure self-contained WebGL — runs before
-   Three.js and quietly removes itself if the two images aren't present. */
+   medium-sized ripples that heal after ~1.5s; three dots pulse at the foot of
+   the page throughout; at 5s it fades to the 3D viewer loading underneath.
+   Pure self-contained WebGL — runs before Three.js and quietly removes itself
+   if the two images aren't present. */
 var INTRO = {
   front: "images/Intro front.webp",   // logo (shown first)
   back:  "images/intro back.webp",     // the map (revealed)
-  totalMs: 10000,                       // whole splash
-  revealAtMs: 5000,                     // when the full map washes in
+  totalMs: 5000,                        // whole splash
+  revealAtMs: Infinity,                 // disabled: mouse-reveal only, no full-map wash
   revealDurMs: 1500,                    // how long that wash takes
   rippleLife: 1.5,                      // seconds each pointer ripple lasts
   rippleR: 0.17                         // medium radius (aspect-space; 0.5 = half screen height)
@@ -777,7 +777,7 @@ function runIntro(front, back){
     "  float aspect = uRes.x/uRes.y;",
     "  vec2 p = (vUv - 0.5); p.x *= aspect;",                       // circular aspect space
     "  float reveal = 0.0, sheen = 0.0; vec2 disp = vec2(0.0);",
-    "  disp += vec2(sin(vUv.y*40.0 + uTime*1.6), cos(vUv.x*40.0 + uTime*1.3)) * 0.0006;", // faint ambient shimmer (light)
+    "  disp += vec2(sin(vUv.y*40.0 + uTime*1.6), cos(vUv.x*40.0 + uTime*1.3)) * 0.0003;", // faint ambient shimmer (light, 50%)
     "  for(int i=0;i<N;i++){",
     "    float a = uAge[i];",
     "    if(a < 0.0 || a > uLife) continue;",
@@ -786,10 +786,10 @@ function runIntro(front, back){
     "    float blob = 1.0 - smoothstep(uRipR*0.35, uRipR, d);",
     "    reveal += blob*env;",
     "    float wave = sin(d*52.0 - a*20.0) * exp(-d*8.0);",
-    "    disp += normalize(dir + 1e-5) * wave * 0.005 * env * blob;",  // lighter distortion
+    "    disp += normalize(dir + 1e-5) * wave * 0.0025 * env * blob;",  // lighter distortion (50%)
     "    sheen += max(0.0, wave) * env * blob;",
     "  }",
-    "  if(uReveal > 0.0){",                                          // full-map wash from 5s
+    "  if(uReveal > 0.0){",                                          // full-map wash (disabled: mouse-reveal only)
     "    float dC = length(p);",
     "    float wob = 0.05*sin(atan(p.y, p.x)*7.0 + uTime*2.2) + 0.03*sin(dC*18.0 - uTime*3.0);",
     "    float edge = uReveal*1.7; float e = (dC - edge)*6.0; float ring = exp(-e*e);",
