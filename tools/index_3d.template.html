@@ -1378,6 +1378,7 @@ function buildEscalators(fkey, group){
   var cx=0, cy=0; list.forEach(function(p){ cx+=p[0]; cy+=p[1]; }); cx/=list.length; cy/=list.length;
   list.forEach(function(p){
     var m = escalatorModel();
+    m.scale.setScalar(0.25);                                  // tiny — only obvious when zoomed in
     m.position.set(p[0]*PLAN_SCALE, p[1]*PLAN_SCALE, 0.1);   // base on the floor
     m.rotation.z = Math.atan2(cy - p[1], cx - p[0]);         // run points in toward the concourse centre
     group.add(m);
