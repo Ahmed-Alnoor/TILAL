@@ -1701,6 +1701,7 @@ function buildBasemap(){
   var x0 = Math.floor(_lon2tile(GEO.lng-dLng, z)), x1 = Math.floor(_lon2tile(GEO.lng+dLng, z));
   var y0 = Math.floor(_lat2tile(GEO.lat+dLat, z)), y1 = Math.floor(_lat2tile(GEO.lat-dLat, z));
   var loader = new THREE.TextureLoader(); loader.setCrossOrigin("anonymous");
+  var maxAniso = renderer.capabilities.getMaxAnisotropy();   // the basemap is a ground plane seen at a grazing 3D angle; without this the roads smear/blur
   var hi = (window.devicePixelRatio > 1.4) ? "@2x" : "";   // retina-sharp tiles — the per-tile CPU re-grade that used to make this lag now runs on the GPU
   var additive = (T.basemapBlend === "additive");
   /* radial fade: tiles dissolve into the ground toward the rim so the basemap
@@ -1730,7 +1731,8 @@ function buildBasemap(){
         blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending});
       basemapRecolor(mat, T);                    // GPU road re-grade (no per-tile canvas work)
       (function(m){ loader.load(url, function(tex){
-        tex.encoding = THREE.sRGBEncoding; m.map = tex; m.color.setHex(0xffffff); m.needsUpdate = true;
+        tex.encoding = THREE.sRGBEncoding; tex.anisotropy = maxAniso;   // sharp roads at oblique view angles instead of a blurry smear
+        m.map = tex; m.color.setHex(0xffffff); m.needsUpdate = true;
       }, undefined, function(){}); })(mat);
       var mesh = new THREE.Mesh(g, mat);
       mesh.renderOrder = -1;                      // under everything
