@@ -687,24 +687,33 @@ function _ovrFromRow(r){
    screen. Fails quietly (offline / not yet configured) -> cached or baked. */
 function loadOverrides(){
   if(!SUPABASE_URL || !SUPABASE_ANON) return;
-  /* Pass the key as a query param (not a header) and send no custom headers, so
-     this is a "simple" cross-origin GET with no preflight — identical to opening
-     the URL in a browser, which we verified works. (A header-based apikey forces
-     a CORS preflight that was failing.) The publishable key is public by design. */
-  var url = SUPABASE_URL + "/rest/v1/shops?select=id,name,category,description,area_m2,logo_url,photo_url,icon,phone,hours,website&is_published=eq.true&apikey=" + encodeURIComponent(SUPABASE_ANON);
-  try{
-    fetch(url)
+  /* Page through every published shop. Supabase caps a single read at 1000 rows
+     (that truncated the first attempt), so we fetch in pages of 1000 ordered by
+     id until a short page signals the end. The key goes in the query string with
+     no custom headers, so each request is a simple preflight-free GET — exactly
+     like opening the URL in a browser, which we verified works. */
+  var base = SUPABASE_URL + "/rest/v1/shops?select=id,name,category,description,area_m2,logo_url,photo_url,icon,phone,hours,website"
+           + "&is_published=eq.true&order=id&apikey=" + encodeURIComponent(SUPABASE_ANON);
+  var PAGE = 1000, map = {};
+  function finish(){
+    if(!Object.keys(map).length) return;
+    OVERRIDES = map;
+    try{ localStorage.setItem("tilal-overrides", JSON.stringify(map)); }catch(e){}
+    afterOverrides();
+    console.log("[shops] loaded", Object.keys(map).length, "shop records from Supabase");
+  }
+  function page(offset){
+    fetch(base + "&limit=" + PAGE + "&offset=" + offset)
       .then(function(r){ if(!r.ok){ console.warn("[shops] Supabase read failed:", r.status); return null; } return r.json(); })
-      .then(function(rows){ if(!rows || !rows.length) return;
-        var map = {};
+      .then(function(rows){
+        if(!rows){ finish(); return; }
         rows.forEach(function(r){ if(r && r.id) map[r.id] = _ovrFromRow(r); });
-        OVERRIDES = map;
-        try{ localStorage.setItem("tilal-overrides", JSON.stringify(map)); }catch(e){}
-        afterOverrides();
-        console.log("[shops] loaded", rows.length, "shop records from Supabase");
+        if(rows.length === PAGE) page(offset + PAGE);   // there may be more
+        else finish();
       })
-      .catch(function(e){ console.warn("[shops] Supabase read error:", e && e.message); });
-  }catch(e){}
+      .catch(function(e){ console.warn("[shops] Supabase read error:", e && e.message); finish(); });
+  }
+  try{ page(0); }catch(e){}
 }
 function afterOverrides(){
   if(typeof renderer === "undefined" || !renderer) return;   // scene not built yet -> init() will use OVERRIDES as-is
