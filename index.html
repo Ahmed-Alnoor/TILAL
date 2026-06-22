@@ -925,11 +925,11 @@ var THEMES = {
   night: {
     metaColor:"#0a1228",
     fog:0x0e1b38, ground:0x0b1530, shadowOpacity:0.24, exposure:1.12,
-    hemiSky:0x6a8cc0, hemiGround:0x26324e, hemiInt:1.12,        // brighter, lighter ambient from every direction so the plan lifts off the dark ground
-    keyColor:0xffe9c8, keyInt:1.45, fillColor:0x5c83c8, fillInt:1.0,   // warm golden key + a stronger cool counter-fill -> lit from all sides
+    hemiSky:0x4d6da0, hemiGround:0x141c30, hemiInt:0.46,        // low ambient -> faces away from the key light fall away to a deep navy, real day/night contrast
+    keyColor:0xffe9c8, keyInt:1.6, fillColor:0x5c83c8, fillInt:0.38,   // warm golden key still picks out the lit faces; fill kept gentle so it doesn't flood the shaded sides back up
     env:[["#0b1730",0],["#16294d",0.45],["#27498a",0.5],["#0d1828",0.62],["#05080f",1]],
     sun:"rgba(160,200,255,0.65)", sunPos:[300,52,95],
-    matMetal:0.22, matRough:0.42, matEnv:1.05, matEmissiveInt:0.42,
+    matMetal:0.22, matRough:0.42, matEnv:1.05, matEmissiveInt:0.16,
     nightMix:0.26,                                               // keep the blocks near their true colour (not darkened into the navy background) so they read clearly
     grassTint:0x5f7866, treeTint:0x71866f, birdColor:"rgba(160,190,235,0.82)",
     basemap:"dark_all", basemapFallback:0x071525, basemapBlend:"additive",
