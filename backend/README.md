@@ -24,13 +24,13 @@ list.
   buckets.
 
 ### 3. Load the existing 1,144 shops
-On your machine (Python 3, no extra packages needed):
-```bash
-export SUPABASE_URL="https://abcd1234.supabase.co"
-export SUPABASE_SERVICE_KEY="<service_role key>"
-python3 backend/seed_shops.py
-```
-Re-running is safe (it upserts by shop id).
+- Back in **SQL Editor → New query**, paste all of
+  [`seed_shops.sql`](./seed_shops.sql), **Run**.
+- That's it — no code or command line needed. Re-running is safe (it skips
+  shops that already exist, so it never overwrites edits).
+
+> *Advanced/optional:* `seed_shops.py` does the same thing from the command
+> line if you prefer. Most people should just use the SQL file above.
 
 ### 4. Add your editors
 - **Authentication → Users → Add user** for each of your ≤10 people
