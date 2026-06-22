@@ -1,0 +1,9 @@
+{
+  "GF-001": {
+    "name": "Nike Store",
+    "desc": "Flagship Nike store featuring the latest footwear, apparel and Member-exclusive drops.",
+    "m2": "260",
+    "photo": "images/CAFE.webp",
+    "_note": "DEMO override — added by the editor backend (Phase 1). Safe to delete this whole entry; the shop then falls back to its baked defaults."
+  }
+}

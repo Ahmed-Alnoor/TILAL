@@ -653,6 +653,46 @@ function imageFor(u){ var pool = IMGS[u.cat];
   if(pool && pool.length){ var h=0, id=u.id||""; for(var i=0;i<id.length;i++) h=(h*31+id.charCodeAt(i))>>>0; return _enc(pool[h%pool.length]); }
   return ""; }
 
+/* ---- per-shop overrides --------------------------------------------------
+   Optional edits merged in by shop id at runtime. Source is data/overrides.json
+   now (Phase 1); a Supabase feed swaps in later with the same merge logic. Each
+   entry is  id -> {name, cat, desc, m2, photo, logo, icon, phone, hours, website}.
+   Any missing field falls back to the baked unit / category default, so a shop
+   with no override renders exactly as before. A localStorage cache gives an
+   instant first paint and an offline fallback; a hard-coded JS gate is never
+   used for anything — read is public, writes happen server-side (Supabase). */
+var OVERRIDES = {};
+try{ OVERRIDES = JSON.parse(localStorage.getItem("tilal-overrides") || "{}") || {}; }catch(e){ OVERRIDES = {}; }
+function ovr(u){ return (u && u.id && OVERRIDES[u.id]) ? OVERRIDES[u.id] : null; }
+function effCatKey(u){ var o = ovr(u); return (o && o.cat) ? o.cat : u.cat; }
+function effCat(u){ return cat(effCatKey(u)); }
+function effName(u){ var o = ovr(u);
+  if(o && o.name && o.name.trim()) return o.name.trim();
+  if(u.name && u.name.trim()) return u.name.trim();
+  return effCat(u).l; }
+function effDesc(u){ var o = ovr(u); return (o && o.desc && o.desc.trim()) ? o.desc : (effCat(u).d || ""); }
+function effArea(u){ var o = ovr(u); return (o && (o.m2 != null) && (o.m2 !== "")) ? o.m2 : u.m2; }
+function effPhoto(u){ var o = ovr(u); return (o && o.photo) ? o.photo : imageFor(u); }
+function effLogo(u){ var o = ovr(u); return (o && o.logo) ? o.logo : ""; }
+/* fetch the override feed, cache it, and refresh anything already on screen.
+   Fails quietly (e.g. file:// or offline) -> the map runs on baked defaults. */
+function loadOverrides(){
+  try{
+    fetch("data/overrides.json", {cache:"no-cache"})
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(j){ if(!j || typeof j !== "object") return;
+        OVERRIDES = j;
+        try{ localStorage.setItem("tilal-overrides", JSON.stringify(j)); }catch(e){}
+        afterOverrides();
+      })
+      .catch(function(){});
+  }catch(e){}
+}
+function afterOverrides(){
+  if(typeof renderer === "undefined" || !renderer) return;   // scene not built yet -> init() will use OVERRIDES as-is
+  try{ buildLabels(curFloor); renderPanel(); if(selected) showCard(selected.unit); }catch(e){}
+}
+
 /* escalator positions (raw plan/viewBox units, Ground + Level 1 only) */
 var ESCALATORS = {
   G:[[1370,973],[1068,1081],[1372,1356],[1684,1279],[1995,1360],[2350,1017],[2031,1009],[1031,1275],[1693,1515],[2339,1275],[1315,1180],[2026,1169]],
@@ -702,7 +742,7 @@ var _threeReady = false, _introOver = false, _booted = false;
 function maybeBoot(){
   if(_threeReady && _introOver && !_booted){ _booted = true; boot(); }
 }
-window.addEventListener("DOMContentLoaded", function(){ startIntro(); loadFrom(0); });
+window.addEventListener("DOMContentLoaded", function(){ startIntro(); loadOverrides(); loadFrom(0); });
 
 /* ============================ intro / loading splash =======================
    5-second branded loader. The front image (logo) sits over the back image
@@ -1828,7 +1868,7 @@ function buildLabels(fkey){
     var p=new THREE.Vector3((sx/n)-OFFSET.x, c.h+1.4, -(sy/n)-OFFSET.z);   // top-centre of the unit, in world
     var el=document.createElement("div"); el.className="lbl";
     el.innerHTML='<span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'
-      +(LANDMARK_ICON[u.cat]||'')+'</svg></span><span>'+((u.name&&u.name.trim()&&u.name!==c.l)?u.name:c.l)+'</span>';
+      +(LANDMARK_ICON[u.cat]||'')+'</svg></span><span>'+effName(u)+'</span>';
     host.appendChild(el);
     labelObjs.push({p:p, el:el});
   });
@@ -2069,8 +2109,8 @@ function unitsInGroup(g){
 function unitsMatching(q){
   var out = [];
   searchFloors().forEach(function(f){ (FLOORS[f].units||[]).forEach(function(u){
-    if(!u.id) return; var c = cat(u.cat);
-    if((((u.name||"") + " " + u.id + " " + c.l + " " + (c.t||"")).toLowerCase()).indexOf(q) >= 0) out.push({u:u, floor:f});
+    if(!u.id) return; var c = effCat(u);
+    if((((effName(u)||"") + " " + u.id + " " + c.l + " " + (c.t||"")).toLowerCase()).indexOf(q) >= 0) out.push({u:u, floor:f});
   }); });
   return out;
 }
@@ -2107,14 +2147,14 @@ function renderDirShops(body, list){
   var byFloor = {}; list.forEach(function(it){ (byFloor[it.floor] = byFloor[it.floor] || []).push(it); });
   FLOOR_ORDER.forEach(function(f){
     var items = byFloor[f]; if(!items || !items.length) return;
-    items.sort(function(a,b){ return (a.u.name||cat(a.u.cat).l).localeCompare(b.u.name||cat(b.u.cat).l); });
+    items.sort(function(a,b){ return effName(a.u).localeCompare(effName(b.u)); });
     var h = document.createElement("div"); h.className = "dir-fhead"; h.textContent = FLOORS[f].name + " · " + items.length; body.appendChild(h);
     var grid = document.createElement("div"); grid.className = "dir-list";
     items.slice(0, 600).forEach(function(it){
-      var u = it.u, c = cat(u.cat);
+      var u = it.u, c = effCat(u);
       var row = document.createElement("div"); row.className = "dir-item";
       row.innerHTML = '<span class="di" style="background:' + hex6(c.c) + '"></span>'
-        + '<span class="dt"><b>' + (u.name && u.name.trim() ? u.name : c.l) + '</b><span>' + c.l + '</span></span>'
+        + '<span class="dt"><b>' + effName(u) + '</b><span>' + c.l + '</span></span>'
         + '<span class="dc">' + (u.id||"") + '</span>'
         + '<svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
       row.addEventListener("click", function(){ pickFromDirectory(it.floor, u); });
@@ -2143,9 +2183,9 @@ function renderSuggest(q){
   var matches=unitsMatching(q).slice(0,8); el.innerHTML="";
   if(!matches.length){ el.innerHTML='<div class="sg-empty">No matches for “'+q+'”</div>'; el.classList.add("show"); return; }
   matches.forEach(function(it){
-    var u=it.u, c=cat(u.cat), row=document.createElement("div"); row.className="sg-row";
+    var u=it.u, c=effCat(u), row=document.createElement("div"); row.className="sg-row";
     row.innerHTML='<span class="sg-sw" style="background:'+hex6(c.c)+'"></span>'
-      +'<span class="sg-tx"><b>'+(u.name&&u.name.trim()?u.name:c.l)+'</b><span>'+c.l+' · '+FLOORS[it.floor].name+'</span></span>'
+      +'<span class="sg-tx"><b>'+effName(u)+'</b><span>'+c.l+' · '+FLOORS[it.floor].name+'</span></span>'
       +'<span class="sg-code">'+(u.id||"")+'</span>';
     row.addEventListener("click", function(){
       document.getElementById("search").value=""; el.classList.remove("show"); el.innerHTML="";
@@ -2458,7 +2498,7 @@ var dfDestUnit=null, dfDestFloor=null, dfOrigin=null;
 function openDirForm(u){
   dfDestUnit=u; dfDestFloor=curFloor; dfOrigin=null;
   document.getElementById("card").classList.remove("show");
-  document.getElementById("dfDestText").textContent=(u.name&&u.name.trim()?u.name:cat(u.cat).l)+" · "+(u.id||"");
+  document.getElementById("dfDestText").textContent=effName(u)+" · "+(u.id||"");
   var fin=document.getElementById("dfFrom"); fin.value="";
   document.getElementById("dfField").classList.remove("has-origin");
   document.getElementById("dfSuggest").classList.remove("show");
@@ -2475,14 +2515,14 @@ function dfRenderSuggest(q){
   rows.forEach(function(r){
     var row=document.createElement("div"); row.className="sg-row";
     if(r.loc){ row.innerHTML='<span class="sg-sw" style="background:#2f74d0;border-radius:50%"></span><span class="sg-tx"><b>Your location</b><span>Start from where you are</span></span>'; row.addEventListener("click",function(){ chooseFrom(null); }); }
-    else { var u=r.u,c=cat(u.cat); row.innerHTML='<span class="sg-sw" style="background:'+hex6(c.c)+'"></span><span class="sg-tx"><b>'+(u.name&&u.name.trim()?u.name:c.l)+'</b><span>'+c.l+' · '+FLOORS[r.floor].name+'</span></span><span class="sg-code">'+(u.id||"")+'</span>'; row.addEventListener("click",function(){ chooseFrom(r); }); }
+    else { var u=r.u,c=effCat(u); row.innerHTML='<span class="sg-sw" style="background:'+hex6(c.c)+'"></span><span class="sg-tx"><b>'+effName(u)+'</b><span>'+c.l+' · '+FLOORS[r.floor].name+'</span></span><span class="sg-code">'+(u.id||"")+'</span>'; row.addEventListener("click",function(){ chooseFrom(r); }); }
     el.appendChild(row);
   });
   el.classList.add("show");
 }
 function chooseFrom(r){
   if(r===null){ dfOrigin={floor:"G", pt:[vb(userWorld.x+OFFSET.x), vb(-(userWorld.z+OFFSET.z))], label:"Your location"}; document.getElementById("dfFrom").value="Your location"; }
-  else { var u=r.u; dfOrigin={floor:r.floor, pt:unitCentroidVB(u), label:(u.name&&u.name.trim()?u.name:cat(u.cat).l)}; document.getElementById("dfFrom").value=dfOrigin.label+" · "+(u.id||""); }
+  else { var u=r.u; dfOrigin={floor:r.floor, pt:unitCentroidVB(u), label:effName(u)}; document.getElementById("dfFrom").value=dfOrigin.label+" · "+(u.id||""); }
   document.getElementById("dfField").classList.add("has-origin");
   document.getElementById("dfSuggest").classList.remove("show");
 }
@@ -2591,8 +2631,8 @@ function placeSelectMarker(u){
 /* -------- info card -------- */
 function hex6(n){ return "#" + n.toString(16).padStart(6,"0"); }
 function showCard(u){
-  var c = cat(u.cat), col = hex6(c.c);
-  var img = document.getElementById("cImg"), hero = document.getElementById("cHero"), photo = imageFor(u);
+  var c = effCat(u), col = hex6(c.c);
+  var img = document.getElementById("cImg"), hero = document.getElementById("cHero"), photo = effPhoto(u);
   if(photo){ img.style.display = "block"; img.src = photo;
     img.onerror = function(){ img.style.display = "none"; }; }
   else { img.style.display = "none"; }
@@ -2600,13 +2640,14 @@ function showCard(u){
   document.getElementById("cDot").style.background = col;
   document.getElementById("cTag").textContent = c.t || c.l;
   document.getElementById("cCode").textContent = u.id || "";
-  document.getElementById("cName").textContent = u.name && u.name.trim() ? u.name : c.l;
+  document.getElementById("cName").textContent = effName(u);
   document.getElementById("cCat").textContent = c.l + " · " + FLOORS[curFloor].name;
-  document.getElementById("cDesc").textContent = c.d || "";
+  document.getElementById("cDesc").textContent = effDesc(u);
   var meta = document.getElementById("cMeta"); meta.innerHTML = "";
   meta.appendChild(pill("Floor", FLOORS[curFloor].name));
-  if(u.m2 && parseFloat(u.m2) > 0){
-    var m2 = parseFloat(u.m2);
+  var _area = effArea(u);
+  if(_area && parseFloat(_area) > 0){
+    var m2 = parseFloat(_area);
     meta.appendChild(pill("Area", Math.round(m2).toLocaleString() + " m²"));
     meta.appendChild(pill("", Math.round(m2*10.7639).toLocaleString() + " ft²"));
   }
@@ -2663,7 +2704,7 @@ function shareSelected(){
   if(!selected) return;
   var u = selected.unit;
   var url = location.origin + location.pathname + "?floor=" + curFloor + "&unit=" + encodeURIComponent(u.id||"");
-  var name = (u.name && u.name.trim()) ? u.name : cat(u.cat).l;
+  var name = effName(u);
   if(navigator.share){ navigator.share({title:"Tilal Mall · " + name, url:url}).catch(function(){}); }
   else if(navigator.clipboard){ navigator.clipboard.writeText(url).then(function(){ toast("Link copied"); }, function(){ toast(url); }); }
   else { toast(url); }
