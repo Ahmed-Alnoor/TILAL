@@ -52,6 +52,12 @@ Give me the **Project URL** and the **anon public key**. I'll wire:
 - the **admin panel** (`admin.html`) — login + searchable shop list + edit form
   with image upload.
 
+> ✅ **Done.** The Project URL + anon key are already wired into `index.html`
+> (the map reads live shop data) and `admin.html` (the editor). Your editors
+> open **`/admin.html`** on the site, sign in with the account you created for
+> them, edit any shop, and **Save** — the public map picks up the change on its
+> next load.
+
 ## Security, in one line
 The website only ever carries the *anon* key, which can do **nothing** except
 what the Row-Level-Security rules in `schema.sql` permit: anyone may *read* the

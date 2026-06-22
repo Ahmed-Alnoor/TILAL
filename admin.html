@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tilal Mall — Shop Editor</title>
+<style>
+  :root{ --ink:#141821; --ink-soft:#5a6172; --line:rgba(20,24,33,.10);
+         --blue:#2f74d0; --blue-d:#2f5391; --bg:#eef1f5; --card:#ffffff; }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;height:100%;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+       color:var(--ink); background:var(--bg); -webkit-font-smoothing:antialiased;}
+  button{font:inherit;cursor:pointer;}
+  input,select,textarea{font:inherit;color:var(--ink);}
+
+  /* ---------- login ---------- */
+  #login{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:20px;}
+  .lcard{width:100%;max-width:380px;background:var(--card);border-radius:18px;padding:28px 24px;
+         box-shadow:0 18px 50px rgba(20,30,60,.16);border:1px solid var(--line);}
+  .lcard h1{font-size:19px;margin:0 0 4px;}
+  .lcard p{margin:0 0 20px;color:var(--ink-soft);font-size:13px;}
+  .field{margin-bottom:12px;}
+  .field label{display:block;font-size:12px;font-weight:600;color:var(--ink-soft);margin-bottom:5px;}
+  .field input{width:100%;padding:11px 13px;border:1.5px solid var(--line);border-radius:11px;background:#fff;}
+  .field input:focus{outline:none;border-color:var(--blue);}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:12px 14px;
+       border:0;border-radius:12px;font-weight:700;color:#fff;
+       background:linear-gradient(135deg,var(--blue),var(--blue-d));box-shadow:0 6px 16px rgba(47,83,145,.28);}
+  .btn:disabled{opacity:.55;cursor:default;}
+  .btn.ghost{color:var(--ink);background:#fff;border:1.5px solid var(--line);box-shadow:none;}
+  .err{color:#b3261e;font-size:12.5px;margin-top:10px;min-height:16px;}
+
+  /* ---------- app shell ---------- */
+  #app{display:none;height:100%;flex-direction:column;}
+  header{display:flex;align-items:center;gap:12px;padding:12px 16px;background:#fff;border-bottom:1px solid var(--line);}
+  header .brand{font-weight:800;letter-spacing:.02em;}
+  header .brand span{color:var(--blue);}
+  header .sp{flex:1;}
+  header .who{font-size:12.5px;color:var(--ink-soft);}
+  .mini{padding:8px 12px;border-radius:10px;border:1.5px solid var(--line);background:#fff;font-size:13px;font-weight:600;}
+
+  .wrap{flex:1;display:flex;min-height:0;}
+  .list{width:42%;max-width:560px;min-width:300px;border-right:1px solid var(--line);display:flex;flex-direction:column;background:#fff;}
+  .tools{display:flex;flex-wrap:wrap;gap:8px;padding:12px;border-bottom:1px solid var(--line);}
+  .tools input,.tools select{padding:9px 11px;border:1.5px solid var(--line);border-radius:10px;background:#fff;}
+  .tools input{flex:1;min-width:140px;}
+  .tools input:focus,.tools select:focus{outline:none;border-color:var(--blue);}
+  .count{font-size:12px;color:var(--ink-soft);padding:0 12px 8px;}
+  .rows{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+  .row{display:flex;align-items:center;gap:11px;padding:11px 14px;border-bottom:1px solid var(--line);cursor:pointer;}
+  .row:hover{background:#f4f7fb;}
+  .row.active{background:#e8f0fb;}
+  .row .sw{width:11px;height:11px;border-radius:3px;flex:0 0 auto;background:#9aa3b0;}
+  .row .tx{flex:1;min-width:0;}
+  .row .tx b{display:block;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .row .tx span{font-size:11.5px;color:var(--ink-soft);}
+  .row .cd{font-size:11px;color:var(--ink-soft);font-variant-numeric:tabular-nums;}
+  .row.edited .cd::after{content:" ●";color:var(--blue);}
+
+  /* ---------- editor ---------- */
+  .editor{flex:1;overflow-y:auto;padding:20px;display:flex;align-items:flex-start;justify-content:center;}
+  .epad{width:100%;max-width:540px;}
+  .empty{color:var(--ink-soft);text-align:center;margin-top:14vh;font-size:14px;}
+  .ehead{display:flex;align-items:center;gap:10px;margin-bottom:4px;}
+  .ehead h2{font-size:18px;margin:0;}
+  .ecode{font-size:12px;color:var(--ink-soft);background:#eef1f5;padding:4px 9px;border-radius:8px;}
+  .esub{font-size:12.5px;color:var(--ink-soft);margin:0 0 18px;}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .grid .full{grid-column:1 / -1;}
+  .fl label{display:block;font-size:12px;font-weight:600;color:var(--ink-soft);margin-bottom:5px;}
+  .fl input,.fl select,.fl textarea{width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;background:#fff;}
+  .fl textarea{min-height:78px;resize:vertical;}
+  .fl input:focus,.fl select:focus,.fl textarea:focus{outline:none;border-color:var(--blue);}
+  .imgrow{display:flex;align-items:center;gap:12px;}
+  .thumb{width:64px;height:64px;border-radius:10px;border:1px solid var(--line);object-fit:cover;background:#f4f7fb;flex:0 0 auto;}
+  .imgrow .col{flex:1;min-width:0;}
+  .save{display:flex;gap:10px;margin-top:18px;}
+  .save .btn{width:auto;flex:1;}
+  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(20px);opacity:0;
+         background:#141821;color:#fff;padding:11px 18px;border-radius:12px;font-size:13.5px;font-weight:600;
+         box-shadow:0 10px 30px rgba(0,0,0,.3);transition:.25s;pointer-events:none;z-index:50;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  .toast.bad{background:#b3261e;}
+
+  @media(max-width:760px){
+    .wrap{position:relative;}
+    .list{width:100%;max-width:none;border-right:0;}
+    .editor{position:absolute;inset:0;background:var(--bg);display:none;}
+    body.editing .list{display:none;}
+    body.editing .editor{display:flex;}
+  }
+</style>
+</head>
+<body>
+
+  <!-- ===== login ===== -->
+  <div id="login">
+    <form class="lcard" id="loginForm" autocomplete="on">
+      <h1>Tilal Mall — Shop Editor</h1>
+      <p>Sign in with the account you were given. Only invited editors can access this.</p>
+      <div class="field"><label>Email</label><input id="email" type="email" autocomplete="username" required></div>
+      <div class="field"><label>Password</label><input id="password" type="password" autocomplete="current-password" required></div>
+      <button class="btn" id="loginBtn" type="submit">Sign in</button>
+      <div class="err" id="loginErr"></div>
+    </form>
+  </div>
+
+  <!-- ===== app ===== -->
+  <div id="app">
+    <header>
+      <div class="brand">Tilal <span>Mall</span> · Editor</div>
+      <div class="sp"></div>
+      <span class="who" id="who"></span>
+      <button class="mini" id="logout" type="button">Log out</button>
+    </header>
+    <div class="wrap">
+      <div class="list">
+        <div class="tools">
+          <input id="q" type="search" placeholder="Search name, code, category…">
+          <select id="fFloor"><option value="">All floors</option><option value="BL">Basement</option><option value="G">Ground</option><option value="F1">Level 1</option></select>
+          <select id="fCat"><option value="">All types</option></select>
+        </div>
+        <div class="count" id="count"></div>
+        <div class="rows" id="rows"></div>
+      </div>
+      <div class="editor">
+        <div class="epad" id="epad"><div class="empty">Select a shop on the left to edit its details.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* ---- config (same project as the public map; publishable key is safe here) ---- */
+var SUPABASE_URL  = "https://skxbeixiplhmqqeqqube.supabase.co";
+var SUPABASE_ANON = "sb_publishable_jN_hM0LWXoWDQrzy5gfe9Q_zScGIQP3";
+var sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+/* canonical categories for the dropdown (key -> label) */
+var CATS = [
+  ["hypermarket","Hypermarket"],["hyper-store","Hypermarket Storage"],["anchor","Anchor Store"],
+  ["mini-major","Mini-Major"],["line-shop","Retail Shop"],["fnb","Restaurant"],["fnb-cafe","Café"],
+  ["fnb-kiosk","F&B Kiosk"],["fnb-seating","F&B Seating"],["kiosk","Kiosk"],["kiosk-seating","Kiosk Seating"],
+  ["food-village","Food Village"],["food-court","Food Court"],["fc-seating","Food Court Seating"],
+  ["fec","Family Entertainment"],["cinema","Cinema"],["customer-service","Customer Service"],
+  ["management-suite","Management"],["tenant-store","Storage"],["prayer-room","Prayer Room"],
+  ["circulation","Circulation"],["mep","Building Services"],["boh","Back of House"],["toilet","Restroom"]
+];
+var CATLABEL = {}; CATS.forEach(function(c){ CATLABEL[c[0]] = c[1]; });
+var FLOORNAME = {BL:"Basement", G:"Ground", F1:"Level 1"};
+
+var SHOPS = [];           // all rows from the table
+var byId = {};            // id -> row
+var current = null;       // id being edited
+
+var $ = function(id){ return document.getElementById(id); };
+
+/* ---------- auth ---------- */
+$("loginForm").addEventListener("submit", function(e){
+  e.preventDefault();
+  $("loginErr").textContent = "";
+  $("loginBtn").disabled = true; $("loginBtn").textContent = "Signing in…";
+  sb.auth.signInWithPassword({ email:$("email").value.trim(), password:$("password").value })
+    .then(function(res){
+      if(res.error){ $("loginErr").textContent = res.error.message; }
+    })
+    .catch(function(err){ $("loginErr").textContent = err.message || "Sign-in failed"; })
+    .finally(function(){ $("loginBtn").disabled = false; $("loginBtn").textContent = "Sign in"; });
+});
+$("logout").addEventListener("click", function(){ sb.auth.signOut(); });
+
+sb.auth.onAuthStateChange(function(_event, session){ applySession(session); });
+sb.auth.getSession().then(function(res){ applySession(res.data.session); });
+
+function applySession(session){
+  if(session && session.user){
+    $("login").style.display = "none";
+    $("app").style.display = "flex";
+    $("who").textContent = session.user.email;
+    if(!SHOPS.length) loadShops();
+  } else {
+    $("app").style.display = "none";
+    $("login").style.display = "flex";
+    SHOPS = []; byId = {}; current = null;
+  }
+}
+
+/* ---------- load + render list ---------- */
+function loadShops(){
+  $("count").textContent = "Loading…";
+  sb.from("shops")
+    .select("id,floor,name,category,description,area_m2,logo_url,photo_url,icon,phone,hours,website,updated_at")
+    .order("floor").order("id").limit(5000)
+    .then(function(res){
+      if(res.error){ toast(res.error.message, true); $("count").textContent = ""; return; }
+      SHOPS = res.data || [];
+      byId = {}; SHOPS.forEach(function(r){ byId[r.id] = r; });
+      buildCatFilter();
+      renderList();
+    });
+}
+function buildCatFilter(){
+  var sel = $("fCat"); var seen = {};
+  SHOPS.forEach(function(r){ if(r.category) seen[r.category] = 1; });
+  CATS.forEach(function(c){ if(seen[c[0]]){ var o=document.createElement("option"); o.value=c[0]; o.textContent=c[1]; sel.appendChild(o); } });
+}
+function dispName(r){ return (r.name && r.name.trim()) ? r.name : (CATLABEL[r.category] || r.category || "(unnamed)"); }
+function isEdited(r){ return !!(r.description || r.logo_url || r.photo_url || r.icon || r.phone || r.hours || r.website || (r.name && r.name.trim())); }
+
+function renderList(){
+  var q = $("q").value.trim().toLowerCase(), ff = $("fFloor").value, fc = $("fCat").value;
+  var rows = $("rows"); rows.innerHTML = "";
+  var shown = 0, frag = document.createDocumentFragment();
+  for(var i=0;i<SHOPS.length;i++){
+    var r = SHOPS[i];
+    if(ff && r.floor !== ff) continue;
+    if(fc && r.category !== fc) continue;
+    if(q){
+      var hay = (dispName(r) + " " + r.id + " " + (CATLABEL[r.category]||r.category||"")).toLowerCase();
+      if(hay.indexOf(q) < 0) continue;
+    }
+    shown++;
+    if(shown > 400){ continue; }   // keep the DOM light; narrow with search
+    var div = document.createElement("div");
+    div.className = "row" + (r.id===current?" active":"") + (isEdited(r)?" edited":"");
+    div.innerHTML = '<span class="sw"></span><span class="tx"><b></b><span></span></span><span class="cd"></span>';
+    div.querySelector(".tx b").textContent = dispName(r);
+    div.querySelector(".tx span").textContent = (CATLABEL[r.category]||r.category||"") + " · " + (FLOORNAME[r.floor]||r.floor);
+    div.querySelector(".cd").textContent = r.id;
+    div.addEventListener("click", (function(id){ return function(){ openEditor(id); }; })(r.id));
+    frag.appendChild(div);
+  }
+  rows.appendChild(frag);
+  var total = shown;
+  $("count").textContent = total + " shop" + (total===1?"":"s") + (total>400?" (showing first 400 — refine with search)":"");
+}
+["q","fFloor","fCat"].forEach(function(id){ $(id).addEventListener("input", renderList); });
+
+/* ---------- editor ---------- */
+function openEditor(id){
+  current = id; renderList();
+  var r = byId[id]; if(!r) return;
+  document.body.classList.add("editing");
+  var opts = CATS.map(function(c){ return '<option value="'+c[0]+'"'+(c[0]===r.category?" selected":"")+'>'+c[1]+'</option>'; }).join("");
+  $("epad").innerHTML =
+    '<div class="ehead"><h2 id="eName"></h2><span class="ecode">'+r.id+'</span></div>'
+    + '<p class="esub">'+(CATLABEL[r.category]||r.category||"")+' · '+(FLOORNAME[r.floor]||r.floor)+(r.updated_at?' · edited '+new Date(r.updated_at).toLocaleDateString():'')+'</p>'
+    + '<div class="grid">'
+    +   '<div class="fl full"><label>Shop name</label><input id="f_name" type="text" placeholder="e.g. Nike Store"></div>'
+    +   '<div class="fl"><label>Type / category</label><select id="f_cat">'+opts+'</select></div>'
+    +   '<div class="fl"><label>Area (m²)</label><input id="f_area" type="number" min="0" step="1" placeholder="e.g. 260"></div>'
+    +   '<div class="fl full"><label>Description</label><textarea id="f_desc" placeholder="Short description shown on the info card…"></textarea></div>'
+    +   '<div class="fl"><label>Phone</label><input id="f_phone" type="text" placeholder="+971 …"></div>'
+    +   '<div class="fl"><label>Hours</label><input id="f_hours" type="text" placeholder="10:00 — 22:00"></div>'
+    +   '<div class="fl full"><label>Website</label><input id="f_web" type="url" placeholder="https://…"></div>'
+    +   '<div class="fl full"><label>Logo</label><div class="imgrow"><img class="thumb" id="t_logo" alt=""><div class="col"><input id="up_logo" type="file" accept="image/*"></div></div></div>'
+    +   '<div class="fl full"><label>Photo</label><div class="imgrow"><img class="thumb" id="t_photo" alt=""><div class="col"><input id="up_photo" type="file" accept="image/*"></div></div></div>'
+    + '</div>'
+    + '<div class="save"><button class="btn ghost" id="backBtn" type="button">Back</button><button class="btn" id="saveBtn" type="button">Save changes</button></div>';
+  $("eName").textContent = dispName(r);
+  $("f_name").value  = r.name || "";
+  $("f_cat").value   = r.category || "";
+  $("f_area").value  = (r.area_m2 != null ? r.area_m2 : "");
+  $("f_desc").value  = r.description || "";
+  $("f_phone").value = r.phone || "";
+  $("f_hours").value = r.hours || "";
+  $("f_web").value   = r.website || "";
+  setThumb("t_logo", r.logo_url); setThumb("t_photo", r.photo_url);
+  $("backBtn").addEventListener("click", function(){ document.body.classList.remove("editing"); current=null; renderList(); $("epad").innerHTML='<div class="empty">Select a shop on the left to edit its details.</div>'; });
+  $("saveBtn").addEventListener("click", function(){ saveShop(id); });
+}
+function setThumb(elId, url){ var t=$(elId); if(url){ t.src=url; t.style.display="block"; } else { t.removeAttribute("src"); } }
+
+/* upload a chosen file to a bucket, return its public URL */
+function uploadIf(inputId, bucket, shopId){
+  var f = $(inputId).files[0];
+  if(!f) return Promise.resolve(null);
+  var ext = (f.name.split(".").pop() || "png").toLowerCase();
+  var path = shopId + "/" + bucket + "-" + Date.now() + "." + ext;
+  return sb.storage.from(bucket).upload(path, f, {upsert:true, cacheControl:"3600"})
+    .then(function(res){ if(res.error) throw res.error;
+      return sb.storage.from(bucket).getPublicUrl(path).data.publicUrl; });
+}
+
+function saveShop(id){
+  var r = byId[id];
+  $("saveBtn").disabled = true; $("saveBtn").textContent = "Saving…";
+  Promise.all([ uploadIf("up_logo","logos",id), uploadIf("up_photo","photos",id) ])
+    .then(function(urls){
+      var row = {
+        id: id, floor: r.floor,
+        name: $("f_name").value.trim(),
+        category: $("f_cat").value,
+        description: $("f_desc").value.trim() || null,
+        area_m2: $("f_area").value ? parseFloat($("f_area").value) : null,
+        phone: $("f_phone").value.trim() || null,
+        hours: $("f_hours").value.trim() || null,
+        website: $("f_web").value.trim() || null,
+        is_published: true
+      };
+      if(urls[0]) row.logo_url = urls[0];
+      if(urls[1]) row.photo_url = urls[1];
+      return sb.from("shops").upsert(row).select().single();
+    })
+    .then(function(res){
+      if(res.error) throw res.error;
+      byId[id] = res.data; for(var i=0;i<SHOPS.length;i++){ if(SHOPS[i].id===id){ SHOPS[i]=res.data; break; } }
+      if(res.data.logo_url) setThumb("t_logo", res.data.logo_url);
+      if(res.data.photo_url) setThumb("t_photo", res.data.photo_url);
+      $("eName").textContent = dispName(res.data);
+      renderList();
+      toast("Saved — the map updates on next load");
+    })
+    .catch(function(err){ toast(err.message || "Save failed", true); })
+    .finally(function(){ $("saveBtn").disabled = false; $("saveBtn").textContent = "Save changes"; });
+}
+
+/* ---------- toast ---------- */
+var _tt = null;
+function toast(msg, bad){
+  var el = $("toast"); el.textContent = msg; el.className = "toast show" + (bad?" bad":"");
+  clearTimeout(_tt); _tt = setTimeout(function(){ el.className = "toast" + (bad?" bad":""); }, 2600);
+}
+</script>
+</body>
+</html>

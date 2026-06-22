@@ -654,13 +654,16 @@ function imageFor(u){ var pool = IMGS[u.cat];
   return ""; }
 
 /* ---- per-shop overrides --------------------------------------------------
-   Optional edits merged in by shop id at runtime. Source is data/overrides.json
-   now (Phase 1); a Supabase feed swaps in later with the same merge logic. Each
-   entry is  id -> {name, cat, desc, m2, photo, logo, icon, phone, hours, website}.
-   Any missing field falls back to the baked unit / category default, so a shop
-   with no override renders exactly as before. A localStorage cache gives an
-   instant first paint and an offline fallback; a hard-coded JS gate is never
-   used for anything — read is public, writes happen server-side (Supabase). */
+   Editable shop details merged in by shop id at runtime. The live source is the
+   Supabase `shops` table (public read); a localStorage cache gives an instant
+   first paint and an offline fallback, and the baked unit/category data is the
+   ultimate fallback so the map always works even if Supabase is unreachable.
+   Each merged entry is id -> {name, cat, desc, m2, photo, logo, icon, phone,
+   hours, website}; any missing field falls back to the baked default, so a shop
+   with no edit renders exactly as before. No JS gate guards anything — reads are
+   public; every write is enforced server-side by Supabase row-level security. */
+var SUPABASE_URL  = "https://skxbeixiplhmqqeqqube.supabase.co";
+var SUPABASE_ANON = "sb_publishable_jN_hM0LWXoWDQrzy5gfe9Q_zScGIQP3";
 var OVERRIDES = {};
 try{ OVERRIDES = JSON.parse(localStorage.getItem("tilal-overrides") || "{}") || {}; }catch(e){ OVERRIDES = {}; }
 function ovr(u){ return (u && u.id && OVERRIDES[u.id]) ? OVERRIDES[u.id] : null; }
@@ -674,15 +677,25 @@ function effDesc(u){ var o = ovr(u); return (o && o.desc && o.desc.trim()) ? o.d
 function effArea(u){ var o = ovr(u); return (o && (o.m2 != null) && (o.m2 !== "")) ? o.m2 : u.m2; }
 function effPhoto(u){ var o = ovr(u); return (o && o.photo) ? o.photo : imageFor(u); }
 function effLogo(u){ var o = ovr(u); return (o && o.logo) ? o.logo : ""; }
-/* fetch the override feed, cache it, and refresh anything already on screen.
-   Fails quietly (e.g. file:// or offline) -> the map runs on baked defaults. */
+/* map a Supabase `shops` row to the compact override shape used above */
+function _ovrFromRow(r){
+  return {name:r.name, cat:r.category, desc:r.description, m2:r.area_m2,
+          photo:r.photo_url, logo:r.logo_url, icon:r.icon,
+          phone:r.phone, hours:r.hours, website:r.website};
+}
+/* fetch the live override feed, cache it, and refresh anything already on
+   screen. Fails quietly (offline / not yet configured) -> cached or baked. */
 function loadOverrides(){
+  if(!SUPABASE_URL || !SUPABASE_ANON) return;
+  var url = SUPABASE_URL + "/rest/v1/shops?select=id,name,category,description,area_m2,logo_url,photo_url,icon,phone,hours,website&is_published=eq.true";
   try{
-    fetch("data/overrides.json", {cache:"no-cache"})
+    fetch(url, {headers:{apikey:SUPABASE_ANON, Authorization:"Bearer "+SUPABASE_ANON}})
       .then(function(r){ return r.ok ? r.json() : null; })
-      .then(function(j){ if(!j || typeof j !== "object") return;
-        OVERRIDES = j;
-        try{ localStorage.setItem("tilal-overrides", JSON.stringify(j)); }catch(e){}
+      .then(function(rows){ if(!rows || !rows.length) return;
+        var map = {};
+        rows.forEach(function(r){ if(r && r.id) map[r.id] = _ovrFromRow(r); });
+        OVERRIDES = map;
+        try{ localStorage.setItem("tilal-overrides", JSON.stringify(map)); }catch(e){}
         afterOverrides();
       })
       .catch(function(){});
