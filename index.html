@@ -761,27 +761,33 @@ function showLoadError(){
   document.getElementById("loadLbl").style.display = "none";
   document.getElementById("loadErr").style.display = "block";
 }
-/* The intro runs its own WebGL context. Mobile browsers (and the headless GPU)
-   cap how many live WebGL contexts exist, so we let Three.js DOWNLOAD during the
-   intro (network overlaps, no wasted time) but defer init() — which creates the
-   second context — until the intro hands off. Only one live context at a time. */
-var _threeReady = false, _introOver = false, _booted = false;
+/* The 3D scene now builds WHILE the intro plays, not after it: #intro sits at
+   z-index 60, above both #loader (20) and #app (the renderer's canvas, no
+   z-index), so the build is completely hidden behind the splash. boot() fires
+   as soon as Three.js has downloaded — no need to wait for the intro to hand
+   off. Two small live WebGL contexts (the intro's water shader + the real
+   renderer) coexisting for a couple of seconds is well within what every
+   modern desktop and mobile browser supports. */
+var _threeReady = false, _booted = false;
 function maybeBoot(){
-  if(_threeReady && _introOver && !_booted){ _booted = true; boot(); }
+  if(_threeReady && !_booted){ _booted = true; boot(); }
 }
 window.addEventListener("DOMContentLoaded", function(){ startIntro(); loadOverrides(); loadFrom(0); });
 
 /* ============================ intro / loading splash =======================
-   5-second branded loader. The front image (logo) sits over the back image
+   Short branded loader. The front image (logo) sits over the back image
    (the map). Moving the pointer reveals the map through a "liquid water" lens —
    medium-sized ripples that heal after ~1.5s; three dots pulse at the foot of
-   the page throughout; at 5s it fades to the 3D viewer loading underneath.
+   the page throughout. The real scene is built behind it (see maybeBoot above),
+   so the splash only ends once that build is actually done — totalMs is a
+   minimum dwell time, not a fixed deadline (see runIntro's frame loop).
    Pure self-contained WebGL — runs before Three.js and quietly removes itself
    if the two images aren't present. */
 var INTRO = {
   front: "images/Intro front.webp",   // logo (shown first)
   back:  "images/intro back.webp",     // the map (revealed)
-  totalMs: 5000,                        // whole splash
+  totalMs: 2000,                        // minimum splash time
+  maxExtraMs: 8000,                     // extra time to wait for a slow scene build before giving up
   revealAtMs: Infinity,                 // disabled: mouse-reveal only, no full-map wash
   revealDurMs: 1500,                    // how long that wash takes
   rippleLife: 1.5,                      // seconds each pointer ripple lasts
@@ -791,7 +797,7 @@ var INTRO_N = 20;                       // max simultaneous ripples (matches the
 var _introGL = null, _introExt = null, _introRAF = 0, _introRips = [], _introStart = 0, _introResize = null;
 
 function startIntro(){
-  if(!document.getElementById("intro")){ _introOver = true; maybeBoot(); return; }
+  if(!document.getElementById("intro")){ return; }
   var front = new Image(), back = new Image(), n = 0, dead = false;
   function fail(){ if(dead) return; dead = true; removeIntro(); }       // images missing -> skip the splash
   function ok(){ if(dead) return; if(++n >= 2) runIntro(front, back); }
@@ -803,11 +809,10 @@ function startIntro(){
 function removeIntro(){
   if(_introRAF) cancelAnimationFrame(_introRAF); _introRAF = 0;
   if(_introResize){ window.removeEventListener("resize", _introResize); _introResize = null; }
-  if(_introExt){ try{ _introExt.loseContext(); }catch(e){} _introExt = null; }   // free the GL context BEFORE the 3D claims one
+  if(_introExt){ try{ _introExt.loseContext(); }catch(e){} _introExt = null; }   // free the GL context, the splash no longer needs it
   _introGL = null;
   var host = document.getElementById("intro");
   if(host && host.parentNode) host.parentNode.removeChild(host);
-  _introOver = true; maybeBoot();        // now safe to build the 3D (single live context)
 }
 var _introEnding = false;
 function endIntro(){
@@ -937,7 +942,7 @@ function runIntro(front, back){
 
   var ages = new Float32Array(INTRO_N), rips = new Float32Array(INTRO_N * 2);
   _introStart = performance.now();
-  setTimeout(endIntro, INTRO.totalMs + 60);   // hard backstop: end on time even if the RAF loop is ever interrupted
+  setTimeout(endIntro, INTRO.totalMs + INTRO.maxExtraMs + 60);   // absolute backstop if the scene build never finishes
   function frame(){
     var t = performance.now() - _introStart, ts = t / 1000;
     var aspect = cv.width / cv.height;
@@ -955,7 +960,10 @@ function runIntro(front, back){
     gl.uniform1f(U.uTime, ts); gl.uniform1f(U.uReveal, rv);
     gl.uniform2fv(U.uRip, rips); gl.uniform1fv(U.uAge, ages);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
-    if(t >= INTRO.totalMs){ endIntro(); return; }
+    /* don't cut away to a half-built scene: once the minimum dwell time has
+       elapsed, keep playing the water effect until the 3D model has actually
+       finished loading (_booted), up to maxExtraMs as a worst-case ceiling. */
+    if(t >= INTRO.totalMs && (_booted || t >= INTRO.totalMs + INTRO.maxExtraMs)){ endIntro(); return; }
     _introRAF = requestAnimationFrame(frame);
   }
   _introRAF = requestAnimationFrame(frame);
@@ -2597,6 +2605,10 @@ function pick(px, py){
 
 function select(u, mesh){
   selected = {unit:u, mesh:mesh};
+  /* the directions form shares the card's exact slot (same fixed position, one
+     z-index above) — leaving it open while picking a shop on the map would stack
+     a second panel on top of the card, which reads as "a new window" popping up. */
+  document.getElementById("dirForm").classList.remove("show");
   if(highlightMesh){ highlightMesh.parent.remove(highlightMesh); highlightMesh.geometry.dispose(); highlightMesh = null; }
   var c = cat(u.cat);
   try{
